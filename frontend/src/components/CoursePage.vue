@@ -1,5 +1,6 @@
 <!-- File: CoursePage.vue -->
 <template>
+  <div>
   <!-- Navigation Bar -->
   <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
     <div class="container-fluid">
