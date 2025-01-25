@@ -13,7 +13,3 @@ export default {
 <style>
 /* Add global styles if needed */
 </style>
-
-
-
-

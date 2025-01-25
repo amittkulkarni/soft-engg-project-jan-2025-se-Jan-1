@@ -52,6 +52,7 @@ export default {
     methods: {
         register() {
             alert("Registration successful!");
+            this.$router.push("/course");
         },
     },
 };
