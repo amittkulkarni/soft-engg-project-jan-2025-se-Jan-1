@@ -12,7 +12,7 @@
           height="40"
           class="me-2"
         />
-        <span>Machine Learning Practice</span>
+        <span class="course-title">Jan 2025 - MLP</span>
       </a>
 
       <!-- Right side: Support, Profile icons, etc. -->
@@ -371,6 +371,17 @@ export default {
 <style scoped>
 .min-vh-100 {
   min-height: 100vh;
+}
+
+.course-title{
+  color: #606060;
+  letter-spacing: .00178571429em;
+  font-size: 14px;
+  line-height: 24px;
+  font-weight: 600;
+  background: #f7f7fa;
+  padding: 4px 10px;
+  border-radius: 4px;
 }
 
 /* Styles for child list items to stand out */
