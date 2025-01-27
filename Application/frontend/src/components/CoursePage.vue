@@ -1,6 +1,5 @@
 <!-- File: CoursePage.vue -->
 <template>
-  <div>
   <!-- Navigation Bar -->
   <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
     <div class="container-fluid">
@@ -13,7 +12,7 @@
           height="40"
           class="me-2"
         />
-        <span>PDSA</span>
+        <span class="course-title">Jan 2025 - MLP</span>
       </a>
 
       <!-- Right side: Support, Profile icons, etc. -->
@@ -80,7 +79,7 @@
           </li>
           <ul class="collapse list-group child-list" id="week1Collapse">
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
-                                                             style="width:16px;"/>Lecture 1.1 Lists and Dictionaries
+                                                             style="width:16px;"/>Lecture 1.1 Data Preprocessing with Pandas
             </li>
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
                                                              style="width:16px;"/>Graded Assignment 1
@@ -98,7 +97,7 @@
           </li>
           <ul class="collapse list-group child-list" id="week2Collapse">
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
-                                                             style="width:16px;"/>Lecture 2.1 Stacks
+                                                             style="width:16px;"/>Lecture 2.1 Data Visualization with Matplotlib and Seaborn
             </li>
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
                                                              style="width:16px;"/>Graded Assignment 2
@@ -116,7 +115,7 @@
           </li>
           <ul class="collapse list-group child-list" id="week3Collapse">
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
-                                                             style="width:16px;"/>Lecture 3.1 Queues
+                                                             style="width:16px;"/>Lecture 3.1 Principal Component Analysis
             </li>
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
                                                              style="width:16px;"/>Graded Assignment 3
@@ -134,7 +133,7 @@
           <ul class="collapse list-group child-list" id="week4Collapse">
             <li class="list-group-item child-list-item">
               <img :src="bookIcon" alt="Book Icon" class="me-2" style="width:16px;"/>
-              Lecture 4.1 Graphs
+              Lecture 4.1 Clustering
             </li>
             <li class="list-group-item child-list-item">
               <img :src="bookIcon" alt="Book Icon" class="me-2" style="width:16px;"/>
@@ -153,7 +152,7 @@
           </li>
           <ul class="collapse list-group child-list" id="week5Collapse">
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
-                                                             style="width:16px;"/>Lecture 5.1 Graphs
+                                                             style="width:16px;"/>Lecture 5.1 Linear Regression and Classification Models
             </li>
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
                                                              style="width:16px;"/>Graded Assignment 5
@@ -171,7 +170,7 @@
           </li>
           <ul class="collapse list-group child-list" id="week6Collapse">
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
-                                                             style="width:16px;"/>Lecture 6.1 Trees
+                                                             style="width:16px;"/>Lecture 6.1 Support Vector Machines
             </li>
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
                                                              style="width:16px;"/>Graded Assignment 6
@@ -189,7 +188,7 @@
           </li>
           <ul class="collapse list-group child-list" id="week7Collapse">
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
-                                                             style="width:16px;"/>Lecture 7.1 Priority Queues
+                                                             style="width:16px;"/>Lecture 7.1 Hyperparameter Tuning
             </li>
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
                                                              style="width:16px;"/>Graded Assignment 7
@@ -207,7 +206,7 @@
           </li>
           <ul class="collapse list-group child-list" id="week8Collapse">
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
-                                                             style="width:16px;"/>Lecture 8.1 Linked Lists
+                                                             style="width:16px;"/>Lecture 8.1 Tree Based Models
             </li>
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
                                                              style="width:16px;"/>Graded Assignment 8
@@ -225,7 +224,7 @@
           </li>
           <ul class="collapse list-group child-list" id="week9Collapse">
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
-                                                             style="width:16px;"/>Lecture 9.1 Heaps
+                                                             style="width:16px;"/>Lecture 9.1 Bagging and Boosting
             </li>
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
                                                              style="width:16px;"/>Graded Assignment 9
@@ -261,7 +260,7 @@
           </li>
           <ul class="collapse list-group child-list" id="week11Collapse">
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
-                                                             style="width:16px;"/>Lecture 11.1 Dynamic Programming
+                                                             style="width:16px;"/>Lecture 11.1 Multilayer Perceptrons
             </li>
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
                                                              style="width:16px;"/>Graded Assignment 11
@@ -279,7 +278,7 @@
           </li>
           <ul class="collapse list-group child-list" id="week12Collapse">
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
-                                                             style="width:16px;"/>Lecture 12.1 Streamlit
+                                                             style="width:16px;"/>Lecture 12.1 Artificial Neural Networks
             </li>
             <li class="list-group-item child-list-item"><img :src="bookIcon" alt="Book Icon" class="me-2"
                                                              style="width:16px;"/>Graded Assignment 12
@@ -306,32 +305,14 @@
           </div>
         </div>
 
-        <p class="mt-3">
-          This course will cover the following basic concepts of Data Structures and Algorithms
-          using Python:-
-          <br/>
-          Asymptotic complexity, O() notation, sorting and searching algorithms
-          <br/>
-          Data structures: linked list, NumPy array, hashing, stack and queue
-          <br/>
-          Algorithms on graphs: exploration, connectivity, the shortest paths,
-          directed acyclic graphs, spanning trees
-          <br/>
-          Data structures: heaps, union of disjoint sets, search trees
-          <br/>
-          Design techniques: greedy, divide and conquer, dynamic programming
-          <br/>
-          Pattern matching algorithms
-          <br/>
-          Linear programming, intractability
-        </p>
-
         <p>Duration:- 12 Week</p>
+        <br/>
         <p>
           Faculty:
           <br/>
           Prof. Amit Kulkarni, Director, IIT Madras
         </p>
+        <br/>
         <p>
           Course instructors:
           <br/>
@@ -341,22 +322,25 @@
           <br/>
           Jyotiraditya Saha
         </p>
+          <br/>
         <p>
           Reference books:
           <br/>
-          Algorithm Design, by Kajol Singh and Anjali Galav
+          Hands on Machine Learning with Scikit-Learn and Tensorflow by Kajol Singh, Saima Shroff and Anjali Galav
           <br/>
-          Introduction to Algorithms, by Saima Shroff, Kajol Singh, Anjali Galav
-          <br/>
-          Algorithms, by A.Kulkarni, J. Saha
         </p>
+        <br/>
         <p>
           To know more about course syllabus, Instructors and Prescribed Books please click on
           the below tab:
           <br/>
-          <a href="https://onlinedegree.iitm.ac.in/course_pages/BCSCS2002.html">
-            https://onlinedegree.iitm.ac.in/course_pages/BCSCS2002.html
+          <a href="https://onlinedegree.iitm.ac.in/course_pages/BCSCS2008.html">
+            https://onlinedegree.iitm.ac.in/course_pages/BCSCS2008.html
           </a>
+        </p>
+        <p>
+        The learners are advised to make best use of the interaction sessions with the course support members to clarify their doubts.
+          <br/>
         </p>
         <p>
           Course specific calendar:
@@ -387,6 +371,17 @@ export default {
 <style scoped>
 .min-vh-100 {
   min-height: 100vh;
+}
+
+.course-title{
+  color: #606060;
+  letter-spacing: .00178571429em;
+  font-size: 14px;
+  line-height: 24px;
+  font-weight: 600;
+  background: #f7f7fa;
+  padding: 4px 10px;
+  border-radius: 4px;
 }
 
 /* Styles for child list items to stand out */
