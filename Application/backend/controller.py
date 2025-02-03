@@ -5,6 +5,10 @@ from extension import db
 from token_validation import generate_token
 
 
+
+# Comment from Amit , Do use the prefix "/api/" for all APIs . For e.g http://localhost:3000/api/google_auth 
+
+
 user_routes = Blueprint('user_routes', __name__)
 
 # Signup Route

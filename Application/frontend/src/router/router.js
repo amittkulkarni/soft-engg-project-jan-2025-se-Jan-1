@@ -4,6 +4,7 @@ import Login from "../components/LoginPage.vue";
 import Register from "../components/RegisterPage.vue";
 import CoursePage from "../components/CoursePage.vue";
 import ProgrammingPage from "@/components/ProgrammingPage.vue";
+import LecturePage from "@/components/LecturePage.vue"
 
 const routes = [
   {
@@ -30,6 +31,11 @@ const routes = [
     path: "/grpa",
     name: "ProgrammingAssignment",
     component: ProgrammingPage
+  },
+  {
+    path: "/lecture",
+    name: "LecturePage",
+    component: LecturePage
   }
 ];
 
