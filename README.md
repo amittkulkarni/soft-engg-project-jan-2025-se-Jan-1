@@ -4,7 +4,7 @@
 - Amit Kulkarni
 - Saima Shroff
 - Kajol Singh
-- Sandeep Kumar
+- sandeep kumar
 - Anjali Galav
 - Jyotiraditya Saha
 - Siddharth Umathe
