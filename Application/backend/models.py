@@ -1,5 +1,5 @@
 from extension import db
-
+from datetime import datetime
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -35,7 +35,7 @@ class Lecture(db.Model):
     video_url = db.Column(db.String(100))
     week = db.relationship('Week', back_populates='lectures')
 
- class Assignment(db.Model):
+class Assignment(db.Model):
     __tablename__ = 'assignments'
     id = db.Column(db.Integer, primary_key=True) 
     week_id = db.Column(db.Integer, db.ForeignKey('weeks.id'), nullable=False)
