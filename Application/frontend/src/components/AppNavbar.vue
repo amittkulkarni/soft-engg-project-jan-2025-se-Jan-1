@@ -9,12 +9,6 @@
 
       <!-- Right side: Support, Profile icons, etc. -->
       <ul class="navbar-nav ms-auto">
-        <li class="nav-item me-3">
-          <a class="nav-link" href="#">
-            <i class="bi bi-question-circle"></i>
-            Support
-          </a>
-        </li>
         <li class="nav-item">
           <a class="nav-link" href="#">
             <i class="bi bi-person-circle"></i>

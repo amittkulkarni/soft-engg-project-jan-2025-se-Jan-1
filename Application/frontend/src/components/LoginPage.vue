@@ -3,7 +3,7 @@
     <!-- Left Section -->
     <div class="left-section">
         <img src="https://cdn-icons-png.flaticon.com/512/3976/3976631.png" alt="Education Icon" class="floating-icon" />
-        <h1 class="floating-title">Welcome Back to Education Navigator</h1>
+        <h1 class="floating-title">Welcome Back to SEEK</h1>
         <h2 class="floating-text">Empowering your learning journey.</h2>
         <h2 class="floating-text">Login to access your dashboard!</h2>
     </div>

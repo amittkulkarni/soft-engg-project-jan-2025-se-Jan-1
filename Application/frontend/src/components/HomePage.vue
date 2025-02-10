@@ -1,12 +1,12 @@
 <template>
 <div class="home-page">
     <header class="header">
-        <h1>Education Navigator</h1>
+        <h1>SEEK NPTEL</h1>
     </header>
     <main class="main-content">
         <div class="content-box">
-            <h2>Welcome to Education Navigator</h2>
-            <p>The Ultimate Classroom for One Course</p>
+            <h2>Welcome to SEEK Portal</h2>
+            <p>The Ultimate Classroom for IITM BS</p>
             <button @click="signIn">Register</button>
         </div>
     </main>
