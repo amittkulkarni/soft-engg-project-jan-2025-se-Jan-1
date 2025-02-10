@@ -18,7 +18,7 @@
           <!-- Ace Editor Component -->
           <div class="editor-container mb-4">
             <AceEditor
-              v-model:value="code"
+              :value="code"
             />
           </div>
 

@@ -1,6 +1,6 @@
 <template>
   <v-ace-editor
-    v-model:value="content"
+    :value="content"
     lang="python"
     theme="monokai"
     placeholder="Write your Python code here..."
