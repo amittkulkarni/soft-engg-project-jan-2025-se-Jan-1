@@ -9,7 +9,7 @@
         <!-- Main Content -->
         <div class="col-9 p-4">
           <!-- Dynamic Title -->
-          <h4>Mock Quiz 1</h4>
+          <h4>{{ title }}</h4>
 
           <!-- Questions Section -->
           <div v-for="(question, index) in questions" :key="index" class="question-container mb-4 p-3">

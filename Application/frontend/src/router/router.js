@@ -41,7 +41,10 @@ const routes = [
   {
     path: "/ga",
     name: "AssignmentPage",
-    component: AssignmentsPage
+    component: AssignmentsPage,
+    props: (route) => ({
+      title: route.query.title, // Retrieve title from query parameters
+    }),
   }
 ];
 
