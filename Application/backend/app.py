@@ -2,9 +2,11 @@ from flask import Flask
 from config import Config
 from extension import db, jwt, migrate
 from controller import user_routes
+from flask_cors import CORS
 
 # Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 app.config.from_object(Config)
 
 # Initialize extensions
