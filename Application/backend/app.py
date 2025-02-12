@@ -6,8 +6,10 @@ from flask_cors import CORS
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+
 app.config.from_object(Config)
+CORS(app,origins='http://localhost:8080',supports_credentials=True)
+CORS(app,origins='http://localhost:8081',supports_credentials=True)
 
 # Initialize extensions
 db.init_app(app)
