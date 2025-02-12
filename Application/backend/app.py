@@ -13,7 +13,7 @@ jwt.init_app(app)
 migrate.init_app(app, db)
 
 # Register blueprints
-app.register_blueprint(user_routes, url_prefix='/auth')   # User routes
+app.register_blueprint(user_routes, url_prefix='/api')   # User routes
 
 
 if __name__ == '__main__':

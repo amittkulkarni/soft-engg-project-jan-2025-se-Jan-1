@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import User
+from models import User,Week,Lecture,Assignment
 from extension import db 
+
 from token_validation import generate_token
 
 
@@ -48,3 +49,29 @@ def login():
 @user_routes.route('/logout', methods=['POST'])
 def logout():
     return jsonify({"message": "Logged out successfully"}), 200
+
+
+@user_routes.route('/weeks', methods=['GET'])
+def get_weeks():
+    weeks = Week.query.all()
+    return jsonify([{
+        "id": week.id,
+        "week_number": week.week_number,
+        "title": week.title
+    } for week in weeks]), 200
+
+
+@user_routes.route('/weeks/<int:week_id>', methods=['GET'])
+def get_week_details(week_id):
+    week = Week.query.get(week_id)
+    if not week:
+        return jsonify({"message": "Week not found"}), 404
+
+    return jsonify({
+        "id": week.id,
+        "week_number": week.week_number,
+        "title": week.title,
+        "lectures": [{"id": lec.id, "title": lec.title, "video_url": lec.video_url} for lec in week.lectures],
+        "assignments": [{"id": assgn.id, "title": assgn.title, "type": assgn.type} for assgn in week.assignments]
+    }), 200
+
