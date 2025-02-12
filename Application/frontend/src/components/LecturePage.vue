@@ -1,18 +1,20 @@
 <template>
   <div>
-    <AppNavbar />
+    <AppNavbar/>
 
     <div class="container-fluid">
       <div class="row">
         <!-- Sidebar -->
-        <AppSidebar />
+        <AppSidebar/>
 
         <!-- Main Content -->
         <div class="col-9 p-4">
           <div class="content-header d-flex align-items-center mb-4">
-            <h4 class="mb-0">2.2 Linear Regression</h4>
+            <h4 class="mb-0">{{ lectureTitle }}</h4>
             <div class="ms-3">
-              <span v-for="i in 5" :key="i" class="me-1" :style="{ color: i <= 3 ? '#f0c929' : '#6c757d' }">★</span>
+              <span v-for="i in 5" :key="i" class="me-1" :style=" {
+                      color: i <= 3 ? '#f0c929' : '#6c757d'
+                    }">★</span>
               <span>(0 reviews)</span>
               <a href="#" class="ms-2">Submit a review</a>
             </div>
@@ -25,7 +27,9 @@
                 <iframe
                   width="100%"
                   height="500"
-                  src="https://www.youtube.com/embed/I1s8WWUMGQs"
+                  :src="`https://www.youtube.com/embed/$ {
+videoId
+}`"
                   frameborder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowfullscreen
@@ -34,15 +38,15 @@
 
               <!-- Summarize Button and Summary Box -->
               <div class="summary-section">
-                 <!-- Summarize Button with AI Assistant Icon -->
-                 <button
-                   @click="summarizeVideo"
-                   class="ai-button summarize-btn"
-                   :disabled="isLoading"
-                 >
-                    <img :src="StudentIcon" class="ai-icon" alt="AI Summarizer">
-                   <span>{{ isLoading ? 'Summarizing...' : 'Summarize' }}</span>
-                 </button>
+                <!-- Summarize Button with AI Assistant Icon -->
+                <button
+                  @click="summarizeVideo"
+                  class="ai-button summarize-btn"
+                  :disabled="isLoading"
+                >
+                  <img :src="StudentIcon" class="ai-icon" alt="AI Summarizer">
+                  <span>{{ isLoading ? 'Summarizing...' : 'Summarize' }}</span>
+                </button>
 
                 <!-- Summary Box (shows only after clicking summarize) -->
                 <div v-if="summary" class="summary-box">
@@ -52,9 +56,9 @@
                       <button @click="copyToClipboard" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-clipboard"></i> Copy
                       </button>
-                    <button @click="summary = ''" class="btn-close"></button>
+                      <button @click="summary = ''" class="btn-close"></button>
+                    </div>
                   </div>
-                </div>
                   <div class="summary-content">
                     {{ summary }}
                   </div>
@@ -70,8 +74,8 @@
       @click="redirectToChatbot"
       class="ai-button ask-me-btn"
     >
-      <img :src="StudentIcon" class="ai-icon" alt="AI Assistant" />
-      <span>Ask Me</span>
+      <img :src="StudentIcon" class="ai-icon" alt="AI Assistant"/>
+      <span>Ask Kia</span>
     </button>
   </div>
 </template>
@@ -92,7 +96,16 @@ export default {
     return {
       summary: '',
       isLoading: false,
-      StudentIcon
+      StudentIcon,
+      defaultVideoId: 'I1s8WWUMGQs'
+    }
+  },
+  computed: {
+    lectureTitle() {
+      return this.$route.query.title || 'Lecture 1.1 Data Preprocessing with Pandas'
+    },
+    videoId() {
+      return this.$route.query.videoId || this.defaultVideoId
     }
   },
   methods: {
@@ -183,7 +196,7 @@ export default {
 
 .summarize-btn {
   background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
-  border: 1px solid #e0e0e0;  /* Adding a thin border */
+  border: 1px solid #e0e0e0; /* Adding a thin border */
   color: #606060;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
@@ -193,7 +206,7 @@ export default {
   bottom: 30px;
   right: 30px;
   background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
-  border: 1px solid #e0e0e0;  /* Adding a thin border */
+  border: 1px solid #e0e0e0; /* Adding a thin border */
   color: #606060;
   z-index: 1000;
 }

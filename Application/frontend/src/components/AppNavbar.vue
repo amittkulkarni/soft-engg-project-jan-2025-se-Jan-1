@@ -3,7 +3,7 @@
     <div class="container-fluid">
       <!-- Left side: Logo + Subject Name -->
       <a class="navbar-brand d-flex align-items-center" href="#">
-        <img :src="logoPath" alt="Institute Logo" width="120" height="40" class="me-2" />
+        <img :src="logoPath" alt="Institute Logo" width="120" height="40" class="me-2"/>
         <span class="course-title">Jan 2025 - MLP</span>
       </a>
 

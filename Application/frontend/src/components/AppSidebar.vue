@@ -10,16 +10,16 @@
       </li>
 
       <!-- Collapsible Items -->
-      <li v-for="(section, index) in sidebarSections" :key="index" class="list-group-item">
+      <!--<template v-for="(sectionGroup, groupIndex) in sectionGroups" :key="'group-' + groupIndex">-->
+      <li v-for="(section, index) in sidebarSections" :key="'section-' + index" class="list-group-item">
         <div
           class="d-flex justify-content-between align-items-center section-header"
-          data-bs-toggle="collapse"
-          :data-bs-target="'#' + section.id"
-          aria-expanded="false"
-          :aria-controls="section.id"
+          @click="handleCollapse(section.id)"
         >
           <span>
-            <i class="bi bi-caret-right-fill me-2"></i> {{ section.title }}
+            <i class="bi me-2"
+               :class="activeSection === section.id ? 'bi-caret-down-fill' : 'bi-caret-right-fill'">
+            </i> {{ section.title }}
           </span>
         </div>
         <!-- Collapsible Content -->
@@ -31,45 +31,58 @@
             :key="'child-' + itemIndex"
             class="list-group-item child-list-item"
           >
-            <router-link :to="item.link" class="no-link">
-              <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style=" width:16px;"/>
+            <router-link :to=" {
+                           path: item.link,
+                           query: {
+                             title: item.text,
+                             videoId: item.videoId
+                           }
+                         }" class="no-link">
+              <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style="  width:16px;"/>
               {{ item.text }}
             </router-link>
           </li>
         </ul>
       </li>
 
-      <!-- Normal Sidebar Items -->
+      <!-- Mock Quiz 1 -->
       <li class="list-group-item mt-2">
         <router-link :to=" {
                        path: '/ga',
-                       query: {title: 'Mock Quiz 1'}
+                       query: { title: 'Mock Quiz 1' }
                      }" class="no-link">
           <span><i class="bi bi-pencil-square me-2"></i> Generate Mock Quiz 1</span>
         </router-link>
       </li>
 
-      <li v-for="(section, index) in sidebarSectionsAfterMockQuiz1" :key="'after-' + index" class="list-group-item">
+      <li v-for="(section, index) in sidebarSectionsAfterMockQuiz1" :key="'after1-' + index" class="list-group-item">
         <div
-          class="d-flex justify-content-between align-items-center"
-          data-bs-toggle="collapse"
-          :data-bs-target="'#' + section.id"
-          aria-expanded="false"
-          :aria-controls="section.id"
+          class="d-flex justify-content-between align-items-center section-header"
+          @click="handleCollapse(section.id)"
         >
           <span>
-            <i class="bi bi-caret-right-fill me-2"></i> {{ section.title }}
+            <i class="bi me-2"
+               :class="activeSection === section.id ? 'bi-caret-down-fill' : 'bi-caret-right-fill'">
+            </i> {{ section.title }}
           </span>
         </div>
         <!-- Collapsible Content -->
-        <ul :id="section.id" class="collapse list-group child-list mt-2">
+        <ul :id="section.id"
+            class="collapse list-group child-list mt-2"
+        >
           <li
             v-for="(item, itemIndex) in section.items"
-            :key="'child-after-' + itemIndex"
+            :key="'child-' + itemIndex"
             class="list-group-item child-list-item"
           >
-            <router-link :to="item.link" class="no-link">
-              <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style=" width:16px;"/>
+            <router-link :to=" {
+                           path: item.link,
+                           query: {
+                             title: item.text,
+                             videoId: item.videoId
+                           }
+                         }" class="no-link">
+              <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style="  width:16px;"/>
               {{ item.text }}
             </router-link>
           </li>
@@ -80,50 +93,60 @@
       <li class="list-group-item mt-2">
         <router-link :to=" {
                        path: '/ga',
-                       query: {title: 'Mock Quiz 2'}
+                       query: { title: 'Mock Quiz 2' }
                      }" class="no-link">
           <span><i class="bi bi-pencil-square me-2"></i> Generate Mock Quiz 2</span>
         </router-link>
       </li>
 
-      <li v-for="(section, index) in sidebarSectionsAfterMockQuiz2" :key="'after-' + index" class="list-group-item">
+      <li v-for="(section, index) in sidebarSectionsAfterMockQuiz2" :key="'after2-' + index" class="list-group-item">
         <div
-          class="d-flex justify-content-between align-items-center"
-          data-bs-toggle="collapse"
-          :data-bs-target="'#' + section.id"
-          aria-expanded="false"
-          :aria-controls="section.id"
+          class="d-flex justify-content-between align-items-center section-header"
+          @click="handleCollapse(section.id)"
         >
           <span>
-            <i class="bi bi-caret-right-fill me-2"></i> {{ section.title }}
+            <i class="bi me-2"
+               :class="activeSection === section.id ? 'bi-caret-down-fill' : 'bi-caret-right-fill'">
+            </i> {{ section.title }}
           </span>
         </div>
         <!-- Collapsible Content -->
-        <ul :id="section.id" class="collapse list-group child-list mt-2">
+        <ul :id="section.id"
+            class="collapse list-group child-list mt-2"
+        >
           <li
             v-for="(item, itemIndex) in section.items"
-            :key="'child-after-' + itemIndex"
+            :key="'child-' + itemIndex"
             class="list-group-item child-list-item"
           >
-            <router-link :to="item.link" class="no-link">
-              <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style=" width:16px;"/>
+            <router-link :to=" {
+                           path: item.link,
+                           query: {
+                             title: item.text,
+                             videoId: item.videoId
+                           }
+                         }" class="no-link">
+              <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style="  width:16px;"/>
               {{ item.text }}
             </router-link>
           </li>
         </ul>
       </li>
+
+      <!-- Additional Mock Quizzes -->
       <li class="list-group-item mt-2">
         <router-link :to=" {
                        path: '/ga',
-                       query: {title: 'Mock End Term'}
+                       query: { title: 'Mock End Term' }
                      }" class="no-link">
           <span><i class="bi bi-pencil-square me-2"></i> Generate Mock End Term</span>
         </router-link>
       </li>
+
       <li class="list-group-item mt-2">
         <router-link :to=" {
                        path: '/ga',
-                       query: {title: 'Topic Specific Mock'}
+                       query: { title: 'Topic Specific Mock' }
                      }" class="no-link">
           <span><i class="bi bi-pencil-square me-2"></i> Generate Topic Specific Mock</span>
         </router-link>
@@ -134,11 +157,13 @@
 
 <script>
 import bookIcon from '@/assets/sidebar-modules-selected.svg';
-
+import bootstrap from 'bootstrap/dist/js/bootstrap.bundle'
 export default {
   name: 'AppSidebar',
   data() {
     return {
+      activeSection: localStorage.getItem("activeSection") || null,
+      collapseInstances: {},
       sidebarSections: [
         {
           id: 'week1Collapse',
@@ -146,8 +171,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 1.1 Data Preprocessing with Pandas',
-              link: '/lecture'
+              text: 'Lecture 1.1 Data Visualization',
+              link: '/lecture',
+              videoId: 'kIyxumBVo6o?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
             },
             {
               icon: bookIcon,
@@ -162,8 +188,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 2.1 Data Preprocessing with Pandas',
-              link: '/lecture'
+              text: 'Lecture 2.1 Data Preprocessing',
+              link: '/lecture',
+              videoId: '_PcVkfVsjuo?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
             },
             {
               icon: bookIcon,
@@ -178,8 +205,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 3.1 Data Preprocessing with Pandas',
-              link: '/lecture'
+              text: 'Lecture 3.1 Categorical Transformers',
+              link: '/lecture',
+              videoId: 'QQtBTFqpv24?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
             },
             {
               icon: bookIcon,
@@ -194,8 +222,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 4.1 Data Preprocessing with Pandas',
-              link: '/lecture'
+              text: 'Lecture 4.1 Dimensionality Reduction With PCA',
+              link: '/lecture',
+              videoId: 'UVYuejgzVW0?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
             },
             {
               icon: bookIcon,
@@ -212,8 +241,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 5.1 Data Preprocessing with Pandas',
-              link: '/lecture'
+              text: 'Lecture 5.1 Linear Regression',
+              link: '/lecture',
+              videoId: 'SFYn4UnZaSQ&list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
             },
             {
               icon: bookIcon,
@@ -228,8 +258,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 6.1 Data Preprocessing with Pandas',
-              link: '/lecture'
+              text: 'Lecture 6.1 Polynomial Regression',
+              link: '/lecture',
+              videoId: 'dMHECW-BkIM?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
             },
             {
               icon: bookIcon,
@@ -244,13 +275,14 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 7.1 Data Preprocessing with Pandas',
-              link: '/lecture'
+              text: 'Lecture 7.1 Multi Learning Classification',
+              link: '/lecture',
+              videoId: '-AIkfX41Mgc?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
             },
             {
               icon: bookIcon,
               text: 'Graded Assignment 7',
-              link: '/ga'
+              link: '/ga',
             },
           ],
         },
@@ -260,8 +292,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 8.1 Data Preprocessing with Pandas',
-              link: '/lecture'
+              text: 'Lecture 8.1 Naive Bayes Classifier',
+              link: '/lecture',
+              videoId: 'uM-MNko46Zo?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
             },
             {
               icon: bookIcon,
@@ -278,8 +311,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 9.1 Data Preprocessing with Pandas',
-              link: '/lecture'
+              text: 'Lecture 9.1 K Nearest Neighbours',
+              link: '/lecture',
+              videoId: 'gKiFTMLgZy4'
             },
             {
               icon: bookIcon,
@@ -294,8 +328,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 10.1 Data Preprocessing with Pandas',
-              link: '/lecture'
+              text: 'Lecture 10.1 SVM in scikit-learn',
+              link: '/lecture',
+              videoId: '5erlKOqL8Xk?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
             },
             {
               icon: bookIcon,
@@ -310,8 +345,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 11.1 Data Preprocessing with Pandas',
-              link: '/lecture'
+              text: 'Lecture 11.1 Boosting: AdaBoost, GradientBoost',
+              link: '/lecture',
+              videoId: 'ZIMlYAKgGTg?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
             },
             {
               icon: bookIcon,
@@ -326,8 +362,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 12.1 Data Preprocessing with Pandas',
-              link: '/lecture'
+              text: 'Lecture 12.1 Neural Networks: Multi-layer Perceptron',
+              link: '/lecture',
+              videoId: 'wphku4k1e90?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
             },
             {
               icon: bookIcon,
@@ -338,12 +375,54 @@ export default {
         }, ],
     };
   },
-  methods: {
-    navigateToMock(link, title) {
-      this.$router.push({
-        path: link,
-        query: { title }
+  computed: {
+    sectionGroups() {
+      return [
+        this.sidebarSections,
+        this.sidebarSectionsAfterMockQuiz1,
+        this.sidebarSectionsAfterMockQuiz2
+      ]
+    }
+  },
+  mounted() {
+    this.$nextTick(() => {
+      this.sectionGroups.flat().forEach((section) => {
+        const element = document.getElementById(section.id);
+        this.collapseInstances[section.id] = new bootstrap.Collapse(element, {
+          toggle: false,
+        });
+
+        element.addEventListener("shown.bs.collapse", () => {
+          this.activeSection = section.id;
+          localStorage.setItem("activeSection", section.id);
+        });
+
+        element.addEventListener("hidden.bs.collapse", () => {
+          if (this.activeSection === section.id) {
+            this.activeSection = null;
+            localStorage.removeItem("activeSection");
+          }
+        });
       });
+
+      const storedSection = localStorage.getItem("activeSection");
+      if (storedSection && this.collapseInstances[storedSection]) {
+        this.collapseInstances[storedSection].show();
+      }
+    });
+  },
+  methods: {
+    handleCollapse(sectionId) {
+      if (this.activeSection === sectionId) {
+        this.collapseInstances[sectionId].hide();
+      } else {
+        Object.keys(this.collapseInstances).forEach((id) => {
+          if (id !== sectionId && this.collapseInstances[id]._isShown) {
+            this.collapseInstances[id].hide();
+          }
+        });
+        this.collapseInstances[sectionId].show();
+      }
     },
   },
 };
