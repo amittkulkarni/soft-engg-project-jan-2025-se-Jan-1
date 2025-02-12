@@ -173,7 +173,7 @@ export default {
               icon: bookIcon,
               text: 'Lecture 1.1 Data Visualization',
               link: '/lecture',
-              videoId: 'kIyxumBVo6o?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
+              videoId: 'kIyxumBVo6o'
             },
             {
               icon: bookIcon,
@@ -190,7 +190,7 @@ export default {
               icon: bookIcon,
               text: 'Lecture 2.1 Data Preprocessing',
               link: '/lecture',
-              videoId: '_PcVkfVsjuo?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
+              videoId: '_PcVkfVsjuo'
             },
             {
               icon: bookIcon,
@@ -205,9 +205,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 3.1 Categorical Transformers',
+              text: 'Lecture 3.1 Linear Regression',
               link: '/lecture',
-              videoId: 'QQtBTFqpv24?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
+              videoId: 'SFYn4UnZaSQ'
             },
             {
               icon: bookIcon,
@@ -222,9 +222,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 4.1 Dimensionality Reduction With PCA',
+              text: 'Lecture 4.1 Polynomial Regression',
               link: '/lecture',
-              videoId: 'UVYuejgzVW0?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
+              videoId: 'dMHECW-BkIM'
             },
             {
               icon: bookIcon,
@@ -241,9 +241,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 5.1 Linear Regression',
+              text: 'Lecture 5.1 Classification Functions in Scikit Learn',
               link: '/lecture',
-              videoId: 'SFYn4UnZaSQ&list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
+              videoId: 'dhYydFzxfes'
             },
             {
               icon: bookIcon,
@@ -258,9 +258,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 6.1 Polynomial Regression',
+              text: 'Lecture 6.1 Naive Bayes Classifier',
               link: '/lecture',
-              videoId: 'dMHECW-BkIM?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
+              videoId: 'uM-MNko46Zo'
             },
             {
               icon: bookIcon,
@@ -275,9 +275,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 7.1 Multi Learning Classification',
+              text: 'Lecture 7.1 K-Nearest Neighbors',
               link: '/lecture',
-              videoId: '-AIkfX41Mgc?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
+              videoId: 'gKiFTMLgZy4'
             },
             {
               icon: bookIcon,
@@ -292,9 +292,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 8.1 Naive Bayes Classifier',
+              text: 'Lecture 8.1 Decision Trees',
               link: '/lecture',
-              videoId: 'uM-MNko46Zo?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
+              videoId: '5OZc2zWS2cY'
             },
             {
               icon: bookIcon,
@@ -311,9 +311,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 9.1 K Nearest Neighbours',
+              text: 'Lecture 9.1 Bagging and Random Forest',
               link: '/lecture',
-              videoId: 'gKiFTMLgZy4'
+              videoId: 'EZ5szvjQgWw'
             },
             {
               icon: bookIcon,
@@ -328,9 +328,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 10.1 SVM in scikit-learn',
+              text: 'Lecture 10.1 K-means Clustering on Digit Dataset',
               link: '/lecture',
-              videoId: '5erlKOqL8Xk?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
+              videoId: '-tPSKI9nUf0'
             },
             {
               icon: bookIcon,
@@ -347,7 +347,7 @@ export default {
               icon: bookIcon,
               text: 'Lecture 11.1 Boosting: AdaBoost, GradientBoost',
               link: '/lecture',
-              videoId: 'ZIMlYAKgGTg?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
+              videoId: 'ZIMlYAKgGTg'
             },
             {
               icon: bookIcon,
@@ -364,7 +364,7 @@ export default {
               icon: bookIcon,
               text: 'Lecture 12.1 Neural Networks: Multi-layer Perceptron',
               link: '/lecture',
-              videoId: 'wphku4k1e90?list=PLZ2ps__7DhBb3ovNQam2c_WcGeiW9OhQo'
+              videoId: 'wphku4k1e90'
             },
             {
               icon: bookIcon,
