@@ -1,39 +1,39 @@
 <template>
-<div class="login-page">
-    <!-- Left Section -->
-    <div class="left-section">
-        <img src="https://cdn-icons-png.flaticon.com/512/3976/3976631.png" alt="Education Icon" class="floating-icon" />
-        <h1 class="floating-title">Welcome Back to SEEK</h1>
-        <h2 class="floating-text">Empowering your learning journey.</h2>
-        <h2 class="floating-text">Login to access your dashboard!</h2>
-    </div>
+    <div class="login-page">
+        <!-- Left Section -->
+        <div class="left-section">
+            <img src="https://cdn-icons-png.flaticon.com/512/3976/3976631.png" alt="Education Icon" class="floating-icon"/>
+            <h1 class="floating-title">Welcome Back to SEEK</h1>
+            <h2 class="floating-text">Empowering your learning journey.</h2>
+            <h2 class="floating-text">Login to access your dashboard!</h2>
+        </div>
 
-    <!-- Right Section -->
-    <div class="right-section">
-        <div class="form-container">
-            <h1>Welcome Back</h1>
-            <p>Please login to continue</p>
-            <form @submit.prevent="login">
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" v-model="email" placeholder="Enter your email" required />
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" v-model="password" placeholder="Enter your password" required />
-                </div>
-                <button type="submit" class="btn">Login</button>
-            </form>
-            <p>
-                Don't have an account?
-                <router-link to="/register">Register</router-link>
-            </p>
+        <!-- Right Section -->
+        <div class="right-section">
+            <div class="form-container">
+                <h1>Welcome Back</h1>
+                <p>Please login to continue</p>
+                <form @submit.prevent="login">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" v-model="email" placeholder="Enter your email" required/>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" v-model="password" placeholder="Enter your password" required/>
+                    </div>
+                    <button type="submit" class="btn">Login</button>
+                </form>
+                <p>
+                    Don't have an account?
+                    <router-link to="/register">Register</router-link>
+                </p>
+            </div>
         </div>
     </div>
-</div>
 </template>
 
-  
+
 <script>
 export default {
     name: "LoginPage",
@@ -52,7 +52,7 @@ export default {
 };
 </script>
 
-  
+
 <style scoped>
 .login-page {
     display: flex;
@@ -65,8 +65,7 @@ export default {
     flex: 1;
     background-color: #6c1b1b;
     /* Base dark red color */
-    background-image:
-        radial-gradient(circle, rgba(255, 255, 255, 0.1) 10%, transparent 20%),
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.1) 10%, transparent 20%),
         radial-gradient(circle, rgba(255, 255, 255, 0.1) 10%, transparent 20%);
     background-size: 30px 30px;
     background-position: 0 0, 15px 15px;

@@ -1,19 +1,19 @@
 <template>
-<div class="home-page">
-    <header class="header">
-        <h1>SEEK NPTEL</h1>
-    </header>
-    <main class="main-content">
-        <div class="content-box">
-            <h2>Welcome to SEEK Portal</h2>
-            <p>The Ultimate Classroom for IITM BS</p>
-            <button @click="signIn">Register</button>
-        </div>
-    </main>
-    <footer class="footer">
-        <p>© 2025 Software Engineering Project Team 1 | Jan 2025 Term. All rights reserved.</p>
-    </footer>
-</div>
+    <div class="home-page">
+        <header class="header">
+            <h1>SEEK NPTEL</h1>
+        </header>
+        <main class="main-content">
+            <div class="content-box">
+                <h2>Welcome to SEEK Portal</h2>
+                <p>The Ultimate Classroom for IITM BS</p>
+                <button @click="signIn">Register</button>
+            </div>
+        </main>
+        <footer class="footer">
+            <p>© 2025 Software Engineering Project Team 1 | Jan 2025 Term. All rights reserved.</p>
+        </footer>
+    </div>
 </template>
 
 <script>

@@ -1,13 +1,13 @@
 <template>
   <div>
     <!-- Navigation Bar -->
-    <AppNavbar />
+    <AppNavbar/>
 
     <!-- Main Layout -->
     <div class="container-fluid">
       <div class="row">
         <!-- Sidebar -->
-        <AppSidebar />
+        <AppSidebar/>
 
         <!-- Main Content -->
         <div class="col-9 p-4">
@@ -71,7 +71,8 @@ export default {
     return {
       code: "# Write your Python code here...",
       consoleOutput: "",
-      testCaseResults: [], // Array to store test case results
+      testCaseResults: [],
+      // Array to store test case results
     };
   },
   methods: {
@@ -81,7 +82,9 @@ export default {
         this.consoleOutput = response.data.output;
         this.testCaseResults = response.data.testCases || [];
       } catch (error) {
-        this.consoleOutput = `Error: ${error.response ? error.response.data.error : error.message}`;
+        this.consoleOutput = `Error: $ {
+error.response ? error.response.data.error : error.message
+}`;
       }
     },
     async submitCode() {
@@ -89,7 +92,9 @@ export default {
         const response = await axios.post("http://127.0.0.1:5000/submit", { code: this.code });
         this.consoleOutput = response.data.message;
       } catch (error) {
-        this.consoleOutput = `Error: ${error.response ? error.response.data.error : error.message}`;
+        this.consoleOutput = `Error: $ {
+error.response ? error.response.data.error : error.message
+}`;
       }
     },
   },

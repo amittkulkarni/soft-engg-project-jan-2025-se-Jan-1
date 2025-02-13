@@ -1,10 +1,10 @@
 <template>
   <div>
-    <AppNavbar />
+    <AppNavbar/>
     <div class="container-fluid">
       <div class="row">
         <!-- Sidebar -->
-        <AppSidebar />
+        <AppSidebar/>
 
         <!-- Main Content -->
         <div class="col-9 p-4">
@@ -33,12 +33,12 @@
                   :for="'question-' + index + '-option-' + optionIndex"
                   :class="[
                     showScore
-                      ? option === correctAnswers[index]
-                        ? 'text-success'
-                        : userAnswers[index] === option
-                        ? 'text-danger'
-                        : ''
-                      : '',
+                    ? option === correctAnswers[index]
+                    ? 'text-success'
+                    : userAnswers[index] === option
+                    ? 'text-danger'
+                    : ''
+                    : '',
                   ]"
                 >
                   {{ option }}
@@ -73,7 +73,7 @@
 
       <!-- Ask Me Button -->
       <button @click="redirectToChatbot" class="ai-button ask-me-btn">
-        <img :src="StudentIcon" class="ai-icon me-2" alt="AI Assistant" />
+        <img :src="StudentIcon" class="ai-icon me-2" alt="AI Assistant"/>
         Ask Kia
       </button>
     </div>
@@ -118,7 +118,8 @@ export default {
           options: ["pd.read_csv()", "pd.load_csv()", "pd.read_data", "pd.import_csv()"],
         },
       ],
-      userAnswers: Array(3).fill(null), // Placeholder for user answers
+      userAnswers: Array(3).fill(null),
+      // Placeholder for user answers
       correctAnswers: [
         "A data manipulation library",
         "Series",
@@ -139,10 +140,16 @@ export default {
     },
     downloadReport() {
       const reportContent = `
-        Your Score: ${this.score}/${this.questions.length}
+        Your Score: $ {
+this.score
+}/$ {
+this.questions.length
+}
 
         Suggestions to Improve:
-        - ${this.suggestions.join("\n- ")}
+        - $ {
+this.suggestions.join("\n- ")
+}
       `;
       const blob = new Blob([reportContent], { type: "text/plain" });
       const link = document.createElement("a");
@@ -157,57 +164,57 @@ export default {
 };
 </script>
 
-  <style scoped>
-  .question-container {
-    background-color: #f8f9fa;
-    padding: 15px;
-    border-bottom: 1px solid #ddd;
-  }
+<style scoped>
+.question-container {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-bottom: 1px solid #ddd;
+}
 
-  .score-modal {
-    margin-top: 20px;
-    padding: 20px;
-    border-radius: 8px;
-    background-color: #f8f9fa;
-    box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
-  }
+.score-modal {
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
+}
 
-  /* Correct and Wrong Answer Styles */
-  .text-success {
-    color: #28a745 !important; /* Green for correct answers */
-  }
+/* Correct and Wrong Answer Styles */
+.text-success {
+  color: #28a745 !important; /* Green for correct answers */
+}
 
-  .text-danger {
-    color: #dc3545 !important; /* Red for incorrect answers */
-  }
+.text-danger {
+  color: #dc3545 !important; /* Red for incorrect answers */
+}
 
-  .correct-answer-text .text-success {
-    font-weight: bold;
-  }
+.correct-answer-text .text-success {
+  font-weight: bold;
+}
 
-  .ask-me-btn {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
-    border: 1px solid #e0e0e0;  /* Adding a thin border */
-    color: #606060;
-    z-index: 1000;
-  }
+.ask-me-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
+  border: 1px solid #e0e0e0; /* Adding a thin border */
+  color: #606060;
+  z-index: 1000;
+}
 
-  .ai-button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 50px;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-  }
-  .ai-icon {
-    width: 24px;
-  }
-  </style>
+.ai-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.ai-icon {
+  width: 24px;
+}
+</style>
