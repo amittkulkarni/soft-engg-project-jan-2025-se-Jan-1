@@ -1,8 +1,8 @@
-"""Initial Schema Tables
+"""create db
 
-Revision ID: 42f82f4a0925
+Revision ID: 7d397b3d8cfa
 Revises: 
-Create Date: 2025-02-12 16:06:40.737829
+Create Date: 2025-02-13 15:33:58.459341
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '42f82f4a0925'
+revision = '7d397b3d8cfa'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -58,7 +58,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('week_id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=100), nullable=False),
-    sa.Column('video_url', sa.String(length=100), nullable=True),
+    sa.Column('video_id', sa.String(length=50), nullable=True),
     sa.ForeignKeyConstraint(['week_id'], ['weeks.id'], ),
     sa.PrimaryKeyConstraint('id')
     )

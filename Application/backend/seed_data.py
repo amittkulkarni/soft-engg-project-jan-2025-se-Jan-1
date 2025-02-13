@@ -35,18 +35,18 @@ def seed_data():
 
    # Seed Lectures
    lectures = [
-       Lecture(week_id=weeks[0].id, title="Pandas Series and Dataframe", video_url="https://www.youtube.com/watch?v=MdnmbjKM7a0"),
-       Lecture(week_id=weeks[1].id, title="Data Visualisation", video_url="https://www.youtube.com/watch?v=kIyxumBVo6o"),
-       Lecture(week_id=weeks[2].id, title="Data Preprocessing", video_url="https://www.youtube.com/watch?v=_PcVkfVsjuo"),
-       Lecture(week_id=weeks[3].id, title="Linear Regression", video_url="https://www.youtube.com/watch?v=SFYn4UnZaSQ"),
-       Lecture(week_id=weeks[4].id, title="Polynomial Regression", video_url="https://www.youtube.com/watch?v=dMHECW-BkIM"),
-       Lecture(week_id=weeks[5].id, title="Classification Functions in Scikit Learn", video_url="https://www.youtube.com/watch?v=dhYydFzxfes"),
-       Lecture(week_id=weeks[6].id, title="Naive Bayes Classifier", video_url="https://www.youtube.com/watch?v=uM-MNko46Zo"),
-       Lecture(week_id=weeks[7].id, title="K-Nearest Neighbors", video_url="https://www.youtube.com/watch?v=gKiFTMLgZy4"),
-       Lecture(week_id=weeks[8].id, title="Decision Trees", video_url="https://www.youtube.com/watch?v=5OZc2zWS2cY"),
-       Lecture(week_id=weeks[9].id, title="Bagging and Random Forest", video_url="https://www.youtube.com/watch?v=EZ5szvjQgWw"),
-       Lecture(week_id=weeks[10].id, title="K-means Clustering on Digit Dataset", video_url="https://www.youtube.com/watch?v=-tPSKI9nUf0"),
-       Lecture(week_id=weeks[11].id, title="Case Study", video_url="https://www.youtube.com/watch?v=27G4drv3Nfk"),
+       Lecture(week_id=weeks[0].id, title="Data Visualisation", video_id="kIyxumBVo6o"),
+       Lecture(week_id=weeks[1].id, title="Data Preprocessing", video_id="_PcVkfVsjuo"),
+       Lecture(week_id=weeks[2].id, title="Linear Regression", video_id="SFYn4UnZaSQ"),
+       Lecture(week_id=weeks[3].id, title="Polynomial Regression", video_id="dMHECW-BkIM"),
+       Lecture(week_id=weeks[4].id, title="Classification Functions in Scikit Learn", video_id="dhYydFzxfes"),
+       Lecture(week_id=weeks[5].id, title="Naive Bayes Classifier", video_id="uM-MNko46Zo"),
+       Lecture(week_id=weeks[6].id, title="K-Nearest Neighbors", video_id="gKiFTMLgZy4"),
+       Lecture(week_id=weeks[7].id, title="Decision Trees", video_id="5OZc2zWS2cY"),
+       Lecture(week_id=weeks[8].id, title="Bagging and Random Forest", video_id="EZ5szvjQgWw"),
+       Lecture(week_id=weeks[9].id, title="K-means Clustering on Digit Dataset", video_id="-tPSKI9nUf0"),
+       Lecture(week_id=weeks[10].id, title="Neural Networks:Multilayer Perceptron", video_id="wphku4k1e90"),
+       Lecture(week_id=weeks[11].id, title="SVM", video_id="5erlKOqL8Xk"),
    ]
    db.session.add_all(lectures)
    db.session.commit()
@@ -63,31 +63,31 @@ def seed_data():
    questions = [
        AssignmentQuestion(
            assignment_id=assignments[0].id,
-           question_text="Which of the following is the primary data structure in pandas?",
+           question_text="Which of the following libraries is commonly used for data visualization in Python?",
            question_type="single_choice",
            points=5,
        ),
        AssignmentQuestion(
            assignment_id=assignments[0].id,
-           question_text="What method is used to check for missing values in a pandas DataFrame?",
+           question_text="What type of chart is best suited for showing the distribution of a single continuous variable?",
            question_type="single_choice",
            points=5,
        ),
        AssignmentQuestion(
            assignment_id=assignments[0].id,
-           question_text="How do you select a column named 'Age' from a DataFrame df?",
+           question_text=" Which plot is most appropriate for displaying the relationship between two continuous variables?",
            question_type="single_choice",
            points=5,
        ),
        AssignmentQuestion(
            assignment_id=assignments[0].id,
-           question_text="Which of the following statements about pandas DataFrame are true? (Select all that apply)",
+           question_text="Which of the following are advantages of using Seaborn over Matplotlib for data visualization?",
            question_type="multiple_choice",
            points=5,
        ),
        AssignmentQuestion(
            assignment_id=assignments[0].id,
-           question_text="Which of the following methods can be used to filter rows in a DataFrame? (Select all that apply)",
+           question_text="Which of the following charts are useful for visualizing categorical data?",
            question_type="multiple_choice",
            points=5,
        )
@@ -97,36 +97,39 @@ def seed_data():
 
 
    # Add Options for Each Question
-   options = [
+   options = [ 
        # Question 1 Options
-       QuestionOption(question_id=questions[0].id, option_text="Dictionary", is_correct=False),
-       QuestionOption(question_id=questions[0].id, option_text="Dataframe", is_correct=True),
-       QuestionOption(question_id=questions[0].id, option_text="Tuple", is_correct=False),
-        QuestionOption(question_id=questions[0].id, option_text="List", is_correct=False),
+       QuestionOption(question_id=questions[0].id, option_text="NumPy", is_correct=False),
+       QuestionOption(question_id=questions[0].id, option_text="Pandas", is_correct=False),
+       QuestionOption(question_id=questions[0].id, option_text="Matplotlib", is_correct=True),
+        QuestionOption(question_id=questions[0].id, option_text="Scikit-learn", is_correct=False),
 
+ 
        # Question 2 Options
-       QuestionOption(question_id=questions[1].id, option_text="df.isnull()", is_correct=True),
-       QuestionOption(question_id=questions[1].id, option_text="df.missing()", is_correct=False),
-       QuestionOption(question_id=questions[1].id, option_text="df.checknull()", is_correct=False),
-       QuestionOption(question_id=questions[1].id, option_text="df.hasnull()", is_correct=False),
+       QuestionOption(question_id=questions[1].id, option_text="Pie Chart", is_correct=False),
+       QuestionOption(question_id=questions[1].id, option_text="Histogram", is_correct=True),
+       QuestionOption(question_id=questions[1].id, option_text="Line Chart", is_correct=False),
+       QuestionOption(question_id=questions[1].id, option_text="Bar Chart", is_correct=False),
 
        # Question 3 Options
-       QuestionOption(question_id=questions[2].id, option_text="df['Age']", is_correct=False),
-       QuestionOption(question_id=questions[2].id, option_text="df.Age", is_correct=False),
-       QuestionOption(question_id=questions[2].id, option_text="df.loc[:,'Age']", is_correct=False),
-       QuestionOption(question_id=questions[2].id, option_text="All of the Above", is_correct=True),
+       
+       QuestionOption(question_id=questions[2].id, option_text="Scatter Plot", is_correct=True),
+       QuestionOption(question_id=questions[2].id, option_text="Bar Chart", is_correct=False),
+       QuestionOption(question_id=questions[2].id, option_text="Pie Chart", is_correct=False),
+       QuestionOption(question_id=questions[2].id, option_text="Box Plot", is_correct=False),
        
         # Question 4 Options
-       QuestionOption(question_id=questions[3].id, option_text="A DataFrame is a 2D labeled data structure.", is_correct=True),
-       QuestionOption(question_id=questions[3].id, option_text="Columns in a DataFrame can have different data types.", is_correct=True),
-       QuestionOption(question_id=questions[3].id, option_text="You can create a DataFrame from a dictionary.", is_correct=True),
-       QuestionOption(question_id=questions[3].id, option_text="A DataFrame must always have an integer index.", is_correct=False),
+        
+       QuestionOption(question_id=questions[3].id, option_text="Built-in themes for better aesthetics", is_correct=True),
+       QuestionOption(question_id=questions[3].id, option_text="Simpler syntax for complex visualizations", is_correct=True),
+       QuestionOption(question_id=questions[3].id, option_text="Faster performance than Matplotlib", is_correct=False),
+       QuestionOption(question_id=questions[3].id, option_text="Integration with Pandas DataFrames", is_correct=True),
        
         # Question 5 Options
-       QuestionOption(question_id=questions[4].id, option_text="df[df['column'] > 10]", is_correct=True),
-       QuestionOption(question_id=questions[4].id, option_text="df.query('column > 10')", is_correct=True),
-       QuestionOption(question_id=questions[4].id, option_text=" df.loc[df['column'] > 10]", is_correct=True),
-       QuestionOption(question_id=questions[4].id, option_text="df.filter('column > 10')", is_correct=False),
+       QuestionOption(question_id=questions[4].id, option_text="Bar Chart", is_correct=True),
+       QuestionOption(question_id=questions[4].id, option_text="Pie Chart", is_correct=True),
+       QuestionOption(question_id=questions[4].id, option_text="Scatter Plot", is_correct=False),
+       QuestionOption(question_id=questions[4].id, option_text="Box Plot", is_correct=True),
    ]
    db.session.add_all(options)
 
