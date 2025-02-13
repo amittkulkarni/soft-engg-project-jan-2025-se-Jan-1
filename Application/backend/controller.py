@@ -122,6 +122,8 @@ def delete_week(week_id):
 
     return jsonify({"message": "week delete successfully"}), 200
 
+
+#-----------------------------------------------------CRUD - lECTURE-----------------------------------------------------
 @user_routes.route('/lectures', methods=['POST'])
 def create_lecture():
     data = request.get_json()
