@@ -32,7 +32,7 @@ class Lecture(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     week_id = db.Column(db.Integer, db.ForeignKey('weeks.id'), nullable=False)
     title = db.Column(db.String(100), nullable=False)
-    video_url = db.Column(db.String(100))
+    video_id = db.Column(db.String(50))
     week = db.relationship('Week', back_populates='lectures')
 
 class Assignment(db.Model):
