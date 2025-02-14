@@ -139,18 +139,9 @@ export default {
       this.showScore = true;
     },
     downloadReport() {
-      const reportContent = `
-        Your Score: $ {
-this.score
-}/$ {
-this.questions.length
-}
+      const reportContent = `Your Score: ${this.score}/${this.questions.length}
 
-        Suggestions to Improve:
-        - $ {
-this.suggestions.join("\n- ")
-}
-      `;
+Suggestions to Improve:- ${this.suggestions.join("\n- ")}`;
       const blob = new Blob([reportContent], { type: "text/plain" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);

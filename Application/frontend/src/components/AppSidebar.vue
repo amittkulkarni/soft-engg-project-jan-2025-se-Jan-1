@@ -228,6 +228,11 @@ export default {
               text: 'Graded Assignment 4',
               link: '/ga'
             },
+            {
+              icon: bookIcon,
+              text: 'Programming Assignment 1',
+              link: '/grpa'
+            },
           ],
         },
       ],

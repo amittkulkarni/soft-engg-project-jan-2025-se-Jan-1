@@ -233,7 +233,7 @@ ${this.questions.map((q, i) => `${i+1}. ${q.text}\n   Correct: ${q.correct}`).jo
       link.click();
     },
     redirectToChatbot() {
-      // Implement chatbot redirection logic
+      alert("Redirecting to chatbot...");
     }
   }
 };
