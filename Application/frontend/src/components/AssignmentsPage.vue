@@ -53,7 +53,7 @@
           </div>
 
           <!-- Check Score Button -->
-          <button @click="checkScore" class="btn btn-dark check-score-btn">
+          <button @click="checkScore" class="btn btn-dark">
             Check Score
           </button>
 

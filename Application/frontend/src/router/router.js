@@ -6,6 +6,7 @@ import CoursePage from "../components/CoursePage.vue";
 import ProgrammingPage from "@/components/ProgrammingPage.vue";
 import LecturePage from "@/components/LecturePage.vue"
 import AssignmentsPage from "@/components/AssignmentsPage.vue";
+import GenerateMock from "@/components/GenerateMock.vue";
 
 const routes = [
   {
@@ -45,6 +46,11 @@ const routes = [
     props: (route) => ({
       title: route.query.title, // Retrieve title from query parameters
     }),
+  },
+  {
+    path: "/generate-topic-mock",
+    name: "GenerateTopicMock",
+    component: GenerateMock
   }
 ];
 

@@ -144,10 +144,7 @@
       </li>
 
       <li class="list-group-item mt-2">
-        <router-link :to=" {
-                       path: '/ga',
-                       query: { title: 'Topic Specific Mock' }
-                     }" class="no-link">
+        <router-link to='/generate-topic-mock' class="no-link">
           <span><i class="bi bi-pencil-square me-2"></i> Generate Topic Specific Mock</span>
         </router-link>
       </li>
@@ -171,7 +168,7 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 1.1 Data Visualization',
+              text: '1.1 Data Visualization',
               link: '/lecture',
               videoId: 'kIyxumBVo6o'
             },
@@ -188,7 +185,7 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 2.1 Data Preprocessing',
+              text: '2.1 Data Preprocessing',
               link: '/lecture',
               videoId: '_PcVkfVsjuo'
             },
@@ -205,7 +202,7 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 3.1 Linear Regression',
+              text: '3.1 Linear Regression',
               link: '/lecture',
               videoId: 'SFYn4UnZaSQ'
             },
@@ -222,7 +219,7 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 4.1 Polynomial Regression',
+              text: '4.1 Polynomial Regression',
               link: '/lecture',
               videoId: 'dMHECW-BkIM'
             },
@@ -241,7 +238,7 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 5.1 Classification Functions in Scikit Learn',
+              text: '5.1 Classification Functions in Scikit Learn',
               link: '/lecture',
               videoId: 'dhYydFzxfes'
             },
@@ -258,7 +255,7 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 6.1 Naive Bayes Classifier',
+              text: '6.1 Naive Bayes Classifier',
               link: '/lecture',
               videoId: 'uM-MNko46Zo'
             },
@@ -275,7 +272,7 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 7.1 K-Nearest Neighbors',
+              text: '7.1 K-Nearest Neighbors',
               link: '/lecture',
               videoId: 'gKiFTMLgZy4'
             },
@@ -292,7 +289,7 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 8.1 Decision Trees',
+              text: '8.1 Decision Trees',
               link: '/lecture',
               videoId: '5OZc2zWS2cY'
             },
@@ -311,7 +308,7 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 9.1 Bagging and Random Forest',
+              text: '9.1 Bagging and Random Forest',
               link: '/lecture',
               videoId: 'EZ5szvjQgWw'
             },
@@ -328,7 +325,7 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 10.1 K-means Clustering on Digit Dataset',
+              text: '10.1 K-means Clustering on Digit Dataset',
               link: '/lecture',
               videoId: '-tPSKI9nUf0'
             },
@@ -345,9 +342,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 11.1 Boosting: AdaBoost, GradientBoost',
+              text: '11.1 Neural Networks: Multi-layer Perceptron',
               link: '/lecture',
-              videoId: 'ZIMlYAKgGTg'
+              videoId: 'wphku4k1e90'
             },
             {
               icon: bookIcon,
@@ -362,9 +359,9 @@ export default {
           items: [
             {
               icon: bookIcon,
-              text: 'Lecture 12.1 Neural Networks: Multi-layer Perceptron',
+              text: '12.1 SVM',
               link: '/lecture',
-              videoId: 'wphku4k1e90'
+              videoId: '5erlKOqL8Xk'
             },
             {
               icon: bookIcon,
