@@ -126,11 +126,7 @@
               <button @click="downloadReport" class="btn btn-secondary mt-3">Download Report</button>
             </div>
 
-            <!-- Ask Me Button -->
-            <button @click="redirectToChatbot" class="ai-button ask-me-btn">
-              <img :src="StudentIcon" class="me-1" alt="AI Assistant"/>
-              Ask Kia
-            </button>
+            <ChatWindow/>
           </div>
         </div>
       </div>
@@ -143,12 +139,14 @@
 import AppNavbar from "@/components/AppNavbar.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
 import StudentIcon from "@/assets/student.png";
+import ChatWindow from "@/components/ChatWindow.vue";
 
 export default {
   name: "GenerateMock",
   components: {
     AppNavbar,
     AppSidebar,
+    ChatWindow
   },
   data() {
     return {
@@ -281,28 +279,7 @@ ${this.questions.map((q, i) => `${i+1}. ${q.text}\n   Correct: ${q.correct}`).jo
   background-color: #f8f9fa;
   box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
 }
-.ask-me-btn {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
-  border: 1px solid #e0e0e0; /* Adding a thin border */
-  color: #606060;
-  z-index: 1000;
-}
 
-.ai-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 50px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
 .text-success {
   color: #28a745 !important; /* Green for correct answers */
 }

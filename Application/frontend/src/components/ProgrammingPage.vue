@@ -144,11 +144,7 @@ Next T lines: F space-separated values</pre>
           </div>
         </div>
       </div>
-      <!-- Ask Kia Button -->
-      <button @click="redirectToChatbot" class="ai-button ask-me-btn">
-        <img :src="StudentIcon" class="ai-icon me-2" alt="AI Assistant"/>
-        Ask Kia
-      </button>
+      <ChatWindow/>
     </div>
   </div>
 </template>
@@ -159,6 +155,7 @@ import AceEditor from "@/components/AceEditor.vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
 import StudentIcon from "@/assets/student.png"
+import ChatWindow from "@/components/ChatWindow.vue";
 
 export default {
   name: "ProgrammingPage",
@@ -166,6 +163,7 @@ export default {
     AceEditor,
     AppSidebar,
     AppNavbar,
+    ChatWindow
   },
   data() {
     return {
@@ -317,15 +315,6 @@ pre {
 
 [class*="bg-success"] {
   border-left: 4px solid #28a745;
-}
-.ask-me-btn {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
-  border: 1px solid #e0e0e0; /* Adding a thin border */
-  color: #606060;
-  z-index: 1000;
 }
 
 .ai-button {

@@ -1,5 +1,4 @@
 import {createRouter, createWebHistory} from "vue-router";
-import HomePage from "../components/HomePage.vue";
 import Login from "../components/LoginPage.vue";
 import Register from "../components/RegisterPage.vue";
 import CoursePage from "../components/CoursePage.vue";
@@ -10,12 +9,8 @@ import GenerateMock from "@/components/GenerateMock.vue";
 
 const routes = [
   {
-    path: "/",
-    name: "Home",
-    component: HomePage,
-  },
-  {
     path: "/login",
+    alias: "/",
     name: "Login",
     component: Login,
   },
