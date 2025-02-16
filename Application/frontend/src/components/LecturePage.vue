@@ -67,14 +67,7 @@
         </div>
       </div>
     </div>
-    <!-- Ask Me Button with AI Assistant Icon -->
-    <button
-      @click="redirectToChatbot"
-      class="ai-button ask-me-btn"
-    >
-      <img :src="StudentIcon" class="ai-icon" alt="AI Assistant"/>
-      <span>Ask Kia</span>
-    </button>
+    <ChatWindow/>
   </div>
 </template>
 
@@ -82,13 +75,15 @@
 import AppNavbar from '@/components/AppNavbar.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 import StudentIcon from '@/assets/student.png'
+import ChatWindow from "@/components/ChatWindow.vue";
 import axios from 'axios'
 
 export default {
   name: 'VideoLecturePage',
   components: {
     AppNavbar,
-    AppSidebar
+    AppSidebar,
+    ChatWindow
   },
   data() {
     return {
@@ -198,22 +193,6 @@ export default {
   color: #606060;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
-
-.ask-me-btn {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
-  border: 1px solid #e0e0e0; /* Adding a thin border */
-  color: #606060;
-  z-index: 1000;
-}
-
-.ask-me-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
 
 .summarize-btn:hover {
   transform: translateY(-2px);
