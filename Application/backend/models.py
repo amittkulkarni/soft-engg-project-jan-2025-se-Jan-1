@@ -40,7 +40,7 @@ class Assignment(db.Model):
     id = db.Column(db.Integer, primary_key=True) 
     week_id = db.Column(db.Integer, db.ForeignKey('weeks.id'), nullable=False)
     title = db.Column(db.String(50), nullable=False)
-    type = db.Column(db.Enum('graded', 'practice', 'programming',  name='assignment_types'), nullable=False)
+    assignment_type = db.Column(db.Enum('graded', 'practice', 'programming',  name='assignment_types'), nullable=False)
     due_date = db.Column(db.DateTime)
     total_points = db.Column(db.Integer, default=1)
     week = db.relationship('Week', back_populates='assignments')
