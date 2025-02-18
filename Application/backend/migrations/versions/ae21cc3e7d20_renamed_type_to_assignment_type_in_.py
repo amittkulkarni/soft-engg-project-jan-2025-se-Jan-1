@@ -1,8 +1,8 @@
-"""create db
+"""Renamed type to assignment_type in Assignment model
 
-Revision ID: 7d397b3d8cfa
+Revision ID: ae21cc3e7d20
 Revises: 
-Create Date: 2025-02-13 15:33:58.459341
+Create Date: 2025-02-16 15:43:30.053429
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '7d397b3d8cfa'
+revision = 'ae21cc3e7d20'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -39,7 +39,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('week_id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=50), nullable=False),
-    sa.Column('type', sa.Enum('graded', 'practice', 'programming', name='assignment_types'), nullable=False),
+    sa.Column('assignment_type', sa.Enum('graded', 'practice', 'programming', name='assignment_types'), nullable=False),
     sa.Column('due_date', sa.DateTime(), nullable=True),
     sa.Column('total_points', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['week_id'], ['weeks.id'], ),

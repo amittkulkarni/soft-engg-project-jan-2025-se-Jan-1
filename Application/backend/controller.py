@@ -4,7 +4,7 @@ from models import User,Week,Lecture,Assignment
 from extension import db 
 
 from token_validation import generate_token
-
+from datetime import datetime
 
 
 # Comment from Amit , Do use the prefix "/api/" for all APIs . For e.g http://localhost:3000/api/google_auth 
@@ -205,6 +205,109 @@ def delete_lecture(lecture_id):
 
     return jsonify({"message": "Lecture delete successfully"}), 200
 
+#-----------------------------------------------------CRUD - ASSIGNMENT-----------------------------------------------------
 
+@user_routes.route('/assignments', methods=['POST'])
+def create_assignment():
+    data = request.get_json()
+    week_id = data.get('week_id')
+    title = data.get('title')
+    assignment_type = data.get('assignment_type')
+    due_date = data.get('due_date')
+    total_points = data.get('total_points')
+    
+    if not week_id or not title or not type or not due_date or not total_points:
+        return jsonify({"message" : "All fields are required"}), 400
+    
+    due_date = datetime.strptime(due_date, "%Y-%m-%d")
+    
+    week = Week.query.get(week_id)
+    if not week:
+        return jsonify({"message": "Week not found"}), 404
+    
+    existing_assignment = Assignment.query.filter_by(title=title, week_id=week_id).first()
+    if existing_assignment:
+        return jsonify({"message": "Assignment already exists in this week."}), 409
+    
+    new_assignment =  Assignment(week_id=week_id, title=title, assignment_type = assignment_type, due_date=due_date, total_points=total_points)
+    
+    db.session.add(new_assignment)
+    db.session.commit()
+    
+    return jsonify({"message": "New assignment added successfully"}), 201
 
+@user_routes.route('/assignments', methods=['GET'])
+def get_assignments():
+    assignments = Assignment.query.all()
+    return jsonify([{
+        "id": assignment.id,
+        "week_id": assignment.week_id,
+        "title": assignment.title,
+        "assignment_type": assignment.assignment_type,
+        "due_date": assignment.due_date,
+        "total_points": assignment.total_points
+    } for assignment in assignments]), 200
+
+@user_routes.route('/assignments/<int:assignment_id>', methods=['GET'])
+def get_assignment(assignment_id):
+    assignment = Assignment.query.get(assignment_id)
+    if not assignment:
+        return jsonify({"message": "Assignment not found"}), 404
+
+    return jsonify({
+        "id": assignment.id,
+        "week_id": assignment.week_id,
+        "title": assignment.title,
+        "assignment_type": assignment.assignment_type,
+        "due_date": assignment.due_date,
+        "total_points": assignment.total_points,
+        "questions": [
+            {
+                "id": question.id,
+                "question_text": question.question_text,
+                "question_type": question.question_type,
+                "points": question.points,
+                "options": [
+                    {
+                        "id": option.id,
+                        "option_text": option.option_text,
+                        "is_correct": option.is_correct
+                    } for option in question.options
+                ]
+            } for question in assignment.questions
+        ]
+    }), 200
+
+@user_routes.route('/assignments/<int:assignment_id>', methods=['PUT'])
+def update_assignment(assignment_id):
+    assignment = Assignment.query.get(assignment_id)
+    if not assignment:
+        return jsonify({"message": "Assignment not found"}), 404
+    
+    data = request.get_json()
+
+    if "title" in data:
+        assignment.title = data["title"]
+    if "assignment_type" in data:
+        assignment.assignment_type = data["assignment_type"]
+    if "due_date" in data:
+        due_date = datetime.strptime(data["due_date"], "%Y-%m-%d")
+        assignment.due_date = due_date
+    if "total_points" in data:
+        assignment.total_points = data["total_points"]
+
+    db.session.commit()
+
+    return jsonify({"message": "Assignment updated successfully"}), 200
+
+@user_routes.route('/assignments/<int:assignment_id>', methods=['DELETE'])
+def delete_assignment(assignment_id):
+    assignment = Assignment.query.get(assignment_id)
+    if not assignment:
+        return jsonify({"message": "Assignment not found"}), 404
+    
+    db.session.delete(assignment)
+    db.session.commit()
+
+    return jsonify({"message": "Assignment deleted successfully"}), 200
 
