@@ -70,6 +70,7 @@
           </p>
         </div>
       </div>
+      <ChatWindow/>
     </div>
   </div>
 </template>
@@ -77,12 +78,14 @@
 <script>
 import AppNavbar from '@/components/AppNavbar.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
+import ChatWindow from "@/components/ChatWindow.vue";
 
 export default {
   name: 'CoursePage',
   components: {
     AppNavbar,
     AppSidebar,
+    ChatWindow
   },
 };
 </script>

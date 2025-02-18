@@ -44,8 +44,7 @@ export default {
         };
     },
     methods: {
-        login() {
-            alert("login successful!");
+        login() {   
             this.$router.push("/course");
         },
     },

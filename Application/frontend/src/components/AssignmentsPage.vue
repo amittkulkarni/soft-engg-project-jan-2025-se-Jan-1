@@ -53,7 +53,7 @@
           </div>
 
           <!-- Check Score Button -->
-          <button @click="checkScore" class="btn btn-dark check-score-btn">
+          <button @click="checkScore" class="btn btn-dark">
             Check Score
           </button>
 
@@ -70,12 +70,7 @@
           </div>
         </div>
       </div>
-
-      <!-- Ask Me Button -->
-      <button @click="redirectToChatbot" class="ai-button ask-me-btn">
-        <img :src="StudentIcon" class="ai-icon me-2" alt="AI Assistant"/>
-        Ask Kia
-      </button>
+      <ChatWindow/>
     </div>
   </div>
 </template>
@@ -84,12 +79,14 @@
 import AppSidebar from "@/components/AppSidebar.vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import StudentIcon from "@/assets/student.png";
+import ChatWindow from "@/components/ChatWindow.vue";
 
 export default {
   name: "AssignmentsPage",
   components: {
     AppNavbar,
     AppSidebar,
+    ChatWindow
   },
   props: {
     title: {
@@ -139,18 +136,9 @@ export default {
       this.showScore = true;
     },
     downloadReport() {
-      const reportContent = `
-        Your Score: $ {
-this.score
-}/$ {
-this.questions.length
-}
+      const reportContent = `Your Score: ${this.score}/${this.questions.length}
 
-        Suggestions to Improve:
-        - $ {
-this.suggestions.join("\n- ")
-}
-      `;
+Suggestions to Improve:- ${this.suggestions.join("\n- ")}`;
       const blob = new Blob([reportContent], { type: "text/plain" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
@@ -190,31 +178,5 @@ this.suggestions.join("\n- ")
 
 .correct-answer-text .text-success {
   font-weight: bold;
-}
-
-.ask-me-btn {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
-  border: 1px solid #e0e0e0; /* Adding a thin border */
-  color: #606060;
-  z-index: 1000;
-}
-
-.ai-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 50px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-.ai-icon {
-  width: 24px;
 }
 </style>
