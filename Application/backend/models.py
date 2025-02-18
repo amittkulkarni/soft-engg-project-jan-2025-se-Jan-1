@@ -13,10 +13,8 @@ class User(db.Model):
 class ChatHistory(db.Model):
     __tablename__ = 'chat_history'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    query = db.Column(db.Text, nullable=False)
-    response = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
+    file_path = db.Column(db.String(255), nullable=False)  # Stores SQL file path
     user = db.relationship('User', back_populates='chat_history')
 
 class Week(db.Model):
@@ -63,3 +61,16 @@ class QuestionOption(db.Model):
     option_text = db.Column(db.String(150), nullable=False)
     is_correct = db.Column(db.Boolean, nullable=False)
     question = db.relationship('AssignmentQuestion', back_populates='options')
+
+class ProgrammingAssignment(db.Model):
+    __tablename__ = 'programming_assignments'
+    id = db.Column(db.Integer, primary_key=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('assignments.id'), nullable=False)
+    problem_statement = db.Column(db.Text, nullable=False)  
+    input_format = db.Column(db.Text, nullable=False)       
+    output_format = db.Column(db.Text, nullable=False)      
+    constraints = db.Column(db.Text, nullable=True)         
+    sample_input = db.Column(db.Text, nullable=False)  
+    sample_output = db.Column(db.Text, nullable=False)  
+    assignment = db.relationship('Assignment', back_populates='programming_assignment')
+
