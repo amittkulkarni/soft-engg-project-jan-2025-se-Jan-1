@@ -138,11 +138,15 @@ export default {
     downloadReport() {
       const reportContent = `Your Score: ${this.score}/${this.questions.length}
 
-Suggestions to Improve:- ${this.suggestions.join("\n- ")}`;
+Suggestions to Improve:  ${this.suggestions.map(s => `- ${s}`).join('\n')}
+
+Correct Answers:
+${this.questions.map((q, i) => `${i+1}. ${q.text}\n   Correct: ${q.correct}`).join('\n\n')}`;
+
       const blob = new Blob([reportContent], { type: "text/plain" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = "assignment-report.txt";
+      link.download = `mock-report.txt`;
       link.click();
     },
     redirectToChatbot() {

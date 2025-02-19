@@ -6,6 +6,7 @@ import ProgrammingPage from "@/components/ProgrammingPage.vue";
 import LecturePage from "@/components/LecturePage.vue"
 import AssignmentsPage from "@/components/AssignmentsPage.vue";
 import GenerateMock from "@/components/GenerateMock.vue";
+import KiaPage from "@/components/KiaPage.vue";
 
 const routes = [
   {
@@ -46,7 +47,12 @@ const routes = [
     path: "/generate-topic-mock",
     name: "GenerateTopicMock",
     component: GenerateMock
-  }
+  },
+  {
+    path: "/kia",
+    name: "KiaPage",
+    component: KiaPage
+  },
 ];
 
 const router = createRouter({
