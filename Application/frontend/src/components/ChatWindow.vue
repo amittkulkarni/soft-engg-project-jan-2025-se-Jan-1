@@ -18,7 +18,9 @@
           right: 20px;
           width: calc(100% - 40px);
           max-width: 600px;
-          height: 900px;
+          height: calc(100vh - 100px); /* Dynamic height */
+          max-height: 900px; /* Fallback for large screens */
+          min-height: 400px; /* Prevent too small */
           overflow: hidden;
           z-index: 1050;
         "
