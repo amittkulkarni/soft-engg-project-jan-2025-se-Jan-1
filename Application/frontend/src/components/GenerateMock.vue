@@ -126,10 +126,11 @@
               <button @click="downloadReport" class="btn btn-secondary mt-3">Download Report</button>
             </div>
 
-            <ChatWindow/>
+
           </div>
         </div>
       </div>
+      <ChatWindow/>
     </div>
   </div>
 </template>

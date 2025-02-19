@@ -90,15 +90,23 @@ export default {
       summary: '',
       isLoading: false,
       StudentIcon,
-      defaultVideoId: 'I1s8WWUMGQs'
     }
   },
   computed: {
     lectureTitle() {
-      return this.$route.query.title || 'Lecture 1.1 Data Preprocessing with Pandas'
+      return this.$route.query.title;
     },
     videoId() {
-      return this.$route.query.videoId || this.defaultVideoId
+      return this.$route.query.videoId;
+    }
+  },
+  watch: {
+    // Watch for changes in videoId or lectureTitle
+    videoId() {
+      this.resetSummary();
+    },
+    lectureTitle() {
+      this.resetSummary();
     }
   },
   methods: {
@@ -115,6 +123,11 @@ export default {
       } finally {
         this.isLoading = false
       }
+    },
+    resetSummary() {
+      // Reset summary and close modal when switching lectures
+      this.summary = '';
+      this.isLoading = false;
     },
     redirectToChatbot() {
       this.$router.push('/chatbot')

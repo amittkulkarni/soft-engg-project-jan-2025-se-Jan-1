@@ -29,12 +29,20 @@
           style="background-color: #707070;"
         >
           <h6 class="mb-0 text-white">KIA - Your Virtual Assistant</h6>
+          <div class="d-flex gap-3">
+          <button
+            type="button"
+            class="btn btn-outline-light"
+            aria-label="Reset History"
+            @click="resetHistory"
+          >Reset Chat</button>
           <button
             type="button"
             class="btn-close btn-close-white"
             aria-label="Close"
             @click="toggleChat"
           ></button>
+          </div>
         </div>
 
         <!-- Chat Body -->
@@ -142,6 +150,9 @@ export default {
   methods: {
     toggleChat() {
       this.showChat = !this.showChat;
+    },
+    resetHistory() {
+      this.messages = [];
     },
     sendMessage() {
       if (this.newMessage.trim() !== "") {
