@@ -72,5 +72,13 @@ class ProgrammingAssignment(db.Model):
     constraints = db.Column(db.Text, nullable=True)         
     sample_input = db.Column(db.Text, nullable=False)  
     sample_output = db.Column(db.Text, nullable=False)  
+    test_cases = db.Column(db.Text, nullable=False, default='[]') 
     assignment = db.relationship('Assignment', back_populates='programming_assignment')
 
+    def set_test_cases(self, test_cases_list):
+        """Stores test cases as a JSON string"""
+        self.test_cases = json.dumps(test_cases_list)
+
+    def get_test_cases(self):
+        """Retrieves test cases as a Python list"""
+        return json.loads(self.test_cases) if self.test_cases else []
