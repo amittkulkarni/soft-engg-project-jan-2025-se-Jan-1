@@ -148,9 +148,6 @@ ${this.questions.map((q, i) => `${i+1}. ${q.text}\n   Correct: ${this.correctAns
       const fileName = `${this.title}.pdf`
       doc.save(fileName);
     },
-    redirectToChatbot() {
-      alert("Redirecting to chatbot..."); // Replace with actual routing logic if needed
-    },
   },
 };
 </script>

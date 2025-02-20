@@ -72,7 +72,7 @@ import ChatWindow from "@/components/ChatWindow.vue";
 import axios from 'axios'
 
 export default {
-  name: 'VideoLecturePage',
+  name: 'LecturePage',
   components: {
     AppNavbar,
     AppSidebar,
