@@ -145,12 +145,12 @@
 
       <li class="list-group-item mt-2">
         <router-link to='/generate-topic-mock' class="no-link">
-          <span><i class="bi bi-pencil-square me-2"></i> Generate Topic Specific Mock</span>
+          <span><i class="bi bi-pencil-square me-2"></i> Generate Topic Specific Questions</span>
         </router-link>
       </li>
       <li class="list-group-item mt-2">
         <router-link to='/kia' class="no-link">
-          <span><i class="bi bi-pencil-square me-2"></i>Kia</span>
+          <span><i class="bi bi-pencil-square me-2"></i>Generate Short Notes</span>
         </router-link>
       </li>
     </ul>

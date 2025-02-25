@@ -123,7 +123,7 @@
               </div>
 
               <!-- Download Report Button -->
-              <button @click="downloadReport" class="btn btn-secondary mt-3">Download Report</button>
+              <button @click="downloadPDF" class="btn btn-secondary mt-3">Download Report</button>
             </div>
 
 
@@ -141,6 +141,7 @@ import AppNavbar from "@/components/AppNavbar.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
 import StudentIcon from "@/assets/student.png";
 import ChatWindow from "@/components/ChatWindow.vue";
+import { jsPDF } from "jspdf";
 
 export default {
   name: "GenerateMock",
@@ -217,19 +218,17 @@ export default {
       }, 0);
       this.showScore = true;
     },
-    downloadReport() {
-      const reportContent = `Your Score: ${this.score}/${this.questions.length}
+    downloadPDF() {
+      const doc = new jsPDF();
+      const content = `Your Score: ${this.score}/${this.questions.length}
 
 Suggestions to Improve:  ${this.aiSuggestions.map(s => `- ${s}`).join('\n')}
 
 Correct Answers:
 ${this.questions.map((q, i) => `${i+1}. ${q.text}\n   Correct: ${q.correct}`).join('\n\n')}`;
-
-      const blob = new Blob([reportContent], { type: "text/plain" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `${this.selectedTopic}-report.txt`;
-      link.click();
+      doc.text(content, 10, 10);
+      const fileName = `Mock_${this.selectedTopic}.pdf`
+      doc.save(fileName);
     },
     redirectToChatbot() {
       alert("Redirecting to chatbot...");

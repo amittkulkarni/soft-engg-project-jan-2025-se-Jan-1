@@ -2,13 +2,10 @@
   <div>
     <AppNavbar />
     <div class="dashboard-layout">
-      <!-- Sidebar -->
       <AppSidebar />
 
-      <!-- Main Content Area -->
       <div class="main-content">
         <div class="content-wrapper">
-          <!-- Welcome Section -->
           <div class="welcome-section text-center mb-4">
             <h1>
               <span><img :src="StudentIcon" height="40px" class="me-2" /></span> Hello, Amit!
@@ -17,26 +14,22 @@
             <p>You may click on one of the options below or use the button at the bottom to chat with me.</p>
           </div>
 
-          <!-- Cards Section -->
           <div class="cards-container d-flex justify-content-center gap-4 mb-5">
-            <!-- Generate Week Summary Card -->
-            <div class="card shadow-sm p-3" @click="showContent('week-summary')">
+            <div class="card shadow-sm p-3" @click.stop="showContent('week-summary')">
               <i class="bi bi-calendar-week card-icon"></i>
               <h2>Generate Week Summary</h2>
               <p>Generate summarized notes for every week</p>
             </div>
 
-            <!-- Generate Notes Card -->
-            <div class="card shadow-sm p-3" @click="showContent('generate-notes')">
+            <div class="card shadow-sm p-3" @click.stop="showContent('generate-notes')">
               <i class="bi bi-journal-text card-icon"></i>
-              <h2>Generate Notes</h2>
+              <h2>Generate Topic Notes</h2>
               <p>Get topic-specific bullet-point notes</p>
             </div>
           </div>
 
-          <!-- Dynamic Content Section -->
+          <!-- Generate Notes Section -->
           <div v-if="activeContent === 'generate-notes'" class="dynamic-content">
-            <!-- Generate Notes Section -->
             <h2 class="d-flex justify-content-center mb-4">Generate Topic-Specific Notes</h2>
             <div class="input-group mb-3">
               <input
@@ -48,8 +41,6 @@
               />
               <button class="btn btn-dark" @click="generateNotes" :disabled="!selectedTopic">Generate</button>
             </div>
-
-            <!-- Suggestions -->
             <ul v-if="suggestions.length > 0" class="list-group mb-3">
               <li
                 v-for="(suggestion, index) in suggestions"
@@ -60,6 +51,12 @@
                 {{ suggestion }}
               </li>
             </ul>
+            <!-- Markdown Output for Notes -->
+            <div v-if="generatedNotes" class="markdown-output bg-light p-3 rounded shadow-sm mt-4">
+              <vue-markdown :source="generatedNotes" />
+              <button @click="downloadPDF" class="btn btn-success mt-3">Download PDF</button>
+            </div>
+          </div>
 
           <!-- Week Summary Section -->
           <div v-if="activeContent === 'week-summary'" class="dynamic-content">
@@ -71,15 +68,13 @@
               <button @click="generateWeekSummary" class="btn btn-dark">Generate Summary</button>
             </div>
           </div>
-            <!-- Markdown Output -->
-            <div v-if="generatedNotes || generatedSummary" class="markdown-output bg-light p-3 rounded shadow-sm">
-              <h3>{{ activeContent === 'generate-notes' ? 'Generated Notes:' : 'Week ' + selectedWeek + ' Summary:' }}</h3>
-              <vue-markdown :source="activeContent === 'generate-notes' ? generatedNotes : generatedSummary" />
-              <button class="btn btn-success mt-3" @click="downloadPDF">Download PDF</button>
-            </div>
+
+          <!-- Markdown Output -->
+          <div v-if="generatedSummary" class="markdown-output bg-light p-3 rounded shadow-sm mt-4">
+            <vue-markdown :source="generatedSummary" />
+            <button @click="downloadPDF" class="btn btn-success mt-3">Download PDF</button>
           </div>
         </div>
-        <!-- Chat Window -->
         <ChatWindow />
       </div>
     </div>
@@ -87,7 +82,6 @@
 </template>
 
 <script>
-// Import necessary components and assets
 import AppNavbar from "@/components/AppNavbar.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
 import ChatWindow from "@/components/ChatWindow.vue";
@@ -100,11 +94,11 @@ export default {
   data() {
     return {
       StudentIcon,
-      activeContent: null, // Tracks which section to show
+      activeContent: null,
       searchQuery: "",
       suggestions: [],
       generatedNotes: "",
-      weeks: Array.from({ length: 12 }, (_, i) => i + 1), // Weeks 1-12
+      weeks: Array.from({ length: 12 }, (_, i) => i + 1),
       selectedWeek: "Week 1",
       selectedTopic: "",
       generatedSummary: "",
@@ -119,10 +113,12 @@ export default {
   methods: {
     showContent(content) {
       this.activeContent = content;
+      this.generatedNotes = "";
+      this.generatedSummary = "";
     },
     fetchSuggestions() {
       const topics = ["Regression", "Linear Regression", "Logistic Regression", "Auto-regressive model"];
-      this.suggestions = topics.filter((topic) =>
+      this.suggestions = topics.filter(topic =>
         topic.toLowerCase().includes(this.searchQuery.toLowerCase())
       );
     },
@@ -134,17 +130,14 @@ export default {
     downloadPDF() {
       const doc = new jsPDF();
       const content = this.activeContent === "generate-notes" ? this.generatedNotes : this.generatedSummary;
-
-      // Add content to the PDF
       doc.text(content, 10, 10);
-
-      // Save the PDF
       const fileName = this.activeContent === "generate-notes"
         ? `Notes_${this.searchQuery || "Topic"}.pdf`
         : `Week_${this.selectedWeek.replace("Week ", "")}_Summary.pdf`;
       doc.save(fileName);
     },
     generateNotes() {
+      this.generatedNotes = "";
       this.generatedNotes = `
 ## Alas certa receptus volentem
 
@@ -203,6 +196,7 @@ carmen poteras parvo, et tamen, Autonoeius.
 `;
     },
     generateWeekSummary() {
+      this.generatedSummary = "";
       this.generatedSummary = `
 # Summary of ${this.selectedWeek}
 
@@ -225,111 +219,61 @@ Auctor nascetur condimentum sollicitudin laoreet proin faucibus nostra imperdiet
 
 Netus dignissim placerat cum leo non class iaculis facilisi, habitasse sapien rutrum habitant tristique pellentesque curabitur cubilia, at nullam donec tempus metus nibh tempor. Pulvinar condimentum sociis vivamus egestas erat luctus sodales, convallis ad litora urna porttitor dignissim, netus cursus justo cubilia proin hendrerit. Tortor nam interdum montes ultrices parturient sapien sociis gravida, commodo conubia sem consequat tincidunt auctor taciti at, dignissim curabitur luctus congue aenean neque donec. `;
     },
-  },
+  }
 };
 </script>
 
 <style scoped>
-/* Main Content Area */
+.dashboard-layout {
+  display: flex;
+  height: 100vh;
+}
+
 .main-content {
-  flex: 1; /* Take up remaining space */
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
 
 .content-wrapper {
   padding: 2rem;
-  overflow-y: auto; /* Scrollable content if needed */
+  overflow-y: auto;
 }
 
-/* Welcome Section */
-.welcome-section {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.welcome-section h1 {
-  font-size: 2.5rem;
-  color: #333;
-}
-.markdown-output h3 {
-  font-weight: bold;
-}
-
-.markdown-output ul {
-  margin-left: 20px;
-}
-
-
-.welcome-section p {
-  font-size: 1rem;
-  color: #555;
-}
-
-/* Cards Container */
 .cards-container {
   display: flex;
   gap: 2rem;
   justify-content: center;
 }
 
-/* Individual Card */
 .card {
   background-color: white;
   border-radius: 16px;
-  box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 6px, rgba(0, 0, 0, 0.06) 0px 1px 3px;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 6px;
   width: calc(50% - 1rem);
   max-width: 300px;
   padding: 1.5rem;
   text-align: center;
   cursor: pointer;
-}
-
-.card:hover {
-  transform: translateY(-10px);
-}
-
-.card-icon {
-  font-size: 3rem;
-}
-
-.card h2 {
-  font-size: 1.5rem;
-}
-/* Layout */
-.dashboard-layout {
-  display: flex;
-  height: 100vh;
-}
-
-
-.content-wrapper {
-  padding: 2rem;
-}
-
-/* Cards Section */
-.cards-container {
-  display: flex;
-  gap: 2rem;
-}
-
-.card {
-  background-color: white;
-  border-radius: 10px;
-  box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 6px;
+  transition: transform 0.2s;
 }
 
 .card:hover {
   transform: translateY(-5px);
 }
 
-/* Dynamic Content */
-.dynamic-content h2 {
+.card-icon {
+  font-size: 3rem;
   margin-bottom: 1rem;
 }
 
-.suggestions-list li:hover {
-  background:#ddd ;
-  cursor:pointer;
+.dynamic-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.markdown-output {
+  max-width: 800px;
+  margin: 0 auto;
 }
 </style>

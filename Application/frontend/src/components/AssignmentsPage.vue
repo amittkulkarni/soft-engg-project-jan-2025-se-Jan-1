@@ -66,7 +66,7 @@
                 {{ suggestion }}
               </li>
             </ul>
-            <button @click="downloadReport" class="btn btn-secondary mt-3">Download Report</button>
+            <button @click="downloadPDF" class="btn btn-secondary mt-3">Download Report</button>
           </div>
         </div>
       </div>
@@ -80,6 +80,7 @@ import AppSidebar from "@/components/AppSidebar.vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import StudentIcon from "@/assets/student.png";
 import ChatWindow from "@/components/ChatWindow.vue";
+import { jsPDF } from "jspdf";
 
 export default {
   name: "AssignmentsPage",
@@ -135,22 +136,17 @@ export default {
       }, 0);
       this.showScore = true;
     },
-    downloadReport() {
-      const reportContent = `Your Score: ${this.score}/${this.questions.length}
+    downloadPDF() {
+      const doc = new jsPDF();
+      const content = `Your Score: ${this.score}/${this.questions.length}
 
 Suggestions to Improve:  ${this.suggestions.map(s => `- ${s}`).join('\n')}
 
 Correct Answers:
-${this.questions.map((q, i) => `${i+1}. ${q.text}\n   Correct: ${q.correct}`).join('\n\n')}`;
-
-      const blob = new Blob([reportContent], { type: "text/plain" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `mock-report.txt`;
-      link.click();
-    },
-    redirectToChatbot() {
-      alert("Redirecting to chatbot..."); // Replace with actual routing logic if needed
+${this.questions.map((q, i) => `${i+1}. ${q.text}\n   Correct: ${this.correctAnswers[i]}`).join('\n\n')}`;
+      doc.text(content, 10, 10);
+      const fileName = `${this.title}.pdf`
+      doc.save(fileName);
     },
   },
 };

@@ -250,9 +250,6 @@ Current thread 0x0000000111d85e00 (most recent call first):
       3. Verify installation with:
          python -c "import scipy.sparse.linalg"`;
     },
-    redirectToChatbot() {
-      alert("Redirecting to chatbot..."); // Replace with actual routing logic if needed
-    },
   }
 };
 </script>
