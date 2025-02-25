@@ -1,5 +1,6 @@
 from extension import db
 from datetime import datetime
+
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -40,9 +41,10 @@ class Assignment(db.Model):
     title = db.Column(db.String(50), nullable=False)
     assignment_type = db.Column(db.Enum('graded', 'practice', 'programming',  name='assignment_types'), nullable=False)
     due_date = db.Column(db.DateTime)
-    total_points = db.Column(db.Integer, default=1)
+    total_points = db.Column(db.Integer, default=0)
     week = db.relationship('Week', back_populates='assignments')
     questions = db.relationship('AssignmentQuestion', back_populates='assignment', cascade='all, delete-orphan')
+    programming_assignment = db.relationship('ProgrammingAssignment', back_populates='assignment', uselist=False, cascade='all, delete-orphan')
 
 class AssignmentQuestion(db.Model):
     __tablename__ = 'assignment_questions'
@@ -73,7 +75,7 @@ class ProgrammingAssignment(db.Model):
     sample_input = db.Column(db.Text, nullable=False)  
     sample_output = db.Column(db.Text, nullable=False)  
     test_cases = db.Column(db.Text, nullable=False, default='[]') 
-    assignment = db.relationship('Assignment', back_populates='programming_assignment')
+    assignment = db.relationship('Assignment', back_populates='programming_assignment', uselist=False)
 
     def set_test_cases(self, test_cases_list):
         """Stores test cases as a JSON string"""

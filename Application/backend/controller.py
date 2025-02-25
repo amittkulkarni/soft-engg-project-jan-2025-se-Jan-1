@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import User,Week,Lecture,Assignment
+from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption
 from extension import db 
 
 from token_validation import generate_token
@@ -214,7 +214,6 @@ def create_assignment():
     title = data.get('title')
     assignment_type = data.get('assignment_type')
     due_date = data.get('due_date')
-    total_points = data.get('total_points')
     
     if not week_id or not title or not type or not due_date or not total_points:
         return jsonify({"message" : "All fields are required"}), 400
@@ -229,7 +228,7 @@ def create_assignment():
     if existing_assignment:
         return jsonify({"message": "Assignment already exists in this week."}), 409
     
-    new_assignment =  Assignment(week_id=week_id, title=title, assignment_type = assignment_type, due_date=due_date, total_points=total_points)
+    new_assignment =  Assignment(week_id=week_id, title=title, assignment_type = assignment_type, due_date=due_date)
     
     db.session.add(new_assignment)
     db.session.commit()
@@ -311,3 +310,187 @@ def delete_assignment(assignment_id):
 
     return jsonify({"message": "Assignment deleted successfully"}), 200
 
+#-----------------------------------------------------CRUD - ASSIGNMENT QUESTION-----------------------------------------------------
+
+@user_routes.route('/assignment_questions', methods=['POST'])
+def create_assignment_question():
+    data = request.get_json()
+    assignment_id = data.get('assignment_id')
+    question_text = data.get('question_text')
+    question_type = data.get('question_type')
+    points = data.get('points')
+
+    if not assignment_id or not question_text or not question_type or not points:
+        return jsonify({"message": "All fields are required"}), 400
+
+    assignment = Assignment.query.get(assignment_id)
+    if not assignment:
+        return jsonify({"message": "Assignment not found"}), 404
+
+    new_question = AssignmentQuestion(
+        assignment_id=assignment_id,
+        question_text=question_text,
+        question_type=question_type,
+        points=points
+    )
+
+    db.session.add(new_question)
+    
+    assignment.total_points += points
+    
+    db.session.commit()
+
+    return jsonify({"message": "New assignment question added successfully"}), 201
+
+@user_routes.route('/assignment_questions', methods=['GET'])
+def get_assignment_questions():
+    questions = AssignmentQuestion.query.all()
+    return jsonify([{
+        "id": question.id,
+        "assignment_id": question.assignment_id,
+        "question_text": question.question_text,
+        "question_type": question.question_type,
+        "points": question.points
+    } for question in questions]), 200
+
+@user_routes.route('/assignment_questions/<int:question_id>', methods=['GET'])
+def get_assignment_question(question_id):
+    question = AssignmentQuestion.query.get(question_id)
+    if not question:
+        return jsonify({"message": "Assignment question not found"}), 404
+
+    return jsonify({
+        "id": question.id,
+        "assignment_id": question.assignment_id,
+        "question_text": question.question_text,
+        "question_type": question.question_type,
+        "points": question.points,
+        "options": [
+            {
+                "id": option.id, 
+                "option_text": option.option_text, 
+                "is_correct": option.is_correct
+            } for option in question.options
+        ]
+    }), 200
+
+@user_routes.route('/assignment_questions/<int:question_id>', methods=['PUT'])
+def update_assignment_question(question_id):
+    question = AssignmentQuestion.query.get(question_id)
+    if not question:
+        return jsonify({"message": "Assignment question not found"}), 404
+
+    data = request.get_json()
+
+    if "question_text" in data:
+        question.question_text = data["question_text"]
+    if "question_type" in data:
+        question.question_type = data["question_type"]
+    if "points" in data:
+        previous_points = question.points  
+        updated_points = data["points"]   
+        question.points = updated_points
+        
+        assignment = question.assignment
+        assignment.total_points += (updated_points - previous_points)
+        
+    db.session.commit()
+
+    return jsonify({"message": "Assignment question updated successfully"}), 200
+
+@user_routes.route('/assignment_questions/<int:question_id>', methods=['DELETE'])
+def delete_assignment_question(question_id):
+    question = AssignmentQuestion.query.get(question_id)
+    if not question:
+        return jsonify({"message": "Assignment question not found"}), 404
+
+    assignment = question.assignment
+    assignment.total_points -= question.points
+    
+    db.session.delete(question)
+    db.session.commit()
+
+    return jsonify({"message": "Assignment question deleted successfully"}), 200
+
+#-----------------------------------------------------CRUD - ASSIGNMENT QUESTION OPTION-----------------------------------------------------
+
+@user_routes.route('/options', methods=['POST'])
+def create_option():
+    data = request.get_json()
+    question_id = data.get('question_id')
+    option_text = data.get('option_text')
+    is_correct = data.get('is_correct')
+
+    if question_id is None or not option_text or is_correct is None:
+        return jsonify({"message": "All fields are required"}), 400
+
+    question = AssignmentQuestion.query.get(question_id)
+    if not question:
+        return jsonify({"message": "Assignment question not found"}), 404
+    
+    existing_option = QuestionOption.query.filter_by(option_text=option_text, question_id=question_id).first()
+    if existing_option:
+        return jsonify({"message": "Option already exists for this question"}), 409
+    
+    new_option = QuestionOption(
+        question_id=question_id,
+        option_text=option_text,
+        is_correct=is_correct
+    )
+
+    db.session.add(new_option)
+    db.session.commit()
+
+    return jsonify({"message": "New option added successfully"}), 201
+
+@user_routes.route('/options', methods=['GET'])
+def get_options():
+    options = QuestionOption.query.all()
+    return jsonify([{
+        "id": option.id,
+        "question_id": option.question_id,
+        "option_text": option.option_text,
+        "is_correct": option.is_correct
+    } for option in options]), 200
+
+
+@user_routes.route('/options/<int:option_id>', methods=['GET'])
+def get_option(option_id):
+    option = QuestionOption.query.get(option_id)
+    if not option:
+        return jsonify({"message": "Option not found"}), 404
+
+    return jsonify({
+        "id": option.id,
+        "question_id": option.question_id,
+        "option_text": option.option_text,
+        "is_correct": option.is_correct
+    }), 200
+
+@user_routes.route('/options/<int:option_id>', methods=['PUT'])
+def update_option(option_id):
+    option = QuestionOption.query.get(option_id)
+    if not option:
+        return jsonify({"message": "Option not found"}), 404
+
+    data = request.get_json()
+
+    if "option_text" in data:
+        option.option_text = data["option_text"]
+    if "is_correct" in data:
+        option.is_correct = data["is_correct"]
+
+    db.session.commit()
+
+    return jsonify({"message": "Option updated successfully"}), 200
+
+@user_routes.route('/options/<int:option_id>', methods=['DELETE'])
+def delete_option(option_id):
+    option = QuestionOption.query.get(option_id)
+    if not option:
+        return jsonify({"message": "Option not found"}), 404
+
+    db.session.delete(option)
+    db.session.commit()
+
+    return jsonify({"message": "Option deleted successfully"}), 200
