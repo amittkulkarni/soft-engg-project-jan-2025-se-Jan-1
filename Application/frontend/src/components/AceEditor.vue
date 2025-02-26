@@ -4,7 +4,7 @@
     lang="python"
     theme="monokai"
     placeholder="Write your Python code here..."
-    style="height: 570px; width: 100%;"
+    style=" height: 570px; width: 100%;"
     :options="editorOptions"
   />
 </template>
@@ -31,7 +31,8 @@ export default {
       content: this.modelValue,
       editorOptions: {
         fontSize: "20px",
-        useWorker: false, // Disable syntax checking worker (optional)
+        useWorker: false,
+        // Disable syntax checking worker (optional)
         tabSize: 4,
         wrap: true,
       },

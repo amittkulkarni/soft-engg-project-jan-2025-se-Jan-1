@@ -1,15 +1,15 @@
 <template>
   <div>
-    <AppNavbar />
+    <AppNavbar/>
     <div class="container-fluid">
       <div class="row">
         <!-- Sidebar -->
-        <AppSidebar />
+        <AppSidebar/>
 
         <!-- Main Content -->
         <div class="col-9 p-4">
           <!-- Dynamic Title -->
-          <h4>Mock Quiz 1</h4>
+          <h4>{{ title }}</h4>
 
           <!-- Questions Section -->
           <div v-for="(question, index) in questions" :key="index" class="question-container mb-4 p-3">
@@ -33,12 +33,12 @@
                   :for="'question-' + index + '-option-' + optionIndex"
                   :class="[
                     showScore
-                      ? option === correctAnswers[index]
-                        ? 'text-success'
-                        : userAnswers[index] === option
-                        ? 'text-danger'
-                        : ''
-                      : '',
+                    ? option === correctAnswers[index]
+                    ? 'text-success'
+                    : userAnswers[index] === option
+                    ? 'text-danger'
+                    : ''
+                    : '',
                   ]"
                 >
                   {{ option }}
@@ -53,7 +53,7 @@
           </div>
 
           <!-- Check Score Button -->
-          <button @click="checkScore" class="btn btn-dark check-score-btn">
+          <button @click="checkScore" class="btn btn-dark">
             Check Score
           </button>
 
@@ -66,16 +66,11 @@
                 {{ suggestion }}
               </li>
             </ul>
-            <button @click="downloadReport" class="btn btn-secondary mt-3">Download Report</button>
+            <button @click="downloadPDF" class="btn btn-secondary mt-3">Download Report</button>
           </div>
         </div>
       </div>
-
-      <!-- Ask Me Button -->
-      <button @click="redirectToChatbot" class="ai-button ask-me-btn">
-        <img :src="StudentIcon" class="ai-icon me-2" alt="AI Assistant" />
-        Ask Kia
-      </button>
+      <ChatWindow/>
     </div>
   </div>
 </template>
@@ -84,12 +79,15 @@
 import AppSidebar from "@/components/AppSidebar.vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import StudentIcon from "@/assets/student.png";
+import ChatWindow from "@/components/ChatWindow.vue";
+import { jsPDF } from "jspdf";
 
 export default {
   name: "AssignmentsPage",
   components: {
     AppNavbar,
     AppSidebar,
+    ChatWindow
   },
   props: {
     title: {
@@ -118,7 +116,8 @@ export default {
           options: ["pd.read_csv()", "pd.load_csv()", "pd.read_data", "pd.import_csv()"],
         },
       ],
-      userAnswers: Array(3).fill(null), // Placeholder for user answers
+      userAnswers: Array(3).fill(null),
+      // Placeholder for user answers
       correctAnswers: [
         "A data manipulation library",
         "Series",
@@ -137,77 +136,47 @@ export default {
       }, 0);
       this.showScore = true;
     },
-    downloadReport() {
-      const reportContent = `
-        Your Score: ${this.score}/${this.questions.length}
+    downloadPDF() {
+      const doc = new jsPDF();
+      const content = `Your Score: ${this.score}/${this.questions.length}
 
-        Suggestions to Improve:
-        - ${this.suggestions.join("\n- ")}
-      `;
-      const blob = new Blob([reportContent], { type: "text/plain" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "assignment-report.txt";
-      link.click();
-    },
-    redirectToChatbot() {
-      alert("Redirecting to chatbot..."); // Replace with actual routing logic if needed
+Suggestions to Improve:  ${this.suggestions.map(s => `- ${s}`).join('\n')}
+
+Correct Answers:
+${this.questions.map((q, i) => `${i+1}. ${q.text}\n   Correct: ${this.correctAnswers[i]}`).join('\n\n')}`;
+      doc.text(content, 10, 10);
+      const fileName = `${this.title}.pdf`
+      doc.save(fileName);
     },
   },
 };
 </script>
 
-  <style scoped>
-  .question-container {
-    background-color: #f8f9fa;
-    padding: 15px;
-    border-bottom: 1px solid #ddd;
-  }
+<style scoped>
+.question-container {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-bottom: 1px solid #ddd;
+}
 
-  .score-modal {
-    margin-top: 20px;
-    padding: 20px;
-    border-radius: 8px;
-    background-color: #f8f9fa;
-    box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
-  }
+.score-modal {
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
+}
 
-  /* Correct and Wrong Answer Styles */
-  .text-success {
-    color: #28a745 !important; /* Green for correct answers */
-  }
+/* Correct and Wrong Answer Styles */
+.text-success {
+  color: #28a745 !important; /* Green for correct answers */
+}
 
-  .text-danger {
-    color: #dc3545 !important; /* Red for incorrect answers */
-  }
+.text-danger {
+  color: #dc3545 !important; /* Red for incorrect answers */
+}
 
-  .correct-answer-text .text-success {
-    font-weight: bold;
-  }
-
-  .ask-me-btn {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
-    border: 1px solid #e0e0e0;  /* Adding a thin border */
-    color: #606060;
-    z-index: 1000;
-  }
-
-  .ai-button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 50px;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-  }
-  .ai-icon {
-    width: 24px;
-  }
-  </style>
+.correct-answer-text .text-success {
+  font-weight: bold;
+}
+</style>

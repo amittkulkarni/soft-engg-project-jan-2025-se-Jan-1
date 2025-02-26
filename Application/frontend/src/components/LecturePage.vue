@@ -1,21 +1,16 @@
 <template>
   <div>
-    <AppNavbar />
+    <AppNavbar/>
 
     <div class="container-fluid">
       <div class="row">
         <!-- Sidebar -->
-        <AppSidebar />
+        <AppSidebar/>
 
         <!-- Main Content -->
         <div class="col-9 p-4">
           <div class="content-header d-flex align-items-center mb-4">
-            <h4 class="mb-0">2.2 Linear Regression</h4>
-            <div class="ms-3">
-              <span v-for="i in 5" :key="i" class="me-1" :style="{ color: i <= 3 ? '#f0c929' : '#6c757d' }">★</span>
-              <span>(0 reviews)</span>
-              <a href="#" class="ms-2">Submit a review</a>
-            </div>
+            <h4 class="mb-0">{{ lectureTitle }}</h4>
           </div>
 
           <!-- Video Section -->
@@ -25,7 +20,7 @@
                 <iframe
                   width="100%"
                   height="500"
-                  src="https://www.youtube.com/embed/I1s8WWUMGQs"
+                  :src="`https://www.youtube.com/embed/${videoId}`"
                   frameborder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowfullscreen
@@ -34,15 +29,15 @@
 
               <!-- Summarize Button and Summary Box -->
               <div class="summary-section">
-                 <!-- Summarize Button with AI Assistant Icon -->
-                 <button
-                   @click="summarizeVideo"
-                   class="ai-button summarize-btn"
-                   :disabled="isLoading"
-                 >
-                    <img :src="StudentIcon" class="ai-icon" alt="AI Summarizer">
-                   <span>{{ isLoading ? 'Summarizing...' : 'Summarize' }}</span>
-                 </button>
+                <!-- Summarize Button with AI Assistant Icon -->
+                <button
+                  @click="summarizeVideo"
+                  class="ai-button summarize-btn"
+                  :disabled="isLoading"
+                >
+                  <img :src="StudentIcon" class="ai-icon" alt="AI Summarizer">
+                  <span>{{ isLoading ? 'Summarizing...' : 'Summarize' }}</span>
+                </button>
 
                 <!-- Summary Box (shows only after clicking summarize) -->
                 <div v-if="summary" class="summary-box">
@@ -52,9 +47,9 @@
                       <button @click="copyToClipboard" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-clipboard"></i> Copy
                       </button>
-                    <button @click="summary = ''" class="btn-close"></button>
+                      <button @click="summary = ''" class="btn-close"></button>
+                    </div>
                   </div>
-                </div>
                   <div class="summary-content">
                     {{ summary }}
                   </div>
@@ -65,14 +60,7 @@
         </div>
       </div>
     </div>
-    <!-- Ask Me Button with AI Assistant Icon -->
-    <button
-      @click="redirectToChatbot"
-      class="ai-button ask-me-btn"
-    >
-      <img :src="StudentIcon" class="ai-icon" alt="AI Assistant" />
-      <span>Ask Me</span>
-    </button>
+    <ChatWindow/>
   </div>
 </template>
 
@@ -80,19 +68,38 @@
 import AppNavbar from '@/components/AppNavbar.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 import StudentIcon from '@/assets/student.png'
+import ChatWindow from "@/components/ChatWindow.vue";
 import axios from 'axios'
 
 export default {
-  name: 'VideoLecturePage',
+  name: 'LecturePage',
   components: {
     AppNavbar,
-    AppSidebar
+    AppSidebar,
+    ChatWindow
   },
   data() {
     return {
       summary: '',
       isLoading: false,
-      StudentIcon
+      StudentIcon,
+    }
+  },
+  computed: {
+    lectureTitle() {
+      return this.$route.query.title;
+    },
+    videoId() {
+      return this.$route.query.videoId;
+    }
+  },
+  watch: {
+    // Watch for changes in videoId or lectureTitle
+    videoId() {
+      this.resetSummary();
+    },
+    lectureTitle() {
+      this.resetSummary();
     }
   },
   methods: {
@@ -105,10 +112,16 @@ export default {
         this.summary = response.data.summary
       } catch (error) {
         console.error('Error fetching summary:', error)
-        this.summary = 'Failed to generate summary. Please try again.'
+        this.summary = `Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+        `
       } finally {
         this.isLoading = false
       }
+    },
+    resetSummary() {
+      // Reset summary and close modal when switching lectures
+      this.summary = '';
+      this.isLoading = false;
     },
     redirectToChatbot() {
       this.$router.push('/chatbot')
@@ -183,26 +196,10 @@ export default {
 
 .summarize-btn {
   background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
-  border: 1px solid #e0e0e0;  /* Adding a thin border */
+  border: 1px solid #e0e0e0; /* Adding a thin border */
   color: #606060;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
-
-.ask-me-btn {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
-  border: 1px solid #e0e0e0;  /* Adding a thin border */
-  color: #606060;
-  z-index: 1000;
-}
-
-.ask-me-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
 
 .summarize-btn:hover {
   transform: translateY(-2px);
