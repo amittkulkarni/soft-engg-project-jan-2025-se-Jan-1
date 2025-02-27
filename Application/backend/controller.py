@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption
+from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption,ProgrammingAssignment
 from extension import db 
 
 from token_validation import generate_token
@@ -215,7 +215,7 @@ def create_assignment():
     assignment_type = data.get('assignment_type')
     due_date = data.get('due_date')
     
-    if not week_id or not title or not type or not due_date or not total_points:
+    if not week_id or not title or not assignment_type or not due_date:
         return jsonify({"message" : "All fields are required"}), 400
     
     due_date = datetime.strptime(due_date, "%Y-%m-%d")
@@ -494,3 +494,111 @@ def delete_option(option_id):
     db.session.commit()
 
     return jsonify({"message": "Option deleted successfully"}), 200
+
+
+# ---------------------------------------CRUD - ProgrammingAssignment-----------------------------------------------
+@user_routes.route('/programming_assignments', methods=['POST'])
+def add_ProgrammingAssignment():
+    data = request.get_json()
+    assignment_id = data.get('assignment_id')
+    problem_statement = data.get('problem_statement')
+    input_format = data.get('input_format')
+    output_format = data.get('output_format')
+    constraints = data.get('constraints')
+    sample_input = data.get('sample_input')
+    sample_output = data.get('sample_output')
+    test_cases = data.get('test_cases', [])
+    
+    if not assignment_id or not problem_statement or not input_format or not output_format or not sample_input or not sample_output:
+        return jsonify({"message": "All required fields must be filled"}), 400
+    
+    new_programming_assignment = ProgrammingAssignment(
+        assignment_id=assignment_id,
+        problem_statement=problem_statement,
+        input_format=input_format,
+        output_format=output_format,
+        constraints=constraints,
+        sample_input=sample_input,
+        sample_output=sample_output
+    )
+    new_programming_assignment.set_test_cases(test_cases)
+    db.session.add(new_programming_assignment)
+    db.session.commit()
+    
+    return jsonify({"message": "Programming assignment added successfully"}), 201
+
+@user_routes.route('/programming_assignments/<int:assignment_id>', methods=['GET'])
+def get_ProgrammingAssignment(assignment_id):
+    assignment = ProgrammingAssignment.query.get(assignment_id)
+    if not assignment:
+        return jsonify({"message": "Programming assignment not found"}), 404
+    
+    return jsonify({
+        "id": assignment.id,
+        "assignment_id": assignment.assignment_id,
+        "problem_statement": assignment.problem_statement,
+        "input_format": assignment.input_format,
+        "output_format": assignment.output_format,
+        "constraints": assignment.constraints,
+        "sample_input": assignment.sample_input,
+        "sample_output": assignment.sample_output,
+        "test_cases": assignment.get_test_cases()
+    }), 200
+
+@user_routes.route('/programming_assignments/<int:assignment_id>', methods=['PUT'])
+def update_ProgrammingAssignment(assignment_id):
+    assignment = ProgrammingAssignment.query.get(assignment_id)
+    if not assignment:
+        return jsonify({"message": "Programming assignment not found"}), 404
+    
+    data = request.get_json()
+    if "problem_statement" in data:
+        assignment.problem_statement = data["problem_statement"]
+    if "input_format" in data:
+        assignment.input_format = data["input_format"]
+    if "output_format" in data:
+        assignment.output_format = data["output_format"]
+    if "constraints" in data:
+        assignment.constraints = data["constraints"]
+    if "sample_input" in data:
+        assignment.sample_input = data["sample_input"]
+    if "sample_output" in data:
+        assignment.sample_output = data["sample_output"]
+    if "test_cases" in data:
+        assignment.set_test_cases(data["test_cases"])
+    
+    db.session.commit()
+    return jsonify({"message": "Programming assignment updated successfully"}), 200
+
+@user_routes.route('/programming_assignments/<int:assignment_id>', methods=['DELETE'])
+def delete_ProgrammingAssignment(assignment_id):
+    assignment = ProgrammingAssignment.query.get(assignment_id)
+    if not assignment:
+        return jsonify({"message": "Programming assignment not found"}), 404
+    
+    db.session.delete(assignment)
+    db.session.commit()
+    return jsonify({"message": "Programming assignment deleted successfully"}), 200
+
+
+#-----------------------------------------Score Checking ----------------------------------------------------------------
+@user_routes.route('/assignments/check_score', methods=['POST'])
+def check_score():
+    data = request.get_json()
+    option_ids = data.get("option_ids", [])
+
+    if not option_ids or not isinstance(option_ids, list):
+        return jsonify({"message": "Invalid input. Provide a list of option IDs."}), 400
+
+    # Fetch all options in a single query
+    options = QuestionOption.query.filter(QuestionOption.id.in_(option_ids)).all()
+
+    if not options:
+        return jsonify({"message": "No valid option IDs found."}), 400
+
+    # Find correct answers and corresponding question IDs
+    correct_options = [opt for opt in options if opt.is_correct]
+   
+    total_score = len(correct_options)
+
+    return jsonify({"message": "Score calculated successfully", "total_score": total_score}), 200

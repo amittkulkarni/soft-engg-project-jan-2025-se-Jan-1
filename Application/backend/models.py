@@ -1,5 +1,6 @@
 from extension import db
 from datetime import datetime
+import json
 
 class User(db.Model):
     __tablename__ = 'users'
