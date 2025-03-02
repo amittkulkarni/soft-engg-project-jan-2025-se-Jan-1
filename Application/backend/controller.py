@@ -12,17 +12,20 @@ from datetime import datetime
 
 user_routes = Blueprint('user_routes', __name__)
 
-# Signup Route
+# ------------------------- User Authentication Routes -------------------------
+
+# Signup Route - Registers a new user
 @user_routes.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
     username = data.get('username')
     email = data.get('email')
     password = data.get('password')
-
+    # Check if the email already exists
     if User.query.filter_by(email=email).first():
         return jsonify({"message": "Email already exists"}), 400
 
+    # Hash the password and save the new user
     hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
     new_user = User(username=username, email=email, password=hashed_password)
 
@@ -31,46 +34,47 @@ def signup():
 
     return jsonify({"message": "User registered successfully"}), 201
 
-# Login Route
+# Login Route - Authenticates a user and returns an access token
 @user_routes.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
 
+    # Validate user credentials
     user = User.query.filter_by(email=email).first()
     if not user or not check_password_hash(user.password, password):
         return jsonify({"message": "Invalid email or password"}), 401
 
+    # Generate authentication token
     token = generate_token(user.id)
     return jsonify({"access_token": token, "message": "Login successful"}), 200
 
 
-@user_routes.route('/logout', methods=['POST'])
-def logout():
-    return jsonify({"message": "Logged out successfully"}), 200
 
 
+#-----------------------------------------CRUD Operations for Weeks--------------------------------------------------------------
 
-#-----------------------------------------CRUD - WEEK--------------------------------------------------------------
-
+# Create Week - Adds a new week to the database
 @user_routes.route('/weeks', methods=['POST'])
 def create_week():
     data = request.get_json()
     week_number = data.get('week_number')
     title = data.get('title')
 
+    # Check if the week already exists
     existing_week = Week.query.filter_by(week_number=week_number).first()
     if existing_week:
         return jsonify({"message":"week already exists."}),409
     
+    # Create and save a new week
     new_week =  Week(week_number=week_number, title=title)
     db.session.add(new_week)
     db.session.commit()
 
     return jsonify({"message": "new week added successfully"}), 201
 
-
+# Get All Weeks - Retrieves a list of all weeks
 @user_routes.route('/weeks', methods=['GET'])
 def get_weeks():
     weeks = Week.query.all()
@@ -80,6 +84,7 @@ def get_weeks():
         "title": week.title
     } for week in weeks]), 200
 
+# Get Week Details - Retrieves details of a specific week by ID
 @user_routes.route('/weeks/<int:week_id>', methods=['GET'])
 def get_week_details(week_id):
     week = Week.query.get(week_id)
@@ -94,6 +99,7 @@ def get_week_details(week_id):
         "assignments": [{"id": assgn.id, "title": assgn.title, "type": assgn.type} for assgn in week.assignments]
     }), 200
 
+# Update Week - Updates the details of a specific week
 @user_routes.route('/weeks/<int:week_id>', methods=['PUT'])
 def update_week(week_id):
     week = Week.query.get(week_id)
@@ -102,6 +108,7 @@ def update_week(week_id):
     
     data = request.get_json()
 
+    # Update week properties if provided
     if "week_number" in data:
         week.week_number=data["week_number"]
     if "title" in data:
@@ -111,6 +118,7 @@ def update_week(week_id):
 
     return jsonify({"message": "week updated successfully"}), 200
 
+# Delete Week - Deletes a specific week from the database
 @user_routes.route('/weeks/<int:week_id>', methods=['DELETE'])
 def delete_week(week_id):
     week = Week.query.get(week_id)
@@ -123,7 +131,9 @@ def delete_week(week_id):
     return jsonify({"message": "week delete successfully"}), 200
 
 
-#-----------------------------------------------------CRUD - lECTURE-----------------------------------------------------
+#-----------------------------------------------------CRUD Operations for Lectures -----------------------------------------------------
+
+# Create Lecture - Adds a new lecture to a specific week
 @user_routes.route('/lectures', methods=['POST'])
 def create_lecture():
     data = request.get_json()
@@ -131,27 +141,28 @@ def create_lecture():
     title = data.get('title')
     video_id = data.get("video_id")
 
-    print("week_id",week_id)
-    print("title",title)
-    print("video_id",video_id)
+    # Validate input fields
     if "week_id" not in data or "title" not in data or "video_id" not in data:
         return jsonify({"message" : "All fields are required"}),400
     
+    # Check if the associated week exists
     week = Week.query.get(week_id)
     if not week:
         return jsonify({"message": "Week not found"}), 404
     
-
+    # Check if the lecture title already exists
     existing_lecture = Lecture.query.filter_by(title = title).first()
     if existing_lecture:
         return jsonify({"message":"lecture already exists."}),409
     
+    # Create and save the new lecture
     new_lecture =  Lecture(week_id=week_id, title=title, video_id = video_id)
     db.session.add(new_lecture)
     db.session.commit()
 
     return jsonify({"message": "new lecture added successfully"}), 201
 
+# Get All Lectures - Retrieves a list of all lectures
 @user_routes.route('/lectures', methods=['GET'])
 def get_lectures():
     lectures = Lecture.query.all()
@@ -162,6 +173,8 @@ def get_lectures():
         "video_id":lecture.video_id,
     } for lecture in lectures]), 200
 
+
+# Get Lecture Details - Retrieves details of a specific lecture by ID
 @user_routes.route('/lectures/<int:lecture_id>', methods=['GET'])
 def get_lecture_details(lecture_id):
     lecture = Lecture.query.get(lecture_id)
@@ -175,6 +188,7 @@ def get_lecture_details(lecture_id):
         "video_id": lecture.video_id,
     }), 200
 
+# Update Lecture - Updates the details of a specific lecture
 @user_routes.route('/lectures/<int:lecture_id>', methods=['PUT'])
 def update_lecture(lecture_id):
     lecture = Lecture.query.get(lecture_id)
@@ -183,6 +197,7 @@ def update_lecture(lecture_id):
     
     data = request.get_json()
 
+    # Update lecture properties if provided
     if "week_id" in data:
         lecture.week_id=data["week_id"]
     if "title" in data:
@@ -194,6 +209,7 @@ def update_lecture(lecture_id):
 
     return jsonify({"message": "Lecture updated successfully"}), 200
 
+# Delete Lecture - Deletes a specific lecture from the database
 @user_routes.route('/lectures/<int:lecture_id>', methods=['DELETE'])
 def delete_lecture(lecture_id):
     lecture = Lecture.query.get(lecture_id)
@@ -207,6 +223,7 @@ def delete_lecture(lecture_id):
 
 #-----------------------------------------------------CRUD - ASSIGNMENT-----------------------------------------------------
 
+# Create a new assignment
 @user_routes.route('/assignments', methods=['POST'])
 def create_assignment():
     data = request.get_json()
@@ -215,19 +232,23 @@ def create_assignment():
     assignment_type = data.get('assignment_type')
     due_date = data.get('due_date')
     
+    # Validate required fields
     if not week_id or not title or not assignment_type or not due_date:
         return jsonify({"message" : "All fields are required"}), 400
     
     due_date = datetime.strptime(due_date, "%Y-%m-%d")
     
+    # Check if the week exists
     week = Week.query.get(week_id)
     if not week:
         return jsonify({"message": "Week not found"}), 404
     
+    # Check if assignment with the same title already exists in this week
     existing_assignment = Assignment.query.filter_by(title=title, week_id=week_id).first()
     if existing_assignment:
         return jsonify({"message": "Assignment already exists in this week."}), 409
     
+    # Create and save a new assignment
     new_assignment =  Assignment(week_id=week_id, title=title, assignment_type = assignment_type, due_date=due_date)
     
     db.session.add(new_assignment)
@@ -235,6 +256,7 @@ def create_assignment():
     
     return jsonify({"message": "New assignment added successfully"}), 201
 
+# Get all assignments
 @user_routes.route('/assignments', methods=['GET'])
 def get_assignments():
     assignments = Assignment.query.all()
@@ -247,6 +269,7 @@ def get_assignments():
         "total_points": assignment.total_points
     } for assignment in assignments]), 200
 
+# Get a specific assignment by ID
 @user_routes.route('/assignments/<int:assignment_id>', methods=['GET'])
 def get_assignment(assignment_id):
     assignment = Assignment.query.get(assignment_id)
@@ -277,6 +300,7 @@ def get_assignment(assignment_id):
         ]
     }), 200
 
+# Update an existing assignment
 @user_routes.route('/assignments/<int:assignment_id>', methods=['PUT'])
 def update_assignment(assignment_id):
     assignment = Assignment.query.get(assignment_id)
@@ -285,6 +309,7 @@ def update_assignment(assignment_id):
     
     data = request.get_json()
 
+    # Update fields if provided in the request
     if "title" in data:
         assignment.title = data["title"]
     if "assignment_type" in data:
@@ -299,6 +324,7 @@ def update_assignment(assignment_id):
 
     return jsonify({"message": "Assignment updated successfully"}), 200
 
+# Delete an assignment
 @user_routes.route('/assignments/<int:assignment_id>', methods=['DELETE'])
 def delete_assignment(assignment_id):
     assignment = Assignment.query.get(assignment_id)
@@ -312,6 +338,7 @@ def delete_assignment(assignment_id):
 
 #-----------------------------------------------------CRUD - ASSIGNMENT QUESTION-----------------------------------------------------
 
+# Create a new assignment question
 @user_routes.route('/assignment_questions', methods=['POST'])
 def create_assignment_question():
     data = request.get_json()
@@ -320,13 +347,16 @@ def create_assignment_question():
     question_type = data.get('question_type')
     points = data.get('points')
 
+     # Validate required fields
     if not assignment_id or not question_text or not question_type or not points:
         return jsonify({"message": "All fields are required"}), 400
 
+    # Check if the assignment exists
     assignment = Assignment.query.get(assignment_id)
     if not assignment:
         return jsonify({"message": "Assignment not found"}), 404
 
+    # Create a new question for the assignment
     new_question = AssignmentQuestion(
         assignment_id=assignment_id,
         question_text=question_text,
@@ -336,12 +366,14 @@ def create_assignment_question():
 
     db.session.add(new_question)
     
+    # Update total points for the assignment
     assignment.total_points += points
     
     db.session.commit()
 
     return jsonify({"message": "New assignment question added successfully"}), 201
 
+# Retrieve all assignment questions
 @user_routes.route('/assignment_questions', methods=['GET'])
 def get_assignment_questions():
     questions = AssignmentQuestion.query.all()
@@ -353,6 +385,7 @@ def get_assignment_questions():
         "points": question.points
     } for question in questions]), 200
 
+# Retrieve a specific assignment question by ID
 @user_routes.route('/assignment_questions/<int:question_id>', methods=['GET'])
 def get_assignment_question(question_id):
     question = AssignmentQuestion.query.get(question_id)
@@ -374,6 +407,7 @@ def get_assignment_question(question_id):
         ]
     }), 200
 
+# Update an existing assignment question
 @user_routes.route('/assignment_questions/<int:question_id>', methods=['PUT'])
 def update_assignment_question(question_id):
     question = AssignmentQuestion.query.get(question_id)
@@ -391,6 +425,7 @@ def update_assignment_question(question_id):
         updated_points = data["points"]   
         question.points = updated_points
         
+        # Update the total points of the associated assignment
         assignment = question.assignment
         assignment.total_points += (updated_points - previous_points)
         
@@ -398,6 +433,7 @@ def update_assignment_question(question_id):
 
     return jsonify({"message": "Assignment question updated successfully"}), 200
 
+ # Delete an assignment question
 @user_routes.route('/assignment_questions/<int:question_id>', methods=['DELETE'])
 def delete_assignment_question(question_id):
     question = AssignmentQuestion.query.get(question_id)
@@ -405,6 +441,7 @@ def delete_assignment_question(question_id):
         return jsonify({"message": "Assignment question not found"}), 404
 
     assignment = question.assignment
+    # Adjust total points for the assignment
     assignment.total_points -= question.points
     
     db.session.delete(question)
@@ -414,6 +451,7 @@ def delete_assignment_question(question_id):
 
 #-----------------------------------------------------CRUD - ASSIGNMENT QUESTION OPTION-----------------------------------------------------
 
+# API to create a new option for an assignment question
 @user_routes.route('/options', methods=['POST'])
 def create_option():
     data = request.get_json()
@@ -421,17 +459,21 @@ def create_option():
     option_text = data.get('option_text')
     is_correct = data.get('is_correct')
 
+    # Validate required fields
     if question_id is None or not option_text or is_correct is None:
         return jsonify({"message": "All fields are required"}), 400
 
+    # Check if the related assignment question exists
     question = AssignmentQuestion.query.get(question_id)
     if not question:
         return jsonify({"message": "Assignment question not found"}), 404
     
+    # Prevent duplicate options for the same question
     existing_option = QuestionOption.query.filter_by(option_text=option_text, question_id=question_id).first()
     if existing_option:
         return jsonify({"message": "Option already exists for this question"}), 409
     
+    # Create and save the new option
     new_option = QuestionOption(
         question_id=question_id,
         option_text=option_text,
@@ -443,6 +485,7 @@ def create_option():
 
     return jsonify({"message": "New option added successfully"}), 201
 
+# Retrieve all options for assignment questions
 @user_routes.route('/options', methods=['GET'])
 def get_options():
     options = QuestionOption.query.all()
@@ -453,7 +496,7 @@ def get_options():
         "is_correct": option.is_correct
     } for option in options]), 200
 
-
+# Retrieve a specific option by its ID
 @user_routes.route('/options/<int:option_id>', methods=['GET'])
 def get_option(option_id):
     option = QuestionOption.query.get(option_id)
@@ -467,6 +510,7 @@ def get_option(option_id):
         "is_correct": option.is_correct
     }), 200
 
+# Update an existing option by its ID
 @user_routes.route('/options/<int:option_id>', methods=['PUT'])
 def update_option(option_id):
     option = QuestionOption.query.get(option_id)
@@ -475,6 +519,7 @@ def update_option(option_id):
 
     data = request.get_json()
 
+    # Update option fields if provided
     if "option_text" in data:
         option.option_text = data["option_text"]
     if "is_correct" in data:
@@ -484,6 +529,7 @@ def update_option(option_id):
 
     return jsonify({"message": "Option updated successfully"}), 200
 
+# Delete an option by its ID
 @user_routes.route('/options/<int:option_id>', methods=['DELETE'])
 def delete_option(option_id):
     option = QuestionOption.query.get(option_id)
@@ -497,8 +543,10 @@ def delete_option(option_id):
 
 
 # ---------------------------------------CRUD - ProgrammingAssignment-----------------------------------------------
+# Add a new programming assignment
 @user_routes.route('/programming_assignments', methods=['POST'])
 def add_ProgrammingAssignment():
+    # Parse JSON data from the request
     data = request.get_json()
     assignment_id = data.get('assignment_id')
     problem_statement = data.get('problem_statement')
@@ -509,9 +557,11 @@ def add_ProgrammingAssignment():
     sample_output = data.get('sample_output')
     test_cases = data.get('test_cases', [])
     
+    # Validate required fields
     if not assignment_id or not problem_statement or not input_format or not output_format or not sample_input or not sample_output:
         return jsonify({"message": "All required fields must be filled"}), 400
     
+    # Create a new ProgrammingAssignment object
     new_programming_assignment = ProgrammingAssignment(
         assignment_id=assignment_id,
         problem_statement=problem_statement,
@@ -521,18 +571,22 @@ def add_ProgrammingAssignment():
         sample_input=sample_input,
         sample_output=sample_output
     )
+    # Set test cases and save to the database
     new_programming_assignment.set_test_cases(test_cases)
     db.session.add(new_programming_assignment)
     db.session.commit()
     
     return jsonify({"message": "Programming assignment added successfully"}), 201
 
+# Retrieve a specific programming assignment by ID
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['GET'])
 def get_ProgrammingAssignment(assignment_id):
+    # Fetch the assignment from the database
     assignment = ProgrammingAssignment.query.get(assignment_id)
     if not assignment:
         return jsonify({"message": "Programming assignment not found"}), 404
     
+    # Return the assignment details as JSON
     return jsonify({
         "id": assignment.id,
         "assignment_id": assignment.assignment_id,
@@ -545,12 +599,14 @@ def get_ProgrammingAssignment(assignment_id):
         "test_cases": assignment.get_test_cases()
     }), 200
 
+# Update an existing programming assignment
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['PUT'])
 def update_ProgrammingAssignment(assignment_id):
     assignment = ProgrammingAssignment.query.get(assignment_id)
     if not assignment:
         return jsonify({"message": "Programming assignment not found"}), 404
     
+    # Parse JSON data and update relevant fields
     data = request.get_json()
     if "problem_statement" in data:
         assignment.problem_statement = data["problem_statement"]
@@ -570,6 +626,7 @@ def update_ProgrammingAssignment(assignment_id):
     db.session.commit()
     return jsonify({"message": "Programming assignment updated successfully"}), 200
 
+# Delete a specific programming assignment
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['DELETE'])
 def delete_ProgrammingAssignment(assignment_id):
     assignment = ProgrammingAssignment.query.get(assignment_id)
@@ -582,11 +639,13 @@ def delete_ProgrammingAssignment(assignment_id):
 
 
 #-----------------------------------------Score Checking ----------------------------------------------------------------
+# Calculate score based on selected option IDs
 @user_routes.route('/assignments/check_score', methods=['POST'])
 def check_score():
     data = request.get_json()
     option_ids = data.get("option_ids", [])
 
+    # Validate the input option IDs
     if not option_ids or not isinstance(option_ids, list):
         return jsonify({"message": "Invalid input. Provide a list of option IDs."}), 400
 
@@ -596,9 +655,10 @@ def check_score():
     if not options:
         return jsonify({"message": "No valid option IDs found."}), 400
 
-    # Find correct answers and corresponding question IDs
+    # Find correct answers 
     correct_options = [opt for opt in options if opt.is_correct]
    
     total_score = len(correct_options)
 
     return jsonify({"message": "Score calculated successfully", "total_score": total_score}), 200
+
