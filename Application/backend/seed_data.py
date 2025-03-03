@@ -14,7 +14,6 @@ def seed_data():
    db.session.add_all(users)
    db.session.commit()
 
-
    # Seed Weeks
    weeks = [
        Week(week_number=1, title="Week 1"),
@@ -54,7 +53,7 @@ def seed_data():
 
    # Seed Assignments
    assignments = [
-       Assignment(week_id=weeks[0].id, title="Assignment 1", type="graded", due_date=datetime.now() + timedelta(days=7), total_points=25),
+       Assignment(week_id=weeks[0].id, title="Assignment 1", assignment_type="graded", due_date=datetime.now() + timedelta(days=7), total_points=25),
    ]
    db.session.add_all(assignments)
    db.session.commit()
