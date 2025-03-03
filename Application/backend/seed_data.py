@@ -14,7 +14,6 @@ def seed_data():
    db.session.add_all(users)
    db.session.commit()
 
-
    # Seed Weeks
    weeks = [
        Week(week_number=1, title="Week 1"),
