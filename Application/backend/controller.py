@@ -1,10 +1,18 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption,ProgrammingAssignment
+from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption,ProgrammingAssignment,ChatHistory
 from extension import db 
+import os
+import json
 
 from token_validation import generate_token
 from datetime import datetime
+
+from config import Config
+from mcq_generator import initialize_rag_pipeline, generate_mcqs
+from pydantic import SecretStr
+
+
 
 
 # Comment from Amit , Do use the prefix "/api/" for all APIs . For e.g http://localhost:3000/api/google_auth 
@@ -21,13 +29,21 @@ def signup():
     username = data.get('username')
     email = data.get('email')
     password = data.get('password')
+    role = data.get('role', 'student')  # Default to 'student' if not provided
+    google_id = data.get('google_id')
     # Check if the email already exists
     if User.query.filter_by(email=email).first():
         return jsonify({"message": "Email already exists"}), 400
 
     # Hash the password and save the new user
     hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-    new_user = User(username=username, email=email, password=hashed_password)
+    new_user = User(
+        username=username,
+        email=email,
+        password=hashed_password,
+        role=role,
+        google_id=google_id
+    )
 
     db.session.add(new_user)
     db.session.commit()
@@ -661,4 +677,122 @@ def check_score():
     total_score = len(correct_options)
 
     return jsonify({"message": "Score calculated successfully", "total_score": total_score}), 200
+
+
+
+google_api_key = SecretStr(Config.GEMINI_API_KEY)
+
+# Initialize RAG pipeline only once
+llm, vectorstore = initialize_rag_pipeline(google_api_key)
+
+# Generating MCQs
+@user_routes.route('/generate_mcq', methods=['POST'])
+def generate_mcq_api():
+    try:
+        # Parse request data
+        data = request.get_json()
+        topic = data.get('topic')
+        num_questions = data.get('num_questions', 5)
+
+        # Validate input
+        if not topic:
+            return jsonify({'error': 'Topic is required'}), 400
+
+        # Generate MCQs
+        mcq_response = generate_mcqs(llm, vectorstore, topic, num_questions)
+
+        # Return the generated MCQs as a JSON response
+        return jsonify(mcq_response), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Video Summarizer API (Placeholder)
+@user_routes.route('/video_summarizer', methods=['POST'])
+def video_summarizer():
+    data = request.get_json()
+    lecture_id = data.get('lecture_id')
+    summary_type = data.get('summary_type')
+
+    # Validation
+    if not lecture_id:
+        return jsonify({"error": "lecture_id is required"}), 400
+    if not summary_type:
+        return jsonify({"error": "summary_type is required"}), 400
+
+    # Mock response based on the requested summary type
+    if summary_type.lower() == "paragraph":
+        summary = f"Summary of lecture {lecture_id}: This lecture covers the basics of the topic, explaining key concepts in a simplified manner."
+    elif summary_type.lower() == "numbered":
+        summary = f"Summary of lecture {lecture_id}:\n1. Introduction to the topic\n2. Key concepts explained\n3. Summary of important points"
+    elif summary_type.lower() == "bulleted":
+        summary = f"Summary of lecture {lecture_id}:\n- Introduction to the topic\n- Explanation of key concepts\n- Important takeaways"
+    else:
+        return jsonify({"error": "Invalid summary_type. Choose from 'paragraph', 'numbered', 'bulleted'."}), 400
+
+    return jsonify({"summary": summary}), 200
+
+# Kia Chatbot API
+@user_routes.route('/kia_chat', methods=['POST'])
+def kia_chat():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    query = data.get('query')
+    timestamp = data.get('timestamp')
+
+    # Validation
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+    if not query:
+        return jsonify({"error": "query is required"}), 400
+    if not timestamp:
+        return jsonify({"error": "timestamp is required"}), 400
+
+    # Mock chatbot response
+    response_text = f"Kia says: I have received your question '{query}', let me think about it!"
+
+    # Store the chat history as a JSON string in the file_path column
+    try:
+        chat_data = {
+            "query": query,
+            "response": response_text,
+            "timestamp": timestamp
+        }
+        
+        chat_history = ChatHistory(
+            user_id=user_id,
+            file_path=json.dumps(chat_data)  # Storing chat data as a JSON string
+        )
+        
+        db.session.add(chat_history)
+        db.session.commit()
+
+        return jsonify({"response": response_text}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to save chat history: {str(e)}"}), 500
+    
+# Explain Error API
+@user_routes.route('/api/explain_error', methods=['POST'])
+def explain_error():
+    data = request.get_json()
+    code_snippet = data.get('code_snippet')
+
+    if not code_snippet:
+        return jsonify({"error": "Code snippet is required"}), 400
+
+    # response
+    response = {
+        "error_analysis": {
+            "error": "SyntaxError: Unexpected indent",
+            "explanation": "This error occurs when there is an unexpected indentation in the code. "
+                           "Python relies on indentation to define code blocks, and inconsistent indentation "
+                           "can lead to this error.",
+            "fix_suggestion": "Check the indentation of your code. Make sure you use consistent spaces or tabs. "
+                              "Avoid mixing both."
+        }
+    }
+    
+    return jsonify(response), 200
 
