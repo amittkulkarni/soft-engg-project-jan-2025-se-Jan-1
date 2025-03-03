@@ -1,11 +1,12 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption,ProgrammingAssignment
 from extension import db 
-
 from token_validation import generate_token
 from datetime import datetime
-
+import pdfkit
+import os
+import platform
 
 # Comment from Amit , Do use the prefix "/api/" for all APIs . For e.g http://localhost:3000/api/google_auth 
 
@@ -662,3 +663,55 @@ def check_score():
 
     return jsonify({"message": "Score calculated successfully", "total_score": total_score}), 200
 
+
+# ---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
+
+# Automatically detect OS and set the wkhtmltopdf path
+if platform.system() == "Windows":
+    WKHTMLTOPDF_PATH = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+elif platform.system() == "Darwin":  # macOS
+    WKHTMLTOPDF_PATH = "/usr/local/bin/wkhtmltopdf"
+else:  # Linux
+    WKHTMLTOPDF_PATH = "/usr/bin/wkhtmltopdf"
+
+# Ensure wkhtmltopdf exists
+if not os.path.exists(WKHTMLTOPDF_PATH):
+    raise FileNotFoundError(f"wkhtmltopdf not found at {WKHTMLTOPDF_PATH}")
+
+# Explicitly configure pdfkit
+config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
+
+# Ensure reports directory exists
+BASE_DIR = os.path.abspath(os.path.dirname(__file__)) # Get current directory
+REPORTS_DIR = os.path.join(BASE_DIR, "reports")
+os.makedirs(REPORTS_DIR, exist_ok=True)  
+
+
+# ---------------------------------- Download Report (PDF) ----------------------------------
+@user_routes.route('/download_report', methods=['POST'])
+def download_report():
+    """Generates and downloads a report as a PDF file."""
+    data = request.json
+    username = data.get("username")
+    score = data.get("score")
+    total = data.get("total")
+    suggestions = data.get("suggestions", [])
+    questions = data.get("questions", [])  # List of questions
+
+    # Render the HTML template with data
+    html_content = render_template("report.html", username=username, score=score, total=total, suggestions=suggestions, questions=questions)
+    
+    # Define file path inside reports folder
+    pdf_file = os.path.join(REPORTS_DIR, f"MockTest_{username}.pdf")
+
+    # Generate PDF
+    try:
+        pdfkit.from_string(html_content, pdf_file, configuration=config)
+    except Exception as e:
+        return jsonify({"error": f"PDF generation failed: {str(e)}"}), 500
+
+    # Send generated file as download
+    try:
+        return send_file(pdf_file, as_attachment=True, download_name=f"MockTest_{username}.pdf")
+    except Exception as e:
+        return jsonify({"error": f"File sending failed: {str(e)}"}), 500
