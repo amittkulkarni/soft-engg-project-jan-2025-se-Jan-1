@@ -3,12 +3,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption,ProgrammingAssignment,ChatHistory
 from extension import db 
 import os
-import json
 from token_validation import generate_token
 from datetime import datetime
-
-
-# Comment from Amit , Do use the prefix "/api/" for all APIs . For e.g http://localhost:3000/api/google_auth 
+import pdfkit
 
 
 user_routes = Blueprint('user_routes', __name__)
@@ -671,16 +668,11 @@ def check_score():
 
     return jsonify({"message": "Score calculated successfully", "total_score": total_score}), 200
 
+#--------------------------------------------- AI APIs -----------------------------------------------------------------
 
-
-google_api_key = SecretStr(Config.GEMINI_API_KEY)
-
-# Initialize RAG pipeline only once
-llm, vectorstore = initialize_rag_pipeline(google_api_key)
-
-# Generating MCQs
-@user_routes.route('/generate_mcq', methods=['POST'])
-def generate_mcq_api():
+# Generate Topic-Specific Questions
+@user_routes.route('/generate_topic_specific_questions', methods=['POST'])
+def generate_topic_specific_questions():
     try:
         # Parse request data
         data = request.get_json()
@@ -691,103 +683,192 @@ def generate_mcq_api():
         if not topic:
             return jsonify({'error': 'Topic is required'}), 400
 
-        # Generate MCQs
-        mcq_response = generate_mcqs(llm, vectorstore, topic, num_questions)
+        # Placeholder response with mock questions
+        mock_response = {
+            "questions": [
+                {
+                    "question": f"Sample question 1 about {topic}?",
+                    "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+                    "answer": "Option 1"
+                },
+                {
+                    "question": f"Sample question 2 about {topic}?",
+                    "options": ["Option A", "Option B", "Option C", "Option D"],
+                    "answer": "Option B"
+                }
+            ][:num_questions]
+        }
 
-        # Return the generated MCQs as a JSON response
-        return jsonify(mcq_response), 200
+        return jsonify(mock_response), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Video Summarizer API (Placeholder)
+# Video Summarizer API 
 @user_routes.route('/video_summarizer', methods=['POST'])
 def video_summarizer():
     data = request.get_json()
     lecture_id = data.get('lecture_id')
-    summary_type = data.get('summary_type')
 
     # Validation
     if not lecture_id:
         return jsonify({"error": "lecture_id is required"}), 400
-    if not summary_type:
-        return jsonify({"error": "summary_type is required"}), 400
 
-    # Mock response based on the requested summary type
-    if summary_type.lower() == "paragraph":
-        summary = f"Summary of lecture {lecture_id}: This lecture covers the basics of the topic, explaining key concepts in a simplified manner."
-    elif summary_type.lower() == "numbered":
-        summary = f"Summary of lecture {lecture_id}:\n1. Introduction to the topic\n2. Key concepts explained\n3. Summary of important points"
-    elif summary_type.lower() == "bulleted":
-        summary = f"Summary of lecture {lecture_id}:\n- Introduction to the topic\n- Explanation of key concepts\n- Important takeaways"
-    else:
-        return jsonify({"error": "Invalid summary_type. Choose from 'paragraph', 'numbered', 'bulleted'."}), 400
+    summary = f"Summary of lecture {lecture_id}: This lecture provides a detailed explanation of the topic,covering key concepts and important points in a clear and concise manner."
 
     return jsonify({"summary": summary}), 200
 
+
+
 # Kia Chatbot API
-@user_routes.route('/kia_chat', methods=['POST'])
-def kia_chat():
+
+# Ensure chat_logs directory exists
+os.makedirs("chat_logs", exist_ok=True)
+
+# ---------------------------- Store Chat Interaction ----------------------------
+@user_routes.route('/chat_history', methods=['POST'])
+def save_chat_history():
+    """API to save user chat interactions as an SQL file and store file path in DB."""
     data = request.get_json()
-    user_id = data.get('user_id')
-    query = data.get('query')
-    timestamp = data.get('timestamp')
+    user_id = data.get("user_id")
+    query = data.get("query")
+    response = data.get("response")
 
-    # Validation
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
-    if not query:
-        return jsonify({"error": "query is required"}), 400
-    if not timestamp:
-        return jsonify({"error": "timestamp is required"}), 400
+    if not all([user_id, query, response]):
+        return jsonify({"message": "Missing required fields"}), 400
 
-    # Mock chatbot response
-    response_text = f"Kia says: I have received your question '{query}', let me think about it!"
+    file_path = f"chat_logs/user_{user_id}_chat.sql"
 
-    # Store the chat history as a JSON string in the file_path column
-    try:
-        chat_data = {
-            "query": query,
-            "response": response_text,
-            "timestamp": timestamp
-        }
-        
-        chat_history = ChatHistory(
-            user_id=user_id,
-            file_path=json.dumps(chat_data)  # Storing chat data as a JSON string
-        )
-        
-        db.session.add(chat_history)
+    # Generate SQL entry
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    sql_entry = f"INSERT INTO chat_logs (user_id, query, response, created_at) VALUES ({user_id}, '{query.replace("'", "''")}', '{response.replace("'", "''")}', '{timestamp}');\n"
+
+    # Append to the file
+    with open(file_path, "a", encoding="utf-8") as f:
+        f.write(sql_entry)
+
+    # Store file path in the database if not already stored
+    chat_record = ChatHistory.query.filter_by(user_id=user_id).first()
+    if not chat_record:
+        chat_record = ChatHistory(user_id=user_id, file_path=file_path)
+        db.session.add(chat_record)
         db.session.commit()
 
-        return jsonify({"response": response_text}), 200
+    return jsonify({"message": "Chat history saved successfully", "file_path": file_path}), 201
 
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": f"Failed to save chat history: {str(e)}"}), 500
+# ---------------------------- Get Chat History ----------------------------
+@user_routes.route('/chat_history/<int:user_id>', methods=['GET'])
+def get_chat_history(user_id):
+    """API to retrieve chat history file path for a user."""
+    chat_record = ChatHistory.query.filter_by(user_id=user_id).first()
+    if not chat_record:
+        return jsonify({"message": "No chat history found"}), 404
+
+    return jsonify({"user_id": user_id, "file_path": chat_record.file_path}), 200
     
 # Explain Error API
-@user_routes.route('/api/explain_error', methods=['POST'])
+@user_routes.route('/explain_error', methods=['POST'])
 def explain_error():
     data = request.get_json()
     code_snippet = data.get('code_snippet')
 
+    # Validation
     if not code_snippet:
         return jsonify({"error": "Code snippet is required"}), 400
 
-    # response
     response = {
-        "error_analysis": {
-            "error": "SyntaxError: Unexpected indent",
-            "explanation": "This error occurs when there is an unexpected indentation in the code. "
-                           "Python relies on indentation to define code blocks, and inconsistent indentation "
-                           "can lead to this error.",
-            "fix_suggestion": "Check the indentation of your code. Make sure you use consistent spaces or tabs. "
-                              "Avoid mixing both."
-        }
+        "explanation": "SyntaxError: Unexpected indent. This error occurs when there is an unexpected indentation "
+                       "in the code. Python relies on indentation to define code blocks, and inconsistent indentation "
+                       "can lead to this error. To fix this, check the indentation of your code. Ensure you use consistent "
+                       "spaces or tabs and avoid mixing both."
     }
     
     return jsonify(response), 200
+
+
+# Generate Week Summary
+@user_routes.route('/generate_week_summary', methods=['POST'])
+def generate_week_summary():
+    data = request.get_json()
+    week_id = data.get('week_id')
+
+    if not week_id:
+        return jsonify({'error': 'week_id is required'}), 400
+    
+    return jsonify({'summary': f'Summary for week {week_id} is being generated.'}), 200
+
+
+# Generate Mock
+@user_routes.route('/generate_mock', methods=['POST'])
+def generate_mock():
+    data = request.get_json()
+    topic = data.get('topic')
+    num_questions = data.get('num_questions', 10)
+
+    if not topic:
+        return jsonify({'error': 'topic is required'}), 400
+    
+    return jsonify({'mock': f'Mock test for topic {topic} with {num_questions} questions is being generated.'}), 200
+
+# Generate Notes
+@user_routes.route('/generate_notes', methods=['POST'])
+def generate_notes():
+    data = request.get_json()
+    topic = data.get('topic')
+
+    if not topic:
+        return jsonify({'error': 'topic is required'}), 400
+    
+    return jsonify({'notes': f'Notes for topic {topic} are being generated.'}), 200
+
+
+# Get Topic Recommendation
+
+# Helper Function: Map Questions to Topics
+def map_question_to_topic(question_text):
+    """Maps questions to relevant topics based on keywords."""
+    topic_keywords = {
+        "Loops": ["for loop", "while loop", "iteration"],
+        "Conditions": ["if statement", "switch case", "conditional"],
+        "Functions": ["def", "function", "return"],
+        "Lists": ["list", "append", "index", "pop"],
+        "Strings": ["string", "char", "substring", "concatenate"]
+    }
+
+    for topic, keywords in topic_keywords.items():
+        if any(keyword in question_text.lower() for keyword in keywords):
+            return topic
+
+    return "General Programming Concepts"  # Default topic if no match found
+
+# Topic Recommendation
+@user_routes.route('/topic_recommendation', methods=['POST'])
+def topic_recommendation():
+    """Identifies incorrectly answered questions and recommends topics."""
+    data = request.get_json()
+
+    submitted_answers = data.get("answers", [])  # List of {"question_id": X, "selected_option_id": Y}
+
+    if not submitted_answers:
+        return jsonify({"message": "answers are required"}), 400
+
+    topic_recommendation = []
+
+    for answer in submitted_answers:
+        question_id = answer.get("question_id")
+        selected_option_id = answer.get("selected_option_id")
+
+        # Get correct option for the question
+        correct_option = QuestionOption.query.filter_by(question_id=question_id, is_correct=True).first()
+
+        if correct_option and correct_option.id != selected_option_id:
+            question = AssignmentQuestion.query.get(question_id)
+            topic = map_question_to_topic(question.question_text)  # Function to get topic
+            
+            topic_recommendation.append(topic)
+
+    return jsonify({"topic_recommendation": topic_recommendation}), 200
+
 
 
 # ---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
