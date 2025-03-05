@@ -1,0 +1,1 @@
+INSERT INTO chat_logs (user_id, query, response, created_at) VALUES (2, 'What is Machine Learning?', 'Machine Learning is a subset of AI that enables systems to learn from data.', '2025-03-04 23:17:29');

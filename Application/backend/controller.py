@@ -2,10 +2,12 @@ from flask import Blueprint, request, jsonify, render_template, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption,ProgrammingAssignment,ChatHistory
 from extension import db 
+from sqlalchemy.sql import text
 import os
 from token_validation import generate_token
 from datetime import datetime
 import pdfkit
+import platform
 
 
 user_routes = Blueprint('user_routes', __name__)
@@ -21,12 +23,27 @@ def signup():
     password = data.get('password')
     role = data.get('role', 'student')  # Default to 'student' if not provided
     google_id = data.get('google_id')
+    
+    # Check if the username exists only if provided
+    if username and User.query.filter_by(username=username).first():
+        return jsonify({"message": "Username already exists"}), 400
+
+    # Check if the email is provided
+    if not email:
+        return jsonify({"message": "Email is required"}), 400
+    
     # Check if the email already exists
     if User.query.filter_by(email=email).first():
         return jsonify({"message": "Email already exists"}), 400
 
-    # Hash the password and save the new user
-    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+    # Password validation (required if not signing up via Google)
+    if not google_id and not password:
+        return jsonify({"message": "Password is required"}), 400
+
+    # If signing up via Google, password should be None
+    hashed_password = generate_password_hash(password, method='pbkdf2:sha256') if password else None
+
+    # Create and save new user
     new_user = User(
         username=username,
         email=email,
@@ -46,16 +63,31 @@ def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
+    
+    # Email must be provided
+    if not email:
+        return jsonify({"message": "Email is required"}), 400
 
-    # Validate user credentials
+     # Find user by email
     user = User.query.filter_by(email=email).first()
-    if not user or not check_password_hash(user.password, password):
+    if not user:
+        return jsonify({"message": "Invalid email or password"}), 401
+
+    # If user has Google ID, they should not log in with a password
+    if user.google_id:
+        return jsonify({"message": "Please use Google Sign-In"}), 403
+
+    # Password must be provided for normal login
+    if not password:
+        return jsonify({"message": "Password is required"}), 400
+
+    # Check if the password is correct
+    if not check_password_hash(user.password, password):
         return jsonify({"message": "Invalid email or password"}), 401
 
     # Generate authentication token
     token = generate_token(user.id)
     return jsonify({"access_token": token, "message": "Login successful"}), 200
-
 
 
 
@@ -67,74 +99,143 @@ def create_week():
     data = request.get_json()
     week_number = data.get('week_number')
     title = data.get('title')
+    
+    # Validate required fields with proper type checking
+    if not isinstance(week_number, int) or week_number <= 0:
+        return jsonify({"success": False, "message": "Invalid week number. It must be a positive integer"}), 400
+    
+    if not title or not isinstance(title, str):
+        return jsonify({"success": False, "message": "Title is required and must be a string"}), 400
 
     # Check if the week already exists
     existing_week = Week.query.filter_by(week_number=week_number).first()
     if existing_week:
-        return jsonify({"message":"week already exists."}),409
+        return jsonify({"success": False, "message": "Week already exists"}), 409
     
-    # Create and save a new week
-    new_week =  Week(week_number=week_number, title=title)
-    db.session.add(new_week)
-    db.session.commit()
+    try:
+        # Create and save a new week
+        new_week = Week(week_number=week_number, title=title)
+        db.session.add(new_week)
+        db.session.commit()
 
-    return jsonify({"message": "new week added successfully"}), 201
-
+        return jsonify({"success": True, "message": "New week added successfully", "week_id": new_week.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+    
+    
 # Get All Weeks - Retrieves a list of all weeks
 @user_routes.route('/weeks', methods=['GET'])
 def get_weeks():
-    weeks = Week.query.all()
-    return jsonify([{
-        "id": week.id,
-        "week_number": week.week_number,
-        "title": week.title
-    } for week in weeks]), 200
+    try:
+        # Fetch all weeks from the database
+        weeks = Week.query.all()
+
+        # If no weeks exist, return an empty list with a success message
+        if not weeks:
+            return jsonify({"success": True, "message": "No weeks found", "weeks": []}), 200
+
+        # Return the list of weeks with a success message
+        return jsonify({
+            "success": True,
+            "message": "Weeks retrieved successfully",
+            "weeks": [{
+                "id": week.id,
+                "week_number": week.week_number,
+                "title": week.title
+            } for week in weeks]
+        }), 200
+
+    except Exception as e:
+        # Handle any database-related errors
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+
 
 # Get Week Details - Retrieves details of a specific week by ID
 @user_routes.route('/weeks/<int:week_id>', methods=['GET'])
 def get_week_details(week_id):
-    week = Week.query.get(week_id)
-    if not week:
-        return jsonify({"message": "Week not found"}), 404
+    try:
+        # Fetch the week from the database by ID
+        week = Week.query.get(week_id)
 
-    return jsonify({
-        "id": week.id,
-        "week_number": week.week_number,
-        "title": week.title,
-        "lectures": [{"id": lec.id, "title": lec.title, "video_url": lec.video_url} for lec in week.lectures],
-        "assignments": [{"id": assgn.id, "title": assgn.title, "type": assgn.type} for assgn in week.assignments]
-    }), 200
+        # If the week does not exist, return a 404 error
+        if not week:
+            return jsonify({"success": False, "message": "Week not found"}), 404
+
+        # Return response with week details, including lectures and assignments
+        return jsonify({
+            "success": True,
+            "message": "Week details retrieved successfully",
+            "week": {
+                "id": week.id,
+                "week_number": week.week_number,
+                "title": week.title,
+                "lectures": [{"id": lec.id, "title": lec.title, "video_id": lec.video_id} for lec in week.lectures],
+                "assignments": [{"id": assgn.id, "title": assgn.title, "assignment_type": assgn.assignment_type} for assgn in week.assignments]
+            }
+        }), 200
+
+    except Exception as e:
+        # Handle unexpected errors
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+
 
 # Update Week - Updates the details of a specific week
 @user_routes.route('/weeks/<int:week_id>', methods=['PUT'])
 def update_week(week_id):
+    # Fetch the week from the database
     week = Week.query.get(week_id)
-    if not week:
-        return jsonify({"message": "Week not found"}), 404
     
+    #If the specified week does not exist, return a 404 error
+    if not week:
+        return jsonify({"success": False, "message": "Week not found"}), 404
+    
+    # Get request data
     data = request.get_json()
 
-    # Update week properties if provided
+    # Validate and update the week_number (if provided)
     if "week_number" in data:
-        week.week_number=data["week_number"]
+        if not isinstance(data["week_number"], int) or data["week_number"] <= 0:
+            return jsonify({"success": False, "message": "Invalid week number. Must be a positive integer"}), 400
+        week.week_number = data["week_number"] # Assign the new value
+
+    # Validate and update the title (if provided)
     if "title" in data:
-        week.title=data["title"]
+        if not isinstance(data["title"], str) or not data["title"].strip():
+            return jsonify({"success": False, "message": "Title must be a non-empty string"}), 400
+        week.title = data["title"] 
 
-    db.session.commit()
+    try:
+        # Commit changes to the database
+        db.session.commit()
+        return jsonify({"success": True, "message": "Week updated successfully"}), 200
+    except Exception as e:
+        # Rollback in case of an error
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
 
-    return jsonify({"message": "week updated successfully"}), 200
 
 # Delete Week - Deletes a specific week from the database
 @user_routes.route('/weeks/<int:week_id>', methods=['DELETE'])
 def delete_week(week_id):
-    week = Week.query.get(week_id)
-    if not week:
-        return jsonify({"message": "Week not found"}), 404
-    
-    db.session.delete(week)
-    db.session.commit()
+    try:
+        # Fetch the week from the database by ID
+        week = Week.query.get(week_id)
 
-    return jsonify({"message": "week delete successfully"}), 200
+        # If the week does not exist, return a 404 error
+        if not week:
+            return jsonify({"success": False, "message": "Week not found"}), 404
+
+        # Delete the week from the database
+        db.session.delete(week)
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "Week deleted successfully"}), 200
+
+    except Exception as e:
+        # Rollback in case of an error
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
 
 
 #-----------------------------------------------------CRUD Operations for Lectures -----------------------------------------------------
@@ -726,9 +827,10 @@ def video_summarizer():
 os.makedirs("chat_logs", exist_ok=True)
 
 # ---------------------------- Store Chat Interaction ----------------------------
+
 @user_routes.route('/chat_history', methods=['POST'])
 def save_chat_history():
-    """API to save user chat interactions as an SQL file and store file path in DB."""
+    """API to save user chat interactions as an SQL file and store file path in DB"""
     data = request.get_json()
     user_id = data.get("user_id")
     query = data.get("query")
@@ -736,30 +838,47 @@ def save_chat_history():
 
     if not all([user_id, query, response]):
         return jsonify({"message": "Missing required fields"}), 400
-
+    
+    # Check if the user exists
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"message": "User ID not found"}), 404
+    
     file_path = f"chat_logs/user_{user_id}_chat.sql"
 
-    # Generate SQL entry
+    # Generate SQL entry 
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    sql_entry = f"INSERT INTO chat_logs (user_id, query, response, created_at) VALUES ({user_id}, '{query.replace("'", "''")}', '{response.replace("'", "''")}', '{timestamp}');\n"
+    
+    sql_entry = (
+        "INSERT INTO chat_logs (user_id, query, response, created_at) VALUES "
+        "({}, '{}', '{}', '{}');\n"
+    ).format(user_id, query.replace("'", "''"), response.replace("'", "''"), timestamp)
 
-    # Append to the file
-    with open(file_path, "a", encoding="utf-8") as f:
-        f.write(sql_entry)
+    try:
+        # Append to the SQL file
+        with open(file_path, "a", encoding="utf-8") as f:
+            f.write(sql_entry)
 
-    # Store file path in the database if not already stored
-    chat_record = ChatHistory.query.filter_by(user_id=user_id).first()
-    if not chat_record:
-        chat_record = ChatHistory(user_id=user_id, file_path=file_path)
-        db.session.add(chat_record)
+        # Store file path in the database if not already stored
+        sql_store_path = text(
+            "INSERT INTO chat_history (user_id, file_path) VALUES (:user_id, :file_path) "
+            "ON CONFLICT (user_id) DO NOTHING;"
+        )
+
+        db.session.execute(sql_store_path, {"user_id": user_id, "file_path": file_path})
         db.session.commit()
 
-    return jsonify({"message": "Chat history saved successfully", "file_path": file_path}), 201
+        return jsonify({"message": "Chat history saved successfully", "file_path": file_path}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to save chat history: {str(e)}"}), 500 
+
 
 # ---------------------------- Get Chat History ----------------------------
 @user_routes.route('/chat_history/<int:user_id>', methods=['GET'])
 def get_chat_history(user_id):
-    """API to retrieve chat history file path for a user."""
+    """API to retrieve chat history file path for a user"""
     chat_record = ChatHistory.query.filter_by(user_id=user_id).first()
     if not chat_record:
         return jsonify({"message": "No chat history found"}), 404
@@ -795,6 +914,11 @@ def generate_week_summary():
     if not week_id:
         return jsonify({'error': 'week_id is required'}), 400
     
+    # Check if the week exists
+    week = Week.query.get(week_id)
+    if not week:
+        return jsonify({"message": "Week not found"}), 404
+    
     return jsonify({'summary': f'Summary for week {week_id} is being generated.'}), 200
 
 
@@ -828,18 +952,18 @@ def generate_notes():
 def map_question_to_topic(question_text):
     """Maps questions to relevant topics based on keywords."""
     topic_keywords = {
-        "Loops": ["for loop", "while loop", "iteration"],
-        "Conditions": ["if statement", "switch case", "conditional"],
-        "Functions": ["def", "function", "return"],
-        "Lists": ["list", "append", "index", "pop"],
-        "Strings": ["string", "char", "substring", "concatenate"]
+        "Data Visualization Libraries": ["Matplotlib", "Seaborn", "data visualization"],
+        "Histogram & Distribution Plots": ["histogram", "distribution", "continuous variable"],
+        "Scatter Plot & Relationships": ["scatter plot", "relationship", "two continuous variables"],
+        "Categorical Data Visualization": ["bar chart", "pie chart", "categorical data"],
+        "Advantages of Seaborn": ["Seaborn", "themes", "aesthetics", "syntax", "Pandas DataFrames"]
     }
 
     for topic, keywords in topic_keywords.items():
         if any(keyword in question_text.lower() for keyword in keywords):
             return topic
 
-    return "General Programming Concepts"  # Default topic if no match found
+    return "General Data Visualization Concepts"  # Default topic if no match found
 
 # Topic Recommendation
 @user_routes.route('/topic_recommendation', methods=['POST'])
