@@ -21,9 +21,18 @@ def signup():
     password = data.get('password')
     role = data.get('role', 'student')  # Default to 'student' if not provided
     google_id = data.get('google_id')
+
+    # Validate required fields
+    if not username or not email or not password:
+        return jsonify({"message": "Username, email, and password are required"}), 400
+
     # Check if the email already exists
     if User.query.filter_by(email=email).first():
         return jsonify({"message": "Email already exists"}), 400
+
+    # Check if the username already exists
+    if User.query.filter_by(username=username).first():
+        return jsonify({"message": "Username already exists"}), 400
 
     # Hash the password and save the new user
     hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
@@ -35,10 +44,15 @@ def signup():
         google_id=google_id
     )
 
-    db.session.add(new_user)
-    db.session.commit()
+    try:
+        db.session.add(new_user)
+        db.session.commit()
+        return jsonify({"message": "User registered successfully"}), 201
 
-    return jsonify({"message": "User registered successfully"}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"An error occurred: {str(e)}"}), 500
+
 
 # Login Route - Authenticates a user and returns an access token
 @user_routes.route('/login', methods=['POST'])
