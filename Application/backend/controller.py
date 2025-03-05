@@ -9,86 +9,98 @@ from datetime import datetime
 import pdfkit
 import platform
 
+from flask_jwt_extended import create_access_token
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from werkzeug.security import generate_password_hash
+
+
 
 user_routes = Blueprint('user_routes', __name__)
 
 # ------------------------- User Authentication Routes -------------------------
 
 # Signup Route - Registers a new user
-@user_routes.route('/signup', methods=['POST'])
-def signup():
+# Environment variables
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')  # Set your Google Client ID
+JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')  # Set a secure JWT secret key
+
+# Google Sign-Up Route
+@user_routes.route('/google_signup', methods=['POST'])
+def google_signup():
     data = request.get_json()
-    username = data.get('username')
-    email = data.get('email')
-    password = data.get('password')
-    role = data.get('role', 'student')  # Default to 'student' if not provided
-    google_id = data.get('google_id')
-    
-    # Check if the username exists only if provided
-    if username and User.query.filter_by(username=username).first():
-        return jsonify({"Success": False, "message": "Username already exists"}), 400
+    token = data.get('id_token')
 
-    # Check if the email is provided
-    if not email:
-        return jsonify({"Success": False, "message": "Email is required"}), 400
-    
-    # Check if the email already exists
-    if User.query.filter_by(email=email).first():
-        return jsonify({"Success": False, "message": "Email already exists"}), 400
+    if not token:
+        return jsonify({"Success": False, "message": "Google ID token is required"}), 400
 
-    # Password validation (required if not signing up via Google)
-    if not google_id and not password:
-        return jsonify({"Success": False, "message": "Password is required"}), 400
+    try:
+        # Verify Google ID Token
+        id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+        google_id = id_info.get('sub')  # User's unique Google ID
+        email = id_info.get('email')
+        username = id_info.get('name')  # Fallback username from Google profile
 
-    # If signing up via Google, password should be None
-    hashed_password = generate_password_hash(password, method='pbkdf2:sha256') if password else None
+        # Check if user with this Google ID already exists
+        user = User.query.filter_by(google_id=google_id).first()
+        if user:
+            return jsonify({"Success": False, "message": "User already exists"}), 400
 
-    # Create and save new user
-    new_user = User(
-        username=username,
-        email=email,
-        password=hashed_password,
-        role=role,
-        google_id=google_id
-    )
+        # Check if email is already in use
+        if User.query.filter_by(email=email).first():
+            return jsonify({"Success": False, "message": "Email already exists"}), 400
 
-    db.session.add(new_user)
-    db.session.commit()
+        # Create a new user with Google ID
+        new_user = User(
+            username=username,
+            email=email,
+            password=None,  # No password needed for Google Auth
+            role='student',  # Default role or can be set from data.get('role')
+            google_id=google_id
+        )
+        
+        db.session.add(new_user)
+        db.session.commit()
 
-    return jsonify({"Success": True, "message": "User registered successfully", "user_id": new_user.id}), 201
+        # Generate JWT token
+        token = create_access_token(identity=new_user.id)
+        return jsonify({"Success": True, "access_token": token, "message": "User registered successfully"}), 201
+
+    except ValueError as e:
+        return jsonify({"Success": False, "message": f"Invalid Google token: {str(e)}"}), 400
+
+    except Exception as e:
+        return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
 
 
-# Login Route - Authenticates a user and returns an access token
-@user_routes.route('/login', methods=['POST'])
-def login():
+# Google Login Route
+@user_routes.route('/google_login', methods=['POST'])
+def google_login():
     data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-    
-    # Email must be provided
-    if not email:
-        return jsonify({"Success": False, "message": "Email is required"}), 400
+    token = data.get('id_token')
 
-     # Find user by email
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({"Success": False, "message": "Invalid email or password"}), 401
+    if not token:
+        return jsonify({"Success": False, "message": "Google ID token is required"}), 400
 
-    # If user has Google ID, they should not log in with a password
-    if user.google_id:
-        return jsonify({"Success": False, "message": "Please use Google Sign-In"}), 403
+    try:
+        # Verify Google ID Token
+        id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+        google_id = id_info.get('sub')  # User's unique Google ID
 
-    # Password must be provided for normal login
-    if not password:
-        return jsonify({"Success": False, "message": "Password is required"}), 400
+        # Check if the user exists with the provided Google ID
+        user = User.query.filter_by(google_id=google_id).first()
+        if not user:
+            return jsonify({"Success": False, "message": "User not registered"}), 404
 
-    # Check if the password is correct
-    if not check_password_hash(user.password, password):
-        return jsonify({"Success": False, "message": "Invalid email or password"}), 401
+        # Generate JWT token
+        token = create_access_token(identity=user.id)
+        return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
 
-    # Generate authentication token
-    token = generate_token(user.id)
-    return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
+    except ValueError as e:
+        return jsonify({"Success": False, "message": f"Invalid Google token: {str(e)}"}), 400
+
+    except Exception as e:
+        return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
 
 
 
