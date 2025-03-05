@@ -23,21 +23,27 @@ def signup():
     password = data.get('password')
     role = data.get('role', 'student')  # Default to 'student' if not provided
     google_id = data.get('google_id')
+    
+    # Check if the username exists only if provided
+    if username and User.query.filter_by(username=username).first():
+        return jsonify({"Success": False, "message": "Username already exists"}), 400
 
-    # Validate required fields
-    if not username or not email or not password:
-        return jsonify({"message": "Username, email, and password are required"}), 400
-
+    # Check if the email is provided
+    if not email:
+        return jsonify({"Success": False, "message": "Email is required"}), 400
+    
     # Check if the email already exists
     if User.query.filter_by(email=email).first():
-        return jsonify({"message": "Email already exists"}), 400
+        return jsonify({"Success": False, "message": "Email already exists"}), 400
 
-    # Check if the username already exists
-    if User.query.filter_by(username=username).first():
-        return jsonify({"message": "Username already exists"}), 400
+    # Password validation (required if not signing up via Google)
+    if not google_id and not password:
+        return jsonify({"Success": False, "message": "Password is required"}), 400
 
-    # Hash the password and save the new user
-    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+    # If signing up via Google, password should be None
+    hashed_password = generate_password_hash(password, method='pbkdf2:sha256') if password else None
+
+    # Create and save new user
     new_user = User(
         username=username,
         email=email,
@@ -46,14 +52,10 @@ def signup():
         google_id=google_id
     )
 
-    try:
-        db.session.add(new_user)
-        db.session.commit()
-        return jsonify({"message": "User registered successfully"}), 201
+    db.session.add(new_user)
+    db.session.commit()
 
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"message": f"An error occurred: {str(e)}"}), 500
+    return jsonify({"Success": True, "message": "User registered successfully", "user_id": new_user.id}), 201
 
 
 # Login Route - Authenticates a user and returns an access token
@@ -65,28 +67,28 @@ def login():
     
     # Email must be provided
     if not email:
-        return jsonify({"message": "Email is required"}), 400
+        return jsonify({"Success": False, "message": "Email is required"}), 400
 
      # Find user by email
     user = User.query.filter_by(email=email).first()
     if not user:
-        return jsonify({"message": "Invalid email or password"}), 401
+        return jsonify({"Success": False, "message": "Invalid email or password"}), 401
 
     # If user has Google ID, they should not log in with a password
     if user.google_id:
-        return jsonify({"message": "Please use Google Sign-In"}), 403
+        return jsonify({"Success": False, "message": "Please use Google Sign-In"}), 403
 
     # Password must be provided for normal login
     if not password:
-        return jsonify({"message": "Password is required"}), 400
+        return jsonify({"Success": False, "message": "Password is required"}), 400
 
     # Check if the password is correct
     if not check_password_hash(user.password, password):
-        return jsonify({"message": "Invalid email or password"}), 401
+        return jsonify({"Success": False, "message": "Invalid email or password"}), 401
 
     # Generate authentication token
     token = generate_token(user.id)
-    return jsonify({"access_token": token, "message": "Login successful"}), 200
+    return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
 
 
 
@@ -242,531 +244,772 @@ def delete_week(week_id):
 # Create Lecture - Adds a new lecture to a specific week
 @user_routes.route('/lectures', methods=['POST'])
 def create_lecture():
-    data = request.get_json()
-    week_id = data.get('week_id')
-    title = data.get('title')
-    video_id = data.get("video_id")
+    try:
+        data = request.get_json()
+        week_id = data.get('week_id')
+        title = data.get('title')
+        video_id = data.get('video_id')
 
-    # Validate input fields
-    if "week_id" not in data or "title" not in data or "video_id" not in data:
-        return jsonify({"message" : "All fields are required"}),400
-    
-    # Check if the associated week exists
-    week = Week.query.get(week_id)
-    if not week:
-        return jsonify({"message": "Week not found"}), 404
-    
-    # Check if the lecture title already exists
-    existing_lecture = Lecture.query.filter_by(title = title).first()
-    if existing_lecture:
-        return jsonify({"message":"lecture already exists."}),409
-    
-    # Create and save the new lecture
-    new_lecture =  Lecture(week_id=week_id, title=title, video_id = video_id)
-    db.session.add(new_lecture)
-    db.session.commit()
+        # Validate required fields with proper type checking
+        if not isinstance(week_id, int) or week_id <= 0:
+            return jsonify({"success": False, "message": "Invalid week ID. It must be a positive integer"}), 400
+        
+        if not title or not isinstance(title, str):
+            return jsonify({"success": False, "message": "Title is required and must be a string"}), 400
+        
+        if not video_id or not isinstance(video_id, str):
+            return jsonify({"success": False, "message": "Video ID is required and must be a string"}), 400
 
-    return jsonify({"message": "new lecture added successfully"}), 201
+        # Check if the associated week exists
+        week = Week.query.get(week_id)
+        if not week:
+            return jsonify({"success": False, "message": "Week not found"}), 404
+
+        # Check if the lecture title already exists in the same week
+        existing_lecture = Lecture.query.filter_by(week_id=week_id, title=title).first()
+        if existing_lecture:
+            return jsonify({"success": False, "message": "Lecture already exists in this week"}), 409
+
+        # Create and save the new lecture
+        new_lecture = Lecture(week_id=week_id, title=title, video_id=video_id)
+        db.session.add(new_lecture)
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "New lecture added successfully", "lecture_id": new_lecture.id}), 201
+
+    except Exception as e:
+        # Rollback in case of an error
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+
 
 # Get All Lectures - Retrieves a list of all lectures
 @user_routes.route('/lectures', methods=['GET'])
 def get_lectures():
-    lectures = Lecture.query.all()
-    return jsonify([{
-        "id": lecture.id,
-        "week_id": lecture.week_id,
-        "title": lecture.title,
-        "video_id":lecture.video_id,
-    } for lecture in lectures]), 200
+    try:
+        # Fetch all lectures from the database
+        lectures = Lecture.query.all()
+
+        # If no lectures exist, return an empty list with a message
+        if not lectures:
+            return jsonify({"success": True, "message": "No lectures found", "lectures": []}), 200
+
+        # Return the list of lectures with success message
+        return jsonify({
+            "success": True,
+            "message": "Lectures retrieved successfully",
+            "lectures": [{
+                "id": lecture.id,
+                "week_id": lecture.week_id,
+                "title": lecture.title,
+                "video_id": lecture.video_id
+            } for lecture in lectures]
+        }), 200
+
+    except Exception as e:
+        # Handle unexpected errors and return a database error message
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
 
 
 # Get Lecture Details - Retrieves details of a specific lecture by ID
 @user_routes.route('/lectures/<int:lecture_id>', methods=['GET'])
 def get_lecture_details(lecture_id):
-    lecture = Lecture.query.get(lecture_id)
-    if not lecture:
-        return jsonify({"message": "lecture not found"}), 404
+    try:
+        # Fetch the lecture by ID from the database
+        lecture = Lecture.query.get(lecture_id)
 
-    return jsonify({
-        "id": lecture.id,
-        "week_id": lecture.week_id,
-        "title": lecture.title,
-        "video_id": lecture.video_id,
-    }), 200
+        # If the lecture does not exist, return a 404 error
+        if not lecture:
+            return jsonify({"success": False, "message": "Lecture not found"}), 404
+
+        # Return the lecture details with a success message
+        return jsonify({
+            "success": True,
+            "message": "Lecture retrieved successfully",
+            "lecture": {
+                "id": lecture.id,
+                "week_id": lecture.week_id,
+                "title": lecture.title,
+                "video_id": lecture.video_id
+            }
+        }), 200
+
+    except Exception as e:
+        # Handle unexpected errors and return a database error message
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+
 
 # Update Lecture - Updates the details of a specific lecture
 @user_routes.route('/lectures/<int:lecture_id>', methods=['PUT'])
 def update_lecture(lecture_id):
-    lecture = Lecture.query.get(lecture_id)
-    if not lecture:
-        return jsonify({"message": "lecture not found"}), 404
-    
-    data = request.get_json()
+    try:
+        # Fetch the lecture from the database
+        lecture = Lecture.query.get(lecture_id)
 
-    # Update lecture properties if provided
-    if "week_id" in data:
-        lecture.week_id=data["week_id"]
-    if "title" in data:
-        lecture.title=data["title"]
-    if "video_id" in data:
-        lecture.video_id=data["video_id"]
+        # If lecture does not exist, return a 404 error
+        if not lecture:
+            return jsonify({"success": False, "message": "Lecture not found"}), 404
 
-    db.session.commit()
+        # Parse the JSON request body
+        data = request.get_json()
 
-    return jsonify({"message": "Lecture updated successfully"}), 200
+        # Validate that data is provided
+        if not data:
+            return jsonify({"success": False, "message": "No data provided"}), 400
+
+        # Update lecture properties only if present in the request
+        if "week_id" in data:
+            if not isinstance(data["week_id"], int):
+                return jsonify({"success": False, "message": "Invalid week_id format"}), 400
+            lecture.week_id = data["week_id"]
+
+        if "title" in data:
+            if not isinstance(data["title"], str) or not data["title"].strip():
+                return jsonify({"success": False, "message": "Invalid title format"}), 400
+            lecture.title = data["title"]
+
+        if "video_id" in data:
+            if not isinstance(data["video_id"], str) or not data["video_id"].strip():
+                return jsonify({"success": False, "message": "Invalid video_id format"}), 400
+            lecture.video_id = data["video_id"]
+
+        # Commit the changes to the database
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "Lecture updated successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+
 
 # Delete Lecture - Deletes a specific lecture from the database
 @user_routes.route('/lectures/<int:lecture_id>', methods=['DELETE'])
 def delete_lecture(lecture_id):
-    lecture = Lecture.query.get(lecture_id)
-    if not lecture:
-        return jsonify({"message": "Lecture not found"}), 404
-    
-    db.session.delete(lecture)
-    db.session.commit()
+    try:
+        # Fetch the lecture from the database
+        lecture = Lecture.query.get(lecture_id)
 
-    return jsonify({"message": "Lecture delete successfully"}), 200
+        # If lecture does not exist, return a 404 error
+        if not lecture:
+            return jsonify({"success": False, "message": "Lecture not found"}), 404
+
+        # Delete the lecture
+        db.session.delete(lecture)
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "Lecture deleted successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
 
 #-----------------------------------------------------CRUD - ASSIGNMENT-----------------------------------------------------
 
 # Create a new assignment
 @user_routes.route('/assignments', methods=['POST'])
 def create_assignment():
-    data = request.get_json()
-    week_id = data.get('week_id')
-    title = data.get('title')
-    assignment_type = data.get('assignment_type')
-    due_date = data.get('due_date')
-    
-    # Validate required fields
-    if not week_id or not title or not assignment_type or not due_date:
-        return jsonify({"message" : "All fields are required"}), 400
-    
-    due_date = datetime.strptime(due_date, "%Y-%m-%d")
-    
-    # Check if the week exists
-    week = Week.query.get(week_id)
-    if not week:
-        return jsonify({"message": "Week not found"}), 404
-    
-    # Check if assignment with the same title already exists in this week
-    existing_assignment = Assignment.query.filter_by(title=title, week_id=week_id).first()
-    if existing_assignment:
-        return jsonify({"message": "Assignment already exists in this week."}), 409
-    
-    # Create and save a new assignment
-    new_assignment =  Assignment(week_id=week_id, title=title, assignment_type = assignment_type, due_date=due_date)
-    
-    db.session.add(new_assignment)
-    db.session.commit()
-    
-    return jsonify({"message": "New assignment added successfully"}), 201
+    try:
+        data = request.get_json()
+        
+        # Extract fields from the request body
+        week_id = data.get('week_id')
+        title = data.get('title')
+        assignment_type = data.get('assignment_type')
+        due_date = data.get('due_date')
 
-# Get all assignments
+        # Validate required fields
+        if not all([week_id, title, assignment_type, due_date]):
+            return jsonify({'success': False, 'message': 'All fields are required'}), 400
+        
+        # Validate due_date format
+        try:
+            due_date = datetime.strptime(due_date, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid date format. Use YYYY-MM-DD'}), 400
+        
+        # Check if the associated week exists
+        week = Week.query.get(week_id)
+        if not week:
+            return jsonify({'success': False, 'message': 'Week not found'}), 404
+
+        # Check if an assignment with the same title exists in the same week
+        existing_assignment = Assignment.query.filter_by(title=title, week_id=week_id).first()
+        if existing_assignment:
+            return jsonify({'success': False, 'message': 'Assignment already exists in this week'}), 409
+
+        # Create a new assignment and save it to the database
+        new_assignment = Assignment(
+            week_id=week_id,
+            title=title,
+            assignment_type=assignment_type,
+            due_date=due_date
+        )
+        db.session.add(new_assignment)
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'New assignment added successfully', 'assignment_id': new_assignment.id}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Database error', 'error': str(e)}), 500
+
+
+# Get All Assignments - Retrieves a list of all assignments
 @user_routes.route('/assignments', methods=['GET'])
 def get_assignments():
-    assignments = Assignment.query.all()
-    return jsonify([{
-        "id": assignment.id,
-        "week_id": assignment.week_id,
-        "title": assignment.title,
-        "assignment_type": assignment.assignment_type,
-        "due_date": assignment.due_date,
-        "total_points": assignment.total_points
-    } for assignment in assignments]), 200
+    try:
+        assignments = Assignment.query.all()
 
-# Get a specific assignment by ID
+        # If no assignments are found, return an empty list with a message
+        if not assignments:
+            return jsonify({"success": True, "message": "No assignments found", "assignments": []}), 200
+
+        return jsonify({
+            "success": True,
+            "message": "Assignments retrieved successfully",
+            "assignments": [{
+                "id": assignment.id,
+                "week_id": assignment.week_id,
+                "title": assignment.title,
+                "assignment_type": assignment.assignment_type,
+                "due_date": assignment.due_date.strftime('%Y-%m-%d'),  # Convert date to string format
+                "total_points": assignment.total_points
+            } for assignment in assignments]
+        }), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+
+
+# Get Assignment Details - Retrieves details of a specific assignment by ID
 @user_routes.route('/assignments/<int:assignment_id>', methods=['GET'])
 def get_assignment(assignment_id):
-    assignment = Assignment.query.get(assignment_id)
-    if not assignment:
-        return jsonify({"message": "Assignment not found"}), 404
+    try:
+        assignment = Assignment.query.get(assignment_id)
 
-    return jsonify({
-        "id": assignment.id,
-        "week_id": assignment.week_id,
-        "title": assignment.title,
-        "assignment_type": assignment.assignment_type,
-        "due_date": assignment.due_date,
-        "total_points": assignment.total_points,
-        "questions": [
-            {
-                "id": question.id,
-                "question_text": question.question_text,
-                "question_type": question.question_type,
-                "points": question.points,
-                "options": [
+        # Check if the assignment exists
+        if not assignment:
+            return jsonify({"success": False, "message": "Assignment not found"}), 404
+
+        return jsonify({
+            "success": True,
+            "message": "Assignment retrieved successfully",
+            "assignment": {
+                "id": assignment.id,
+                "week_id": assignment.week_id,
+                "title": assignment.title,
+                "assignment_type": assignment.assignment_type,
+                "due_date": assignment.due_date.strftime('%Y-%m-%d'),  # Convert date to string format
+                "total_points": assignment.total_points,
+                "questions": [
                     {
-                        "id": option.id,
-                        "option_text": option.option_text,
-                        "is_correct": option.is_correct
-                    } for option in question.options
+                        "id": question.id,
+                        "question_text": question.question_text,
+                        "question_type": question.question_type,
+                        "points": question.points,
+                        "options": [
+                            {
+                                "id": option.id,
+                                "option_text": option.option_text,
+                                "is_correct": option.is_correct
+                            } for option in question.options
+                        ]
+                    } for question in assignment.questions
                 ]
-            } for question in assignment.questions
-        ]
-    }), 200
+            }
+        }), 200
 
-# Update an existing assignment
+    except Exception as e:
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+
+
+## Update Assignment - Updates details of a specific assignment
 @user_routes.route('/assignments/<int:assignment_id>', methods=['PUT'])
 def update_assignment(assignment_id):
-    assignment = Assignment.query.get(assignment_id)
-    if not assignment:
-        return jsonify({"message": "Assignment not found"}), 404
-    
-    data = request.get_json()
+    try:
+        assignment = Assignment.query.get(assignment_id)
 
-    # Update fields if provided in the request
-    if "title" in data:
-        assignment.title = data["title"]
-    if "assignment_type" in data:
-        assignment.assignment_type = data["assignment_type"]
-    if "due_date" in data:
-        due_date = datetime.strptime(data["due_date"], "%Y-%m-%d")
-        assignment.due_date = due_date
-    if "total_points" in data:
-        assignment.total_points = data["total_points"]
+        # Check if assignment exists
+        if not assignment:
+            return jsonify({"success": False, "message": "Assignment not found"}), 404
 
-    db.session.commit()
+        data = request.get_json()
+        
+        # Update fields only if they are provided in the request
+        if "title" in data:
+            assignment.title = data["title"]
+        if "assignment_type" in data:
+            assignment.assignment_type = data["assignment_type"]
+        if "due_date" in data:
+            try:
+                assignment.due_date = datetime.strptime(data["due_date"], "%Y-%m-%d")
+            except ValueError:
+                return jsonify({"success": False, "message": "Invalid due_date format. Use YYYY-MM-DD."}), 400
+        if "total_points" in data:
+            assignment.total_points = data["total_points"]
 
-    return jsonify({"message": "Assignment updated successfully"}), 200
+        db.session.commit()
 
-# Delete an assignment
+        return jsonify({"success": True, "message": "Assignment updated successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+
+
+# Delete Assignment - Deletes a specific assignment from the database
 @user_routes.route('/assignments/<int:assignment_id>', methods=['DELETE'])
 def delete_assignment(assignment_id):
-    assignment = Assignment.query.get(assignment_id)
-    if not assignment:
-        return jsonify({"message": "Assignment not found"}), 404
-    
-    db.session.delete(assignment)
-    db.session.commit()
+    try:
+        assignment = Assignment.query.get(assignment_id)
 
-    return jsonify({"message": "Assignment deleted successfully"}), 200
+        # Check if assignment exists
+        if not assignment:
+            return jsonify({"success": False, "message": "Assignment not found"}), 404
+
+        # Delete the assignment
+        db.session.delete(assignment)
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "Assignment deleted successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
 
 #-----------------------------------------------------CRUD - ASSIGNMENT QUESTION-----------------------------------------------------
 
-# Create a new assignment question
+# Create Assignment Question - Adds a new question to a specific assignment
 @user_routes.route('/assignment_questions', methods=['POST'])
 def create_assignment_question():
-    data = request.get_json()
-    assignment_id = data.get('assignment_id')
-    question_text = data.get('question_text')
-    question_type = data.get('question_type')
-    points = data.get('points')
+    try:
+        data = request.get_json()
+        assignment_id = data.get('assignment_id')
+        question_text = data.get('question_text')
+        question_type = data.get('question_type')
+        points = data.get('points')
 
-     # Validate required fields
-    if not assignment_id or not question_text or not question_type or not points:
-        return jsonify({"message": "All fields are required"}), 400
-
-    # Check if the assignment exists
-    assignment = Assignment.query.get(assignment_id)
-    if not assignment:
-        return jsonify({"message": "Assignment not found"}), 404
-
-    # Create a new question for the assignment
-    new_question = AssignmentQuestion(
-        assignment_id=assignment_id,
-        question_text=question_text,
-        question_type=question_type,
-        points=points
-    )
-
-    db.session.add(new_question)
+        # Validate required fields
+        if not assignment_id or not question_text or not question_type or points is None:
+            return jsonify({"success": False, "message": "All fields are required"}), 400
     
-    # Update total points for the assignment
-    assignment.total_points += points
-    
-    db.session.commit()
+        # Ensure points is a positive integer
+        if not isinstance(points, int) or points < 0:
+            return jsonify({"success": False, "message": "Points must be a non-negative integer"}), 400
 
-    return jsonify({"message": "New assignment question added successfully"}), 201
+        # Check if the assignment exists
+        assignment = Assignment.query.get(assignment_id)
+        if not assignment:
+            return jsonify({"success": False, "message": "Assignment not found"}), 404
 
-# Retrieve all assignment questions
+        # Create a new question for the assignment
+        new_question = AssignmentQuestion(
+            assignment_id=assignment_id,
+            question_text=question_text,
+            question_type=question_type,
+            points=points
+        )
+
+        db.session.add(new_question)
+
+        # Update total points for the assignment
+        assignment.total_points += points
+
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "New assignment question added successfully", "question_id": new_question.id}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+
+
+# Retrieve All Assignment Questions - Fetches all questions across assignments
 @user_routes.route('/assignment_questions', methods=['GET'])
 def get_assignment_questions():
-    questions = AssignmentQuestion.query.all()
-    return jsonify([{
-        "id": question.id,
-        "assignment_id": question.assignment_id,
-        "question_text": question.question_text,
-        "question_type": question.question_type,
-        "points": question.points
-    } for question in questions]), 200
+    try:
+        # Fetch all assignment questions from the database
+        questions = AssignmentQuestion.query.all()
+
+        # If no questions exist, return an empty list with a message
+        if not questions:
+            return jsonify({"success": True, "message": "No assignment questions found", "questions": []}), 200
+
+        # Prepare response data
+        question_list = [{
+            "id": question.id,
+            "assignment_id": question.assignment_id,
+            "question_text": question.question_text,
+            "question_type": question.question_type,
+            "points": question.points
+        } for question in questions]
+
+        return jsonify({"success": True, "questions": question_list}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
 
 # Retrieve a specific assignment question by ID
 @user_routes.route('/assignment_questions/<int:question_id>', methods=['GET'])
 def get_assignment_question(question_id):
-    question = AssignmentQuestion.query.get(question_id)
-    if not question:
-        return jsonify({"message": "Assignment question not found"}), 404
+    try:
+        question = AssignmentQuestion.query.get(question_id)
+        if not question:
+            return jsonify({'success': False, 'message': 'Assignment question not found'}), 404
 
-    return jsonify({
-        "id": question.id,
-        "assignment_id": question.assignment_id,
-        "question_text": question.question_text,
-        "question_type": question.question_type,
-        "points": question.points,
-        "options": [
-            {
-                "id": option.id, 
-                "option_text": option.option_text, 
-                "is_correct": option.is_correct
-            } for option in question.options
-        ]
-    }), 200
+        return jsonify({'success': True, 'question': {
+            'id': question.id,
+            'assignment_id': question.assignment_id,
+            'question_text': question.question_text,
+            'question_type': question.question_type,
+            'points': question.points,
+            'options': [{
+                'id': option.id,
+                'option_text': option.option_text,
+                'is_correct': option.is_correct
+            } for option in question.options]
+        }}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'An error occurred', 'error': str(e)}), 500
 
 # Update an existing assignment question
 @user_routes.route('/assignment_questions/<int:question_id>', methods=['PUT'])
 def update_assignment_question(question_id):
-    question = AssignmentQuestion.query.get(question_id)
-    if not question:
-        return jsonify({"message": "Assignment question not found"}), 404
+    try:
+        question = AssignmentQuestion.query.get(question_id)
+        if not question:
+            return jsonify({'success': False, 'message': 'Assignment question not found'}), 404
 
-    data = request.get_json()
+        data = request.get_json()
 
-    if "question_text" in data:
-        question.question_text = data["question_text"]
-    if "question_type" in data:
-        question.question_type = data["question_type"]
-    if "points" in data:
-        previous_points = question.points  
-        updated_points = data["points"]   
-        question.points = updated_points
-        
-        # Update the total points of the associated assignment
-        assignment = question.assignment
-        assignment.total_points += (updated_points - previous_points)
-        
-    db.session.commit()
+        if 'question_text' in data:
+            question.question_text = data['question_text']
+        if 'question_type' in data:
+            question.question_type = data['question_type']
+        if 'points' in data:
+            previous_points = question.points
+            updated_points = data['points']
+            question.points = updated_points
 
-    return jsonify({"message": "Assignment question updated successfully"}), 200
+            # Update the total points of the associated assignment
+            assignment = question.assignment
+            assignment.total_points = (assignment.total_points or 0) + (updated_points - previous_points)
 
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Assignment question updated successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'An error occurred', 'error': str(e)}), 500
+    
+    
  # Delete an assignment question
 @user_routes.route('/assignment_questions/<int:question_id>', methods=['DELETE'])
 def delete_assignment_question(question_id):
-    question = AssignmentQuestion.query.get(question_id)
-    if not question:
-        return jsonify({"message": "Assignment question not found"}), 404
+    try:
+        question = AssignmentQuestion.query.get(question_id)
+        if not question:
+            return jsonify({'success': False, 'message': 'Assignment question not found'}), 404
 
-    assignment = question.assignment
-    # Adjust total points for the assignment
-    assignment.total_points -= question.points
+        assignment = question.assignment
+        
+        # Adjust total points for the assignment
+        assignment.total_points = (assignment.total_points or 0) - question.points
+
+        db.session.delete(question)
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Assignment question deleted successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'An error occurred', 'error': str(e)}), 500
     
-    db.session.delete(question)
-    db.session.commit()
-
-    return jsonify({"message": "Assignment question deleted successfully"}), 200
-
+    
 #-----------------------------------------------------CRUD - ASSIGNMENT QUESTION OPTION-----------------------------------------------------
 
 # API to create a new option for an assignment question
 @user_routes.route('/options', methods=['POST'])
 def create_option():
-    data = request.get_json()
-    question_id = data.get('question_id')
-    option_text = data.get('option_text')
-    is_correct = data.get('is_correct')
+    try:
+        # Get the request data
+        data = request.get_json()
+        question_id = data.get('question_id')
+        option_text = data.get('option_text')
+        is_correct = data.get('is_correct')
 
-    # Validate required fields
-    if question_id is None or not option_text or is_correct is None:
-        return jsonify({"message": "All fields are required"}), 400
+        # Validate required fields
+        if question_id is None or not option_text or is_correct is None:
+            return jsonify({"success": False, "message": "All fields are required"}), 400
 
-    # Check if the related assignment question exists
-    question = AssignmentQuestion.query.get(question_id)
-    if not question:
-        return jsonify({"message": "Assignment question not found"}), 404
+        # Check if the related assignment question exists
+        question = AssignmentQuestion.query.get(question_id)
+        if not question:
+            return jsonify({"success": False, "message": "Assignment question not found"}), 404
+
+        # Prevent duplicate options for the same question
+        existing_option = QuestionOption.query.filter_by(option_text=option_text, question_id=question_id).first()
+        if existing_option:
+            return jsonify({"success": False, "message": "Option already exists for this question"}), 409
+
+        # Create and save the new option
+        new_option = QuestionOption(
+            question_id=question_id,
+            option_text=option_text,
+            is_correct=is_correct
+        )
+        db.session.add(new_option)
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "New option added successfully"}), 201
+
+    except Exception as e:
+        # Rollback in case of an error
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
     
-    # Prevent duplicate options for the same question
-    existing_option = QuestionOption.query.filter_by(option_text=option_text, question_id=question_id).first()
-    if existing_option:
-        return jsonify({"message": "Option already exists for this question"}), 409
     
-    # Create and save the new option
-    new_option = QuestionOption(
-        question_id=question_id,
-        option_text=option_text,
-        is_correct=is_correct
-    )
-
-    db.session.add(new_option)
-    db.session.commit()
-
-    return jsonify({"message": "New option added successfully"}), 201
-
 # Retrieve all options for assignment questions
 @user_routes.route('/options', methods=['GET'])
 def get_options():
-    options = QuestionOption.query.all()
-    return jsonify([{
-        "id": option.id,
-        "question_id": option.question_id,
-        "option_text": option.option_text,
-        "is_correct": option.is_correct
-    } for option in options]), 200
+    try:
+        # Fetch all options from the database
+        options = QuestionOption.query.all()
+        
+        return jsonify({"success": True, "options": [{
+            "id": option.id,
+            "question_id": option.question_id,
+            "option_text": option.option_text,
+            "is_correct": option.is_correct
+        } for option in options]}), 200
 
+    except Exception as e:
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+    
+    
 # Retrieve a specific option by its ID
 @user_routes.route('/options/<int:option_id>', methods=['GET'])
 def get_option(option_id):
-    option = QuestionOption.query.get(option_id)
-    if not option:
-        return jsonify({"message": "Option not found"}), 404
+    try:
+        # Fetch the option by ID
+        option = QuestionOption.query.get(option_id)
+        if not option:
+            return jsonify({"success": False, "message": "Option not found"}), 404
 
-    return jsonify({
-        "id": option.id,
-        "question_id": option.question_id,
-        "option_text": option.option_text,
-        "is_correct": option.is_correct
-    }), 200
+        # Return the option details
+        return jsonify({"success": True, "option": {
+            "id": option.id,
+            "question_id": option.question_id,
+            "option_text": option.option_text,
+            "is_correct": option.is_correct
+        }}), 200
 
+    except Exception as e:
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+    
+    
 # Update an existing option by its ID
 @user_routes.route('/options/<int:option_id>', methods=['PUT'])
 def update_option(option_id):
-    option = QuestionOption.query.get(option_id)
-    if not option:
-        return jsonify({"message": "Option not found"}), 404
+    try:
+        # Fetch the option by ID
+        option = QuestionOption.query.get(option_id)
+        if not option:
+            return jsonify({"success": False, "message": "Option not found"}), 404
 
-    data = request.get_json()
+        # Get the request data
+        data = request.get_json()
 
-    # Update option fields if provided
-    if "option_text" in data:
-        option.option_text = data["option_text"]
-    if "is_correct" in data:
-        option.is_correct = data["is_correct"]
+        # Update option fields if provided
+        if "option_text" in data:
+            option.option_text = data["option_text"]
+        if "is_correct" in data:
+            option.is_correct = data["is_correct"]
 
-    db.session.commit()
+        # Commit changes to the database
+        db.session.commit()
 
-    return jsonify({"message": "Option updated successfully"}), 200
+        return jsonify({"success": True, "message": "Option updated successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
 
 # Delete an option by its ID
 @user_routes.route('/options/<int:option_id>', methods=['DELETE'])
 def delete_option(option_id):
-    option = QuestionOption.query.get(option_id)
-    if not option:
-        return jsonify({"message": "Option not found"}), 404
+    try:
+        # Fetch the option by ID
+        option = QuestionOption.query.get(option_id)
+        if not option:
+            return jsonify({"success": False, "message": "Option not found"}), 404
 
-    db.session.delete(option)
-    db.session.commit()
+        # Delete the option from the database
+        db.session.delete(option)
+        db.session.commit()
 
-    return jsonify({"message": "Option deleted successfully"}), 200
+        return jsonify({"success": True, "message": "Option deleted successfully"}), 200
 
-
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+    
+    
 # ---------------------------------------CRUD - ProgrammingAssignment-----------------------------------------------
-# Add a new programming assignment
+
+# Add a New Programming Assignment
 @user_routes.route('/programming_assignments', methods=['POST'])
 def add_ProgrammingAssignment():
-    # Parse JSON data from the request
-    data = request.get_json()
-    assignment_id = data.get('assignment_id')
-    problem_statement = data.get('problem_statement')
-    input_format = data.get('input_format')
-    output_format = data.get('output_format')
-    constraints = data.get('constraints')
-    sample_input = data.get('sample_input')
-    sample_output = data.get('sample_output')
-    test_cases = data.get('test_cases', [])
-    
-    # Validate required fields
-    if not assignment_id or not problem_statement or not input_format or not output_format or not sample_input or not sample_output:
-        return jsonify({"message": "All required fields must be filled"}), 400
-    
-    # Create a new ProgrammingAssignment object
-    new_programming_assignment = ProgrammingAssignment(
-        assignment_id=assignment_id,
-        problem_statement=problem_statement,
-        input_format=input_format,
-        output_format=output_format,
-        constraints=constraints,
-        sample_input=sample_input,
-        sample_output=sample_output
-    )
-    # Set test cases and save to the database
-    new_programming_assignment.set_test_cases(test_cases)
-    db.session.add(new_programming_assignment)
-    db.session.commit()
-    
-    return jsonify({"message": "Programming assignment added successfully"}), 201
+    try:
+        # Parse JSON data from the request
+        data = request.get_json()
+        assignment_id = data.get('assignment_id')
+        problem_statement = data.get('problem_statement')
+        input_format = data.get('input_format')
+        output_format = data.get('output_format')
+        constraints = data.get('constraints')
+        sample_input = data.get('sample_input')
+        sample_output = data.get('sample_output')
+        test_cases = data.get('test_cases', [])
 
+        # Validate required fields
+        if not all([assignment_id, problem_statement, input_format, output_format, sample_input, sample_output]):
+            return jsonify({"success": False, "message": "All required fields must be filled"}), 400
+
+        # Prevent duplicate assignment IDs
+        existing_assignment = ProgrammingAssignment.query.filter_by(assignment_id=assignment_id).first()
+        if existing_assignment:
+            return jsonify({"success": False, "message": "Assignment ID already exists"}), 409
+
+        # Create a new ProgrammingAssignment object
+        new_programming_assignment = ProgrammingAssignment(
+            assignment_id=assignment_id,
+            problem_statement=problem_statement,
+            input_format=input_format,
+            output_format=output_format,
+            constraints=constraints,
+            sample_input=sample_input,
+            sample_output=sample_output
+        )
+        # Set test cases and save to the database
+        new_programming_assignment.set_test_cases(test_cases)
+        db.session.add(new_programming_assignment)
+        db.session.commit()
+        
+        return jsonify({"success": True, "message": "Programming assignment added successfully"}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+    
+    
 # Retrieve a specific programming assignment by ID
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['GET'])
 def get_ProgrammingAssignment(assignment_id):
-    # Fetch the assignment from the database
-    assignment = ProgrammingAssignment.query.get(assignment_id)
-    if not assignment:
-        return jsonify({"message": "Programming assignment not found"}), 404
+    try:
+        # Fetch the assignment from the database
+        assignment = ProgrammingAssignment.query.get(assignment_id)
+        if not assignment:
+            return jsonify({"success": False, "message": "Programming assignment not found"}), 404
+        
+        # Return the assignment details as JSON
+        return jsonify({
+            "success": True,
+            "data": {
+                "id": assignment.id,
+                "assignment_id": assignment.assignment_id,
+                "problem_statement": assignment.problem_statement,
+                "input_format": assignment.input_format,
+                "output_format": assignment.output_format,
+                "constraints": assignment.constraints,
+                "sample_input": assignment.sample_input,
+                "sample_output": assignment.sample_output,
+                "test_cases": assignment.get_test_cases()
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": "Error retrieving assignment", "error": str(e)}), 500
     
-    # Return the assignment details as JSON
-    return jsonify({
-        "id": assignment.id,
-        "assignment_id": assignment.assignment_id,
-        "problem_statement": assignment.problem_statement,
-        "input_format": assignment.input_format,
-        "output_format": assignment.output_format,
-        "constraints": assignment.constraints,
-        "sample_input": assignment.sample_input,
-        "sample_output": assignment.sample_output,
-        "test_cases": assignment.get_test_cases()
-    }), 200
-
+    
 # Update an existing programming assignment
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['PUT'])
 def update_ProgrammingAssignment(assignment_id):
-    assignment = ProgrammingAssignment.query.get(assignment_id)
-    if not assignment:
-        return jsonify({"message": "Programming assignment not found"}), 404
+    try:
+        assignment = ProgrammingAssignment.query.get(assignment_id)
+        if not assignment:
+            return jsonify({"success": False, "message": "Programming assignment not found"}), 404
+        
+        # Parse JSON data and update relevant fields
+        data = request.get_json()
+        if "problem_statement" in data:
+            assignment.problem_statement = data["problem_statement"]
+        if "input_format" in data:
+            assignment.input_format = data["input_format"]
+        if "output_format" in data:
+            assignment.output_format = data["output_format"]
+        if "constraints" in data:
+            assignment.constraints = data["constraints"]
+        if "sample_input" in data:
+            assignment.sample_input = data["sample_input"]
+        if "sample_output" in data:
+            assignment.sample_output = data["sample_output"]
+        if "test_cases" in data:
+            assignment.set_test_cases(data["test_cases"])
+        
+        db.session.commit()
+        return jsonify({"success": True, "message": "Programming assignment updated successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
     
-    # Parse JSON data and update relevant fields
-    data = request.get_json()
-    if "problem_statement" in data:
-        assignment.problem_statement = data["problem_statement"]
-    if "input_format" in data:
-        assignment.input_format = data["input_format"]
-    if "output_format" in data:
-        assignment.output_format = data["output_format"]
-    if "constraints" in data:
-        assignment.constraints = data["constraints"]
-    if "sample_input" in data:
-        assignment.sample_input = data["sample_input"]
-    if "sample_output" in data:
-        assignment.sample_output = data["sample_output"]
-    if "test_cases" in data:
-        assignment.set_test_cases(data["test_cases"])
     
-    db.session.commit()
-    return jsonify({"message": "Programming assignment updated successfully"}), 200
-
 # Delete a specific programming assignment
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['DELETE'])
 def delete_ProgrammingAssignment(assignment_id):
-    assignment = ProgrammingAssignment.query.get(assignment_id)
-    if not assignment:
-        return jsonify({"message": "Programming assignment not found"}), 404
+    try:
+        assignment = ProgrammingAssignment.query.get(assignment_id)
+        if not assignment:
+            return jsonify({"success": False, "message": "Programming assignment not found"}), 404
+        
+        db.session.delete(assignment)
+        db.session.commit()
+        return jsonify({"success": True, "message": "Programming assignment deleted successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
     
-    db.session.delete(assignment)
-    db.session.commit()
-    return jsonify({"message": "Programming assignment deleted successfully"}), 200
-
-
+    
 #-----------------------------------------Score Checking ----------------------------------------------------------------
 # Calculate score based on selected option IDs
 @user_routes.route('/assignments/check_score', methods=['POST'])
 def check_score():
+    # Parse the request data to get the list of selected option IDs
     data = request.get_json()
     option_ids = data.get("option_ids", [])
 
     # Validate the input option IDs
     if not option_ids or not isinstance(option_ids, list):
-        return jsonify({"message": "Invalid input. Provide a list of option IDs."}), 400
+        return jsonify({"success": False, "message": "Invalid input. Provide a list of option IDs."}), 400
 
-    # Fetch all options in a single query
+    # Fetch all options from the database based on provided option IDs
     options = QuestionOption.query.filter(QuestionOption.id.in_(option_ids)).all()
 
+    # Check if any valid options were retrieved
     if not options:
-        return jsonify({"message": "No valid option IDs found."}), 400
+        return jsonify({"success": False, "message": "No valid option IDs found."}), 400
 
-    # Find correct answers 
+    # Identify the correct options by checking the 'is_correct' attribute
     correct_options = [opt for opt in options if opt.is_correct]
-   
+
+    # Calculate the score as the count of correct options
     total_score = len(correct_options)
 
-    return jsonify({"message": "Score calculated successfully", "total_score": total_score}), 200
+    # Return the score with a success message
+    return jsonify({"success": True, "message": "Score calculated successfully", "total_score": total_score}), 200
+
 
 #--------------------------------------------- AI APIs -----------------------------------------------------------------
 
@@ -781,20 +1024,22 @@ def generate_topic_specific_questions():
 
         # Validate input
         if not topic:
-            return jsonify({'error': 'Topic is required'}), 400
+            return jsonify({'success': False, 'message': 'Topic is required'}), 400
 
         # Placeholder response with mock questions
         mock_response = {
-            "questions": [
+            'message': 'Questions generated successfully',
+            'success': True,
+            'questions': [
                 {
-                    "question": f"Sample question 1 about {topic}?",
-                    "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-                    "answer": "Option 1"
+                    'question': f'Sample question 1 about {topic}?',
+                    'options': ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
+                    'answer': 'Option 1'
                 },
                 {
-                    "question": f"Sample question 2 about {topic}?",
-                    "options": ["Option A", "Option B", "Option C", "Option D"],
-                    "answer": "Option B"
+                    'question': f'Sample question 2 about {topic}?',
+                    'options': ['Option A', 'Option B', 'Option C', 'Option D'],
+                    'answer': 'Option B'
                 }
             ][:num_questions]
         }
@@ -802,21 +1047,24 @@ def generate_topic_specific_questions():
         return jsonify(mock_response), 200
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Failed to generate questions', 'error': str(e)}), 500
+
 
 # Video Summarizer API 
 @user_routes.route('/video_summarizer', methods=['POST'])
 def video_summarizer():
+    # Parse request data
     data = request.get_json()
     lecture_id = data.get('lecture_id')
 
-    # Validation
+    # Validate input
     if not lecture_id:
-        return jsonify({"error": "lecture_id is required"}), 400
+        return jsonify({'message': 'lecture_id is required', 'success': False}), 400
 
-    summary = f"Summary of lecture {lecture_id}: This lecture provides a detailed explanation of the topic,covering key concepts and important points in a clear and concise manner."
+    # Generate summary
+    summary = f'Summary of lecture {lecture_id}: This lecture provides a detailed explanation of the topic, covering key concepts and important points in a clear and concise manner.'
 
-    return jsonify({"summary": summary}), 200
+    return jsonify({'message': 'Summary generated successfully', 'success': True, 'summary': summary}), 200
 
 
 
@@ -836,12 +1084,12 @@ def save_chat_history():
     response = data.get("response")
 
     if not all([user_id, query, response]):
-        return jsonify({"message": "Missing required fields"}), 400
+        return jsonify({"success": False, "message": "Missing required fields"}), 400
     
     # Check if the user exists
     user = User.query.get(user_id)
     if not user:
-        return jsonify({"message": "User ID not found"}), 404
+        return jsonify({"success": False, "message": "User ID not found"}), 404
     
     file_path = f"chat_logs/user_{user_id}_chat.sql"
 
@@ -867,133 +1115,172 @@ def save_chat_history():
         db.session.execute(sql_store_path, {"user_id": user_id, "file_path": file_path})
         db.session.commit()
 
-        return jsonify({"message": "Chat history saved successfully", "file_path": file_path}), 201
+        return jsonify({"success": True, "message": "Chat history saved successfully", "file_path": file_path}), 201
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": f"Failed to save chat history: {str(e)}"}), 500 
+        return jsonify({"success": False, "error": f"Failed to save chat history: {str(e)}"}), 500 
 
 
 # ---------------------------- Get Chat History ----------------------------
 @user_routes.route('/chat_history/<int:user_id>', methods=['GET'])
 def get_chat_history(user_id):
-    """API to retrieve chat history file path for a user"""
+    '''API to retrieve chat history file path for a user'''
+    # Fetch chat record for the user
     chat_record = ChatHistory.query.filter_by(user_id=user_id).first()
-    if not chat_record:
-        return jsonify({"message": "No chat history found"}), 404
 
-    return jsonify({"user_id": user_id, "file_path": chat_record.file_path}), 200
+    # Validate if chat history exists
+    if not chat_record:
+        return jsonify({'success': False, 'message': 'No chat history found'}), 404
+
+    return jsonify({'success': True, 'message': 'Chat history retrieved successfully', 'user_id': user_id, 'file_path': chat_record.file_path}), 200
+
     
 # Explain Error API
 @user_routes.route('/explain_error', methods=['POST'])
 def explain_error():
+    '''API to explain errors in a provided code snippet'''
     data = request.get_json()
     code_snippet = data.get('code_snippet')
 
-    # Validation
+    # Validate if code snippet is provided
     if not code_snippet:
-        return jsonify({"error": "Code snippet is required"}), 400
+        return jsonify({'message': 'Code snippet is required', 'success': False}), 400
 
-    response = {
-        "explanation": "SyntaxError: Unexpected indent. This error occurs when there is an unexpected indentation "
+    # Return a mock explanation of the error (this could be dynamically generated)
+    return jsonify({
+        'success': True,
+        'message': 'Error explanation generated successfully',
+        'explanation': "SyntaxError: Unexpected indent. This error occurs when there is an unexpected indentation "
                        "in the code. Python relies on indentation to define code blocks, and inconsistent indentation "
                        "can lead to this error. To fix this, check the indentation of your code. Ensure you use consistent "
                        "spaces or tabs and avoid mixing both."
-    }
-    
-    return jsonify(response), 200
+    }), 200
 
 
 # Generate Week Summary
 @user_routes.route('/generate_week_summary', methods=['POST'])
 def generate_week_summary():
+    '''API to generate a summary for a specific week'''
     data = request.get_json()
     week_id = data.get('week_id')
 
+    # Validate if week_id is provided
     if not week_id:
-        return jsonify({'error': 'week_id is required'}), 400
+        return jsonify({'message': 'week_id is required', 'success': False}), 400
     
-    # Check if the week exists
+    # Check if the week exists in the database
     week = Week.query.get(week_id)
     if not week:
-        return jsonify({"message": "Week not found"}), 404
+        return jsonify({'message': 'Week not found', 'success': False}), 404
     
-    return jsonify({'summary': f'Summary for week {week_id} is being generated.'}), 200
+    # Return the generated summary
+    return jsonify({
+        'message': 'Week summary generated successfully',
+        'success': True,
+        'week_id': week_id,
+        'summary': f'Summary for week {week_id} is generated.'
+    }), 200
 
 
-# Generate Mock
+# ---------------------------- Generate Mock Test ----------------------------
 @user_routes.route('/generate_mock', methods=['POST'])
 def generate_mock():
+    '''API to generate a mock test based on a specific topic'''
     data = request.get_json()
     topic = data.get('topic')
-    num_questions = data.get('num_questions', 10)
+    num_questions = data.get('num_questions', 10)  # Default to 10 questions if not provided
 
+    # Validate if topic is provided
     if not topic:
-        return jsonify({'error': 'topic is required'}), 400
+        return jsonify({'message': 'topic is required', 'success': False}), 400
     
-    return jsonify({'mock': f'Mock test for topic {topic} with {num_questions} questions is being generated.'}), 200
+    # Return the mock test generation status
+    return jsonify({
+        'message': 'Mock test generated successfully',
+        'success': True,
+        'topic': topic,
+        'num_questions': num_questions,
+        'mock': f'Mock test for topic {topic} with {num_questions} questions is being generated.'
+    }), 200
 
-# Generate Notes
+
+# ---------------------------- Generate Notes ----------------------------
 @user_routes.route('/generate_notes', methods=['POST'])
 def generate_notes():
+    '''API to generate notes for a specific topic'''
     data = request.get_json()
     topic = data.get('topic')
 
+    # Validate if topic is provided
     if not topic:
-        return jsonify({'error': 'topic is required'}), 400
+        return jsonify({'message': 'topic is required', 'success': False}), 400
     
-    return jsonify({'notes': f'Notes for topic {topic} are being generated.'}), 200
+    # Return the generated notes information
+    return jsonify({
+        'message': 'Notes generated successfully',
+        'success': True,
+        'topic': topic,
+        'notes': f'Notes for topic {topic} are generated.'
+    }), 200
 
 
-# Get Topic Recommendation
-
-# Helper Function: Map Questions to Topics
+# ---------------------------- Helper Function: Map Questions to Topics ----------------------------
 def map_question_to_topic(question_text):
-    """Maps questions to relevant topics based on keywords."""
+    '''Maps questions to relevant topics based on keywords'''
+    # Define a dictionary mapping topics to relevant keywords
     topic_keywords = {
-        "Data Visualization Libraries": ["Matplotlib", "Seaborn", "data visualization"],
+        "Data Visualization Libraries": ["matplotlib", "seaborn", "data visualization"],
         "Histogram & Distribution Plots": ["histogram", "distribution", "continuous variable"],
         "Scatter Plot & Relationships": ["scatter plot", "relationship", "two continuous variables"],
         "Categorical Data Visualization": ["bar chart", "pie chart", "categorical data"],
-        "Advantages of Seaborn": ["Seaborn", "themes", "aesthetics", "syntax", "Pandas DataFrames"]
+        "Advantages of Seaborn": ["seaborn", "themes", "aesthetics", "syntax", "pandas dataframes"]
     }
 
+    # Check if any keyword matches the question text
     for topic, keywords in topic_keywords.items():
         if any(keyword in question_text.lower() for keyword in keywords):
             return topic
 
-    return "General Data Visualization Concepts"  # Default topic if no match found
+    # Default to a general topic if no match is found
+    return "General Data Visualization Concepts"
 
-# Topic Recommendation
+
+# ---------------------------- Topic Recommendation ----------------------------
 @user_routes.route('/topic_recommendation', methods=['POST'])
 def topic_recommendation():
-    """Identifies incorrectly answered questions and recommends topics."""
+    '''API to recommend study topics based on incorrectly answered questions'''
     data = request.get_json()
+    submitted_answers = data.get('answers', [])  # List of {"question_id": X, "selected_option_id": Y}
 
-    submitted_answers = data.get("answers", [])  # List of {"question_id": X, "selected_option_id": Y}
-
+    # Validate if answers list is provided
     if not submitted_answers:
-        return jsonify({"message": "answers are required"}), 400
+        return jsonify({'message': 'answers are required', 'success': False}), 400
 
     topic_recommendation = []
 
+    # Iterate through submitted answers to identify incorrect answers
     for answer in submitted_answers:
-        question_id = answer.get("question_id")
-        selected_option_id = answer.get("selected_option_id")
+        question_id = answer.get('question_id')
+        selected_option_id = answer.get('selected_option_id')
 
-        # Get correct option for the question
+        # Fetch the correct option for the question from the database
         correct_option = QuestionOption.query.filter_by(question_id=question_id, is_correct=True).first()
 
+        # If the selected option is incorrect, map the question to a topic
         if correct_option and correct_option.id != selected_option_id:
             question = AssignmentQuestion.query.get(question_id)
-            topic = map_question_to_topic(question.question_text)  # Function to get topic
-            
+            topic = map_question_to_topic(question.question_text)
             topic_recommendation.append(topic)
 
-    return jsonify({"topic_recommendation": topic_recommendation}), 200
-
-
-
+    # Return the list of recommended topics
+    return jsonify({
+        'message': 'Topic recommendations generated successfully',
+        'success': True,
+        'topic_recommendation': topic_recommendation
+    }), 200
+    
+    
 # ---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
 
 # Automatically detect OS and set the wkhtmltopdf path
@@ -1022,26 +1309,63 @@ os.makedirs(REPORTS_DIR, exist_ok=True)
 def download_report():
     """Generates and downloads a report as a PDF file."""
     data = request.json
-    username = data.get("username")
-    score = data.get("score")
-    total = data.get("total")
-    suggestions = data.get("suggestions", [])
-    questions = data.get("questions", [])  # List of questions
-
-    # Render the HTML template with data
-    html_content = render_template("report.html", username=username, score=score, total=total, suggestions=suggestions, questions=questions)
     
-    # Define file path inside reports folder
+    # Extract data from the request
+    username = data.get("username")  # Get the username from the request
+    score = data.get("score")        # Get the score from the request
+    total = data.get("total")        # Get the total score from the request
+    suggestions = data.get("suggestions", [])  # Get suggestions list (default to empty if not provided)
+    questions = data.get("questions", [])  # Get questions list (default to empty if not provided)
+
+    # Validate required fields
+    if not username or score is None or total is None:
+        return jsonify({
+            "message": "Invalid input: 'username', 'score', and 'total' are required fields.",
+            "success": False
+        }), 400
+
+    # Render the HTML template with the provided data
+    html_content = render_template(
+        "report.html", 
+        username=username, 
+        score=score, 
+        total=total, 
+        suggestions=suggestions, 
+        questions=questions
+    )
+    
+    # Define the file path for the generated PDF inside the "reports" folder
     pdf_file = os.path.join(REPORTS_DIR, f"MockTest_{username}.pdf")
 
-    # Generate PDF
+    # Attempt to generate the PDF from the rendered HTML content
     try:
         pdfkit.from_string(html_content, pdf_file, configuration=config)
     except Exception as e:
-        return jsonify({"error": f"PDF generation failed: {str(e)}"}), 500
+        # Return a failure response with an error message if PDF generation fails
+        return jsonify({
+            "message": "PDF generation failed",
+            "success": False,
+            "error": str(e)
+        }), 500
 
-    # Send generated file as download
+    # Attempt to send the generated PDF file as a download
     try:
-        return send_file(pdf_file, as_attachment=True, download_name=f"MockTest_{username}.pdf")
+        return send_file(
+            pdf_file, 
+            as_attachment=True, 
+            download_name=f"MockTest_{username}.pdf"
+        )
     except Exception as e:
-        return jsonify({"error": f"File sending failed: {str(e)}"}), 500
+        # Return a failure response if file sending fails
+        return jsonify({
+            "message": "File sending failed",
+            "success": False,
+            "error": str(e)
+        }), 500
+
+    # Return a success response if the file is sent successfully
+    return jsonify({
+        "message": "PDF generated and downloaded successfully",
+        "success": True,
+        "file_path": pdf_file
+    }), 200

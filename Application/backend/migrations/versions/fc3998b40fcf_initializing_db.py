@@ -1,8 +1,8 @@
-"""Added Programming Assignment Schema and helper methods
+"""Initializing db
 
-Revision ID: 0ce06f19c72b
+Revision ID: fc3998b40fcf
 Revises: 
-Create Date: 2025-02-25 15:24:03.247590
+Create Date: 2025-03-05 16:32:50.766040
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '0ce06f19c72b'
+revision = 'fc3998b40fcf'
 down_revision = None
 branch_labels = None
 depends_on = None
