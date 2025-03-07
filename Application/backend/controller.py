@@ -23,7 +23,6 @@ user_routes = Blueprint('user_routes', __name__)
 # Signup Route - Registers a new user
 # Environment variables
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')  # Set your Google Client ID
-JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')  # Set a secure JWT secret key
 
 # Google Sign-Up Route
 # @user_routes.route('/google_signup', methods=['POST'])
