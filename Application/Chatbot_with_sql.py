@@ -1,128 +1,55 @@
-import re
 import os
+import re
 import textwrap
 import logging
 import sqlite3
-import warnings
-warnings.filterwarnings('ignore')
 from datetime import datetime
-from langchain.schema import Document
-from IPython.display import display
-from IPython.display import Markdown
+
+# Rich for console Markdown formatting
 from rich.console import Console
 from rich.markdown import Markdown
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+import warnings
+warnings.filterwarnings("ignore")
+# --------------------------------------------------------------------------
+# 1. LangChain & Related Imports
+# --------------------------------------------------------------------------
+from langchain_huggingface import HuggingFaceEmbeddings  # Updated for huggingface
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain import hub
-from langchain.chains import create_retrieval_chain
+from langchain.chains import create_retrieval_chain, create_history_aware_retriever
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.prompts import MessagesPlaceholder
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.chains import create_history_aware_retriever
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_community.embeddings import HuggingFaceEmbeddings    
 
 
-# -----------------------------------------------------------------------------
-# 1. Set up Google API Key environment variable
-# -----------------------------------------------------------------------------
-os.environ["GOOGLE_API_KEY"] = "YOUR_GOOGLE_API_KEY"
+# --------------------------------------------------------------------------
+# 2. Database Setup (user_id as INTEGER)
+# --------------------------------------------------------------------------
+if not os.path.exists("instance"):
+    os.makedirs("instance")
 
-# Instantiate the embeddings model
-gemini_embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-
-# Instantiate the chat model
-model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", convert_system_message_to_human=True)
-
-# -----------------------------------------------------------------------------
-# 2. Load and Process Documents
-# -----------------------------------------------------------------------------
-
-# Loading Multiple Documents
-
-pdf_files = [r"COMPLETE PATH TO THE DOCUMENT1", r"COMPLETE PATH TO DOCUMENT2"]
-docs = [PyPDFLoader(pdf).load() for pdf in pdf_files]
-
-all_docs = [page for doc in docs for page in doc]
-# print(f"Loaded {len(all_docs)} pages from {len(pdf_files)} PDFs")
-
-
-# Split the document into chunks
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
-splits = text_splitter.split_documents(all_docs)
-
-# Create vector store
-vector_store = Chroma.from_documents(documents=splits, embedding=gemini_embeddings)
-retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 5})
-
-# -----------------------------------------------------------------------------
-# 3. Define System and Chat Prompts
-# -----------------------------------------------------------------------------
-system_prompt = (
-    "You are an AI assistant specialized in Machine Learning Practice (MLP). "
-    "You should provide detailed, structured answers with bullet points and examples. "
-    "If the question is about general conversation, respond accordingly as a chatbot. "
-    "Otherwise, use retrieved MLP-related documents to answer.\n\n"
-    "{context}"
-)
-
-retriever_prompt = (
-    "You have to remember the chat history of users."
-    "You should remember the user prompts and the answers you give."
-    "Make sense of this chat history and answer accordingly when user references context in the chat history."
-)
-
-chat_prompt = ChatPromptTemplate.from_messages([("system", system_prompt), ("human", "{input}")])
-
-contextualize_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", retriever_prompt),
-        MessagesPlaceholder(variable_name="chat_history"),
-        ("human", "{input}"),
-    ]
-)
-
-qa_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", system_prompt),
-        MessagesPlaceholder("chat_history"),
-        ("human", "{input}")
-    ]
-)
-
-# -----------------------------------------------------------------------------
-# 4. Create Chains
-# -----------------------------------------------------------------------------
-qachain = create_stuff_documents_chain(model, chat_prompt)
-chat_history_retriever = create_history_aware_retriever(model, retriever, contextualize_prompt)
-answer_chain = create_stuff_documents_chain(model, qa_prompt)
-
-RAG_chain = create_retrieval_chain(chat_history_retriever, answer_chain)
-
-# -----------------------------------------------------------------------------
-# 5. Database Setup
-# -----------------------------------------------------------------------------
-DB_PATH = "chat_history.db"
+DB_PATH = os.path.join("instance", "app.db")
 
 def initialize_database():
     """
-    Creates necessary tables for storing chat history if they don't exist.
+    Creates a table with user_id as INTEGER, 
+    plus query, response, and created_at for timestamps.
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS chat_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT,
-            role TEXT,  -- 'user' or 'ai'
-            message TEXT,
-            timestamp TEXT
+            user_id INTEGER,
+            query TEXT,
+            response TEXT,
+            created_at TEXT
         )
     ''')
     conn.commit()
@@ -130,95 +57,185 @@ def initialize_database():
 
 initialize_database()
 
-def save_message_to_db(session_id, role, message):
+def save_chat_turn_to_db(user_id: int, query: str, response: str):
     """
-    Stores a chat message in the database with a timestamp (WhatsApp-like format: '10:30 PM').
+    Saves a single turn (user query + AI response) in the database.
+    user_id is stored as an integer now.
     """
-    timestamp = datetime.now().strftime("%I:%M %p")
+    created_at = datetime.now().strftime("%I:%M %p")  # e.g., "10:30 PM"
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO chat_history (session_id, role, message, timestamp) VALUES (?, ?, ?, ?)",
-        (session_id, role, message, timestamp)
+        "INSERT INTO chat_history (user_id, query, response, created_at) VALUES (?, ?, ?, ?)",
+        (user_id, query, response, created_at)
     )
     conn.commit()
     conn.close()
 
-def load_chat_history_from_db(session_id):
+def load_chat_history_from_db(user_id: int) -> ChatMessageHistory:
     """
-    Retrieves chat history for a given session from the database 
-    and returns a ChatMessageHistory object.
+    Retrieves chat history for a given integer user_id and constructs
+    a ChatMessageHistory object from it.
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT role, message, timestamp FROM chat_history WHERE session_id = ?", (session_id,))
-    chat_history = cursor.fetchall()
+    cursor.execute("SELECT query, response FROM chat_history WHERE user_id = ? ORDER BY id", (user_id,))
+    rows = cursor.fetchall()
     conn.close()
 
     history = ChatMessageHistory()
-    for role, message, _ in chat_history:
-        if role == "user":
-            history.add_user_message(message)
-        else:
-            history.add_ai_message(message)
+    for (query, response) in rows:
+        history.add_user_message(query)
+        history.add_ai_message(response)
+
     return history
 
-def get_session_history(session_id):
+def delete_user_history(user_id: int):
     """
-    Retrieve or create chat history for a given session from the database.
+    Completely removes all chat history for a specific integer user_id.
     """
-    history = load_chat_history_from_db(session_id)
-    return history
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM chat_history WHERE user_id = ?", (user_id,))
+    conn.commit()
+    conn.close()
 
-# -----------------------------------------------------------------------------
-# 6. Combine Chain with Message History
-# -----------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# 3. Embeddings & Model Configuration
+# --------------------------------------------------------------------------
+# HuggingFace embeddings to avoid deprecation
+huggingface_embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
+
+# If you're still using Google Generative AI for the chat model:
+os.environ["GOOGLE_API_KEY"] = "YOUR_GOOGLE_API_KEY"
+chat_model = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
+    convert_system_message_to_human=False
+)
+
+# --------------------------------------------------------------------------
+# 4. Load & Process Documents
+# --------------------------------------------------------------------------
+pdf_files = [
+    r"C:\Users\HP\OneDrive\Desktop\python files\slides\MLP Week 4 Slides.pdf",
+    r"C:\Users\HP\OneDrive\Desktop\python files\slides\MLP Week 6 Slides.pdf"
+]
+all_docs = []
+for pdf_path in pdf_files:
+    loader = PyPDFLoader(pdf_path)
+    pdf_pages = loader.load()
+    all_docs.extend(pdf_pages)
+
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+splits = text_splitter.split_documents(all_docs)
+
+vector_store = Chroma.from_documents(splits, embedding=huggingface_embeddings)
+retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 3})
+
+# --------------------------------------------------------------------------
+# 5. Define Prompts
+# --------------------------------------------------------------------------
+system_prompt = (
+    "Your name is Kia meaning (Knowledge Interaction Assistanat), you are a soft spoken lady tutor specialized in Machine Learning Practice (MLP). "
+    "You should provide detailed, structured answers with bullet points and examples. "
+    "If the question is about general conversation, respond accordingly as a chatbot. "
+    "Otherwise, use retrieved MLP-related documents to answer.\n\n"
+    "{context}"
+)
+
+retriever_prompt = (
+    "You have to remember the chat history of users. "
+    "You should remember the user prompts and the answers you give. "
+    "Make sense of this chat history and answer accordingly when user references context in the chat history."
+)
+
+chat_prompt = ChatPromptTemplate.from_messages([
+    ("system", system_prompt),
+    ("human", "{input}")
+])
+
+contextualize_prompt = ChatPromptTemplate.from_messages([
+    ("system", retriever_prompt),
+    MessagesPlaceholder(variable_name="chat_history"),
+    ("human", "{input}")
+])
+
+qa_prompt = ChatPromptTemplate.from_messages([
+    ("system", system_prompt),
+    MessagesPlaceholder("chat_history"),
+    ("human", "{input}")
+])
+
+# --------------------------------------------------------------------------
+# 6. Create Retrieval & QA Chains
+# --------------------------------------------------------------------------
+qachain = create_stuff_documents_chain(chat_model, chat_prompt)
+chat_history_retriever = create_history_aware_retriever(chat_model, retriever, contextualize_prompt)
+answer_chain = create_stuff_documents_chain(chat_model, qa_prompt)
+RAG_chain = create_retrieval_chain(chat_history_retriever, answer_chain)
+
+# --------------------------------------------------------------------------
+# 7. RunnableWithMessageHistory
+# --------------------------------------------------------------------------
+def _load_history_for_chain(session_id: str) -> BaseChatMessageHistory:
+    """
+    RunnableWithMessageHistory strictly wants 'session_id'.
+    We cast session_id to int, then load from DB using user_id (int).
+    """
+    return load_chat_history_from_db(int(session_id))
+
 conversation_RAG_Chain = RunnableWithMessageHistory(
     RAG_chain,
-    get_session_history,
+    _load_history_for_chain,
     input_messages_keys="input",
     history_messages_key="chat_history",
     output_message_keys="answer",
 )
 
-# -----------------------------------------------------------------------------
-# 7. Main Chat Function
-# -----------------------------------------------------------------------------
-def chat(input_text, session_id="chat1"):
+# --------------------------------------------------------------------------
+# 8. The get_answer(user_id, user_query) Function
+# --------------------------------------------------------------------------
+def get_answer(user_id: int, user_query: str) -> str:
     """
-    Handles the chat flow and returns only the AI's response.
+    - user_id is an integer in our DB.
+    - For the chain, pass session_id=str(user_id) to avoid 'Missing keys' error.
     """
-    # Retrieve chat history from the database
-    chat_history = load_chat_history_from_db(session_id)
+    # Load existing history from DB
+    chat_history = load_chat_history_from_db(user_id)
 
-    # Invoke the RAG chain
     response_data = conversation_RAG_Chain.invoke(
-        {"input": input_text, "chat_history": chat_history.messages},
-        config={"configurable": {"session_id": session_id}}
+        {"input": user_query, "chat_history": chat_history.messages},
+        config={"configurable": {"session_id": str(user_id)}}  # Must be string
     )
+    ai_response = response_data.get("answer", "Sorry, I could not retrieve an answer.")
+    save_chat_turn_to_db(user_id, user_query, ai_response)
 
-    # Extract AI's response
-    response = response_data.get("answer", "Sorry, I could not retrieve an answer. Please try again.")
+    return ai_response
 
-    # Store messages in the database
-    save_message_to_db(session_id, "user", input_text)
-    save_message_to_db(session_id, "ai", response)
+# --------------------------------------------------------------------------
+# 9. Logging (Optional)
+# --------------------------------------------------------------------------
+logging.getLogger("langchain_core.callbacks.manager").setLevel(logging.ERROR)
 
-    # Return the response
-    return response
+# --------------------------------------------------------------------------
+# 10. Example Usage with Rich Markdown
+# --------------------------------------------------------------------------
+if __name__ == "__main__":
+    console = Console()
 
-# -----------------------------------------------------------------------------
-# 8. Configure Logging
-# -----------------------------------------------------------------------------
-logging.getLogger('langchain_core.callbacks.manager').setLevel(logging.ERROR)
+    # user_id is an integer now
+    resp1 = get_answer(123, "Hi, my name is Siddharth, I am an AI Engineer and Data Scientist, studying at IITM. What is your name?")
+    console.print(Markdown(resp1))
 
-# -----------------------------------------------------------------------------
-# 
-console = Console()
+    resp2 = get_answer(123, "What did I say my name was, what do i do and where do I study?")
+    console.print(Markdown(resp2))
 
-answer = chat("Hi, my name is Siddharth and I study at IITM, I am an AI Engineer and Data Scientist?", session_id="chat1")
-console.print(Markdown(answer))
-answer = chat("What is my name and where do I study and Wwhat do I do?", session_id="chat1")
-console.print(Markdown(answer))
-answer = chat("What is SGDRegressor? How to use it?", session_id="chat1")
-console.print(Markdown(answer))
+    resp3 = get_answer(123, "What is SGDRegressor, and how do I use it?")
+    console.print(Markdown(resp3))
+
+    # If you want to delete all history for user_id=123:
+    # delete_user_history(123)
+    # resp3 = get_answer(123, "What is my name, where do i study and What do i do?")
+    # console.print(Markdown(resp3))
