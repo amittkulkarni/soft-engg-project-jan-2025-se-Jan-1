@@ -110,34 +110,28 @@ def signup():
     email = data.get('email')
     password = data.get('password')
     role = data.get('role', 'student')  # Default to 'student' if not provided
-    google_id = data.get('google_id')
-    
+
     # Check if the username exists only if provided
     if username and User.query.filter_by(username=username).first():
         return jsonify({"message": "Username already exists"}), 400
 
-    # Check if the email is provided
-    if not email:
-        return jsonify({"message": "Email is required"}), 400
+    # Validate required fields
+    if not all([email, password]):
+        return jsonify({"message": "Email and password are required"}), 400
     
     # Check if the email already exists
     if User.query.filter_by(email=email).first():
         return jsonify({"message": "Email already exists"}), 400
 
-    # Password validation (required if not signing up via Google)
-    if not google_id and not password:
-        return jsonify({"message": "Password is required"}), 400
-
-    # If signing up via Google, password should be None
-    hashed_password = generate_password_hash(password, method='pbkdf2:sha256') if password else None
+    # Hash the password
+    hashed_password = generate_password_hash(password, method='pbkdf2:sha256') 
 
     # Create and save new user
     new_user = User(
         username=username,
         email=email,
         password=hashed_password,
-        role=role,
-        google_id=google_id
+        role=role
     )
 
     db.session.add(new_user)
@@ -152,25 +146,13 @@ def login():
     email = data.get('email')
     password = data.get('password')
     
-    # Email must be provided
-    if not email:
-        return jsonify({"message": "Email is required"}), 400
+    # Validate required fields
+    if not all([email, password]):
+        return jsonify({"message": "Email and password are required"}), 400
 
-     # Find user by email
+    # Find user by email
     user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({"message": "Invalid email or password"}), 401
-
-    # If user has Google ID, they should not log in with a password
-    if user.google_id:
-        return jsonify({"message": "Please use Google Sign-In"}), 403
-
-    # Password must be provided for normal login
-    if not password:
-        return jsonify({"message": "Password is required"}), 400
-
-    # Check if the password is correct
-    if not check_password_hash(user.password, password):
+    if not user or not check_password_hash(user.password, password):
         return jsonify({"message": "Invalid email or password"}), 401
 
     # Generate authentication token
