@@ -4,7 +4,15 @@ from models import Assignment
 from datetime import datetime
 
 # Helper function to create an assignment payload
-def assignment_payload(week_id=1, title="Assignment 2", assignment_type="graded", due_date="2024-12-31"):
+def assignment_payload(week_id=2, title="Assignment 2", assignment_type="graded", due_date="2024-12-31"):
+    return {
+        "week_id": week_id,
+        "title": title,
+        "assignment_type": assignment_type,
+        "due_date": due_date
+    }
+
+def assignment_payload2(week_id=3, title="Assignment 3", assignment_type="graded", due_date="2024-12-31"):
     return {
         "week_id": week_id,
         "title": title,
@@ -15,6 +23,7 @@ def assignment_payload(week_id=1, title="Assignment 2", assignment_type="graded"
 def test_create_assignment_success(client):
     """Test successful creation of an assignment."""
     response = client.post('/assignments', json=assignment_payload())
+    response2 = client.post('/assignments', json=assignment_payload2())
     assert response.status_code == 201
     assert response.get_json()['success'] is True
     assert response.get_json()['message'] == 'New assignment added successfully'
@@ -86,7 +95,7 @@ def test_get_assignment_success(client):
 
     
     # Make a GET request to retrieve the assignment by ID
-    response = client.get(f'/assignments/1')
+    response = client.get(f'/assignments/2')
     assert response.status_code == 200  # Check for success status code
 
     json_data = response.get_json()  # Parse the response as JSON

@@ -6,7 +6,7 @@ import json
 
 # -------------------------- CREATE OPTION TEST CASES --------------------------
 
-TEST_QUESTION_ID = 1  # Assuming question ID 1 exists
+TEST_QUESTION_ID = 4  # Assuming question ID 4 exists
 NEW_OPTION_TEXT = "Heatmap"  # A new option not present in the seed data
 def test_create_option_success(client):
     """Test creating a new option successfully."""
