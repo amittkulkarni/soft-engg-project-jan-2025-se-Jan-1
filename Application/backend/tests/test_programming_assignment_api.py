@@ -52,7 +52,7 @@ def test_add_duplicate_programming_assignment(client):
 # Test case for retrieving a programming assignment
 def test_get_programming_assignment(client):
 
-    question = ProgrammingAssignment.query.filter_by(id = 1).first()
+    question = ProgrammingAssignment.query.filter_by(id = 3).first()
     response = client.get(f'/programming_assignments/{question.id}')
     assert response.status_code == 200
     assert response.json['success'] == True
