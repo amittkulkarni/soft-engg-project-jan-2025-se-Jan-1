@@ -22,7 +22,9 @@
                         <label for="password">Password</label>
                         <input type="password" id="password" v-model="password" placeholder="Enter your password" required/>
                     </div>
-                    <button type="submit" class="btn">Login</button>
+                    <button type="submit" class="btn" :disabled="isLoading">
+                        {{ isLoading ? 'Logging in...' : 'Login' }}
+                    </button>
 
                     <!-- Divider -->
                     <div class="divider">
@@ -41,6 +43,9 @@
                   </svg>
                         Sign In with Google
                     </button>
+                    <div v-if="errorMessage" class="error-message">
+                        {{ errorMessage }}
+                    </div>
                 </form>
                 <p>
                     Don't have an account?
@@ -53,21 +58,57 @@
 
 
 <script>
+import api from '@/services/api'
+
 export default {
     name: "LoginPage",
     data() {
         return {
             email: "",
             password: "",
+            errorMessage: "",
+            isLoading: false
         };
     },
     methods: {
-        login() {   
-            this.$router.push("/course");
+        async login() {
+            this.isLoading = true;
+            this.errorMessage = "";
+
+            try {
+                const response = await api.post('/login', {
+                    email: this.email,
+                    password: this.password
+                });
+
+                // Store the token in localStorage
+                localStorage.setItem('access_token', response.data.access_token);
+
+                // Redirect to course page
+                this.$router.push("/course");
+            } catch (error) {
+                // Handle errors
+                if (error.response) {
+                    // The request was made and the server responded with a status code
+                    // that falls out of the range of 2xx
+                    this.errorMessage = error.response.data.message || "Login failed. Please try again.";
+                } else if (error.request) {
+                    // The request was made but no response was received
+                    this.errorMessage = "No response from server. Please try again later.";
+                } else {
+                    // Something happened in setting up the request
+                    this.errorMessage = "Error: " + error.message;
+                }
+            } finally {
+                this.isLoading = false;
+            }
         },
         handleGoogleLogin() {
-            this.$router.push("/course");
-          }
+            // Implement Google login functionality here
+            // This would typically redirect to your backend Google OAuth endpoint
+            // window.location.href = '/api/auth/google';
+            alert("Google login not implemented yet");
+        }
     },
 };
 </script>
@@ -251,4 +292,14 @@ input:focus {
   .btn {
     margin-bottom: 1rem;
   }
+
+  .error-message {
+      color: #e74c3c;
+      background-color: #fadbd8;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+      text-align: center;
+  }
+
 </style>

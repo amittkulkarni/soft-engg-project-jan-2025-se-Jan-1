@@ -8,7 +8,6 @@ from token_validation import generate_token
 from datetime import datetime
 import pdfkit
 import platform
-
 from flask_jwt_extended import create_access_token
 # from google.oauth2 import id_token
 # from google.auth.transport import requests as google_requests
@@ -148,34 +147,41 @@ def signup():
 # Login Route - Authenticates a user and returns an access token
 @user_routes.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-    
-    # Email must be provided
-    if not email:
-        return jsonify({"message": "Email is required"}), 400
+    try:
+        
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        # Email must be provided
+        if not email:
+            return jsonify({"message": "Email is required"}), 400
 
-     # Find user by email
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({"message": "Invalid email or password"}), 401
+        # Find user by email
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({"message": "Invalid email or password"}), 401
 
-    # If user has Google ID, they should not log in with a password
-    if user.google_id:
-        return jsonify({"message": "Please use Google Sign-In"}), 403
+        # If user has Google ID, they should not log in with a password
+        if user.google_id:
+            return jsonify({"message": "Please use Google Sign-In"}), 403
 
-    # Password must be provided for normal login
-    if not password:
-        return jsonify({"message": "Password is required"}), 400
+        # Password must be provided for normal login
+        if not password:
+            return jsonify({"message": "Password is required"}), 400
 
-    # Check if the password is correct
-    if not check_password_hash(user.password, password):
-        return jsonify({"message": "Invalid email or password"}), 401
+        # Check if the password is correct
+        if not check_password_hash(user.password, password):
+            return jsonify({"message": "Invalid email or password"}), 401
 
-    # Generate authentication token
-    token = generate_token(user.id)
-    return jsonify({"access_token": token, "message": "Login successful"}), 200
+        # Generate authentication token
+        token = generate_token(user.id)
+        return jsonify({"access_token": token, "message": "Login successful"}), 200
+
+    except Exception as e:
+        return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
+
+
 
 #-----------------------------------------CRUD Operations for Weeks--------------------------------------------------------------
 

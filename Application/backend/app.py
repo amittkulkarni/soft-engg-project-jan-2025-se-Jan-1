@@ -7,9 +7,6 @@ from flask_cors import CORS
 # Initialize Flask app
 app = Flask(__name__)
 
-from flasgger import Swagger
-
-
 app.config.from_object(Config)
 CORS(app,origins='http://localhost:8080',supports_credentials=True)
 CORS(app,origins='http://localhost:8081',supports_credentials=True)
