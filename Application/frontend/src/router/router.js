@@ -36,12 +36,9 @@ const routes = [
     component: LecturePage
   },
   {
-    path: "/ga",
+    path: "/assignment/:id",
     name: "AssignmentPage",
     component: AssignmentsPage,
-    props: (route) => ({
-      title: route.query.title, // Retrieve title from query parameters
-    }),
   },
   {
     path: "/generate-topic-mock",
