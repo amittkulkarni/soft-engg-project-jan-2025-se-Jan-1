@@ -8,9 +8,13 @@ from token_validation import generate_token
 from datetime import datetime
 import pdfkit
 import platform
+
 from flask_jwt_extended import create_access_token
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
+# from google.oauth2 import id_token
+# from google.auth.transport import requests as google_requests
+from werkzeug.security import generate_password_hash
+
+
 
 user_routes = Blueprint('user_routes', __name__)
 
@@ -21,81 +25,119 @@ user_routes = Blueprint('user_routes', __name__)
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')  # Set your Google Client ID
 
 # Google Sign-Up Route
-@user_routes.route('/google_signup', methods=['POST'])
-def google_signup():
-    data = request.get_json()
-    token = data.get('id_token')
+# @user_routes.route('/google_signup', methods=['POST'])
+# def google_signup():
+#     data = request.get_json()
+#     token = data.get('id_token')
 
-    if not token:
-        return jsonify({"Success": False, "message": "Google ID token is required"}), 400
+#     if not token:
+#         return jsonify({"Success": False, "message": "Google ID token is required"}), 400
 
-    try:
-        # Verify Google ID Token
-        id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
-        google_id = id_info.get('sub')  # User's unique Google ID
-        email = id_info.get('email')
-        username = id_info.get('name')  # Fallback username from Google profile
+#     try:
+#         # Verify Google ID Token
+#         id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+#         google_id = id_info.get('sub')  # User's unique Google ID
+#         email = id_info.get('email')
+#         username = id_info.get('name')  # Fallback username from Google profile
 
-        # Check if user with this Google ID already exists
-        user = User.query.filter_by(google_id=google_id).first()
-        if user:
-            return jsonify({"Success": False, "message": "User already exists"}), 400
+#         # Check if user with this Google ID already exists
+#         user = User.query.filter_by(google_id=google_id).first()
+#         if user:
+#             return jsonify({"Success": False, "message": "User already exists"}), 400
 
-        # Check if email is already in use
-        if User.query.filter_by(email=email).first():
-            return jsonify({"Success": False, "message": "Email already exists"}), 400
+#         # Check if email is already in use
+#         if User.query.filter_by(email=email).first():
+#             return jsonify({"Success": False, "message": "Email already exists"}), 400
 
-        # Create a new user with Google ID
-        new_user = User(
-            username=username,
-            email=email,
-            password=None,  # No password needed for Google Auth
-            role='student',  # Default role or can be set from data.get('role')
-            google_id=google_id
-        )
+#         # Create a new user with Google ID
+#         new_user = User(
+#             username=username,
+#             email=email,
+#             password=None,  # No password needed for Google Auth
+#             role='student',  # Default role or can be set from data.get('role')
+#             google_id=google_id
+#         )
         
-        db.session.add(new_user)
-        db.session.commit()
+#         db.session.add(new_user)
+#         db.session.commit()
 
-        # Generate JWT token
-        token = create_access_token(identity=new_user.id)
-        return jsonify({"Success": True, "access_token": token, "message": "User registered successfully"}), 201
+#         # Generate JWT token
+#         token = create_access_token(identity=new_user.id)
+#         return jsonify({"Success": True, "access_token": token, "message": "User registered successfully"}), 201
 
-    except ValueError as e:
-        return jsonify({"Success": False, "message": f"Invalid Google token: {str(e)}"}), 400
+#     except ValueError as e:
+#         return jsonify({"Success": False, "message": f"Invalid Google token: {str(e)}"}), 400
 
-    except Exception as e:
-        return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
+#     except Exception as e:
+#         return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
 
 
-# Google Login Route
-@user_routes.route('/google_login', methods=['POST'])
-def google_login():
+# # Google Login Route
+# @user_routes.route('/google_login', methods=['POST'])
+# def google_login():
+#     data = request.get_json()
+#     token = data.get('id_token')
+
+#     if not token:
+#         return jsonify({"Success": False, "message": "Google ID token is required"}), 400
+
+#     try:
+#         # Verify Google ID Token
+#         # id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+#         google_id = id_info.get('sub')  # User's unique Google ID
+
+#         # Check if the user exists with the provided Google ID
+#         user = User.query.filter_by(google_id=google_id).first()
+#         if not user:
+#             return jsonify({"Success": False, "message": "User not registered"}), 404
+
+#         # Generate JWT token
+#         token = create_access_token(identity=user.id)
+#         return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
+
+#     except ValueError as e:
+#         return jsonify({"Success": False, "message": f"Invalid Google token: {str(e)}"}), 400
+
+#     except Exception as e:
+#         return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
+
+
+# Signup Route - Registers a new user
+@user_routes.route('/signup', methods=['POST'])
+def signup():
     data = request.get_json()
-    token = data.get('id_token')
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    role = data.get('role', 'student')  # Default to 'student' if not provided
 
-    if not token:
-        return jsonify({"Success": False, "message": "Google ID token is required"}), 400
+    # Check if the username exists only if provided
+    if username and User.query.filter_by(username=username).first():
+        return jsonify({"message": "Username already exists"}), 400
 
-    try:
-        # Verify Google ID Token
-        id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
-        google_id = id_info.get('sub')  # User's unique Google ID
+    # Validate required fields
+    if not all([email, password]):
+        return jsonify({"message": "Email and password are required"}), 400
+    
+    # Check if the email already exists
+    if User.query.filter_by(email=email).first():
+        return jsonify({"message": "Email already exists"}), 400
 
-        # Check if the user exists with the provided Google ID
-        user = User.query.filter_by(google_id=google_id).first()
-        if not user:
-            return jsonify({"Success": False, "message": "User not registered"}), 404
+    # Hash the password
+    hashed_password = generate_password_hash(password, method='pbkdf2:sha256') 
 
-        # Generate JWT token
-        token = create_access_token(identity=user.id)
-        return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
+    # Create and save new user
+    new_user = User(
+        username=username,
+        email=email,
+        password=hashed_password,
+        role=role
+    )
 
-    except ValueError as e:
-        return jsonify({"Success": False, "message": f"Invalid Google token: {str(e)}"}), 400
+    db.session.add(new_user)
+    db.session.commit()
 
-    except Exception as e:
-        return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
+    return jsonify({"message": "User registered successfully"}), 201
 
 # Login Route - Authenticates a user and returns an access token
 @user_routes.route('/login', methods=['POST'])
@@ -103,23 +145,14 @@ def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
-
-    # Email must be provided
-    if not email:
-        return jsonify({"message": "Email is required"}), 400
+    
+    # Validate required fields
+    if not all([email, password]):
+        return jsonify({"message": "Email and password are required"}), 400
 
     # Find user by email
     user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({"message": "Invalid email or password"}), 401
-
-
-    # Password must be provided for normal login
-    if not password:
-        return jsonify({"message": "Password is required"}), 400
-
-    # Check if the password is correct
-    if not check_password_hash(user.password, password):
+    if not user or not check_password_hash(user.password, password):
         return jsonify({"message": "Invalid email or password"}), 401
 
     # Generate authentication token
@@ -1317,89 +1350,89 @@ def topic_recommendation():
     
 # ---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
 
-# Automatically detect OS and set the wkhtmltopdf path
-if platform.system() == "Windows":
-    WKHTMLTOPDF_PATH = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
-elif platform.system() == "Darwin":  # macOS
-    WKHTMLTOPDF_PATH = "/usr/local/bin/wkhtmltopdf"
-else:  # Linux
-    WKHTMLTOPDF_PATH = "/usr/bin/wkhtmltopdf"
+# # Automatically detect OS and set the wkhtmltopdf path
+# if platform.system() == "Windows":
+#     WKHTMLTOPDF_PATH = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+# elif platform.system() == "Darwin":  # macOS
+#     WKHTMLTOPDF_PATH = "/usr/local/bin/wkhtmltopdf"
+# else:  # Linux
+#     WKHTMLTOPDF_PATH = "/usr/bin/wkhtmltopdf"
 
-# Ensure wkhtmltopdf exists
-if not os.path.exists(WKHTMLTOPDF_PATH):
-    raise FileNotFoundError(f"wkhtmltopdf not found at {WKHTMLTOPDF_PATH}")
+# # Ensure wkhtmltopdf exists
+# if not os.path.exists(WKHTMLTOPDF_PATH):
+#     raise FileNotFoundError(f"wkhtmltopdf not found at {WKHTMLTOPDF_PATH}")
 
-# Explicitly configure pdfkit
-config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
+# # Explicitly configure pdfkit
+# config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
 
-# Ensure reports directory exists
-BASE_DIR = os.path.abspath(os.path.dirname(__file__)) # Get current directory
-REPORTS_DIR = os.path.join(BASE_DIR, "reports")
-os.makedirs(REPORTS_DIR, exist_ok=True)  
+# # Ensure reports directory exists
+# BASE_DIR = os.path.abspath(os.path.dirname(__file__)) # Get current directory
+# REPORTS_DIR = os.path.join(BASE_DIR, "reports")
+# os.makedirs(REPORTS_DIR, exist_ok=True)  
 
 
-# ---------------------------------- Download Report (PDF) ----------------------------------
-@user_routes.route('/download_report', methods=['POST'])
-def download_report():
-    """Generates and downloads a report as a PDF file."""
-    data = request.json
+# # ---------------------------------- Download Report (PDF) ----------------------------------
+# @user_routes.route('/download_report', methods=['POST'])
+# def download_report():
+#     """Generates and downloads a report as a PDF file."""
+#     data = request.json
     
-    # Extract data from the request
-    username = data.get("username")  # Get the username from the request
-    score = data.get("score")        # Get the score from the request
-    total = data.get("total")        # Get the total score from the request
-    suggestions = data.get("suggestions", [])  # Get suggestions list (default to empty if not provided)
-    questions = data.get("questions", [])  # Get questions list (default to empty if not provided)
+#     # Extract data from the request
+#     username = data.get("username")  # Get the username from the request
+#     score = data.get("score")        # Get the score from the request
+#     total = data.get("total")        # Get the total score from the request
+#     suggestions = data.get("suggestions", [])  # Get suggestions list (default to empty if not provided)
+#     questions = data.get("questions", [])  # Get questions list (default to empty if not provided)
 
-    # Validate required fields
-    if not username or score is None or total is None:
-        return jsonify({
-            "message": "Invalid input: 'username', 'score', and 'total' are required fields.",
-            "success": False
-        }), 400
+#     # Validate required fields
+#     if not username or score is None or total is None:
+#         return jsonify({
+#             "message": "Invalid input: 'username', 'score', and 'total' are required fields.",
+#             "success": False
+#         }), 400
 
-    # Render the HTML template with the provided data
-    html_content = render_template(
-        "report.html", 
-        username=username, 
-        score=score, 
-        total=total, 
-        suggestions=suggestions, 
-        questions=questions
-    )
+#     # Render the HTML template with the provided data
+#     html_content = render_template(
+#         "report.html", 
+#         username=username, 
+#         score=score, 
+#         total=total, 
+#         suggestions=suggestions, 
+#         questions=questions
+#     )
     
-    # Define the file path for the generated PDF inside the "reports" folder
-    pdf_file = os.path.join(REPORTS_DIR, f"MockTest_{username}.pdf")
+#     # Define the file path for the generated PDF inside the "reports" folder
+#     pdf_file = os.path.join(REPORTS_DIR, f"MockTest_{username}.pdf")
 
-    # Attempt to generate the PDF from the rendered HTML content
-    try:
-        pdfkit.from_string(html_content, pdf_file, configuration=config)
-    except Exception as e:
-        # Return a failure response with an error message if PDF generation fails
-        return jsonify({
-            "message": "PDF generation failed",
-            "success": False,
-            "error": str(e)
-        }), 500
+#     # Attempt to generate the PDF from the rendered HTML content
+#     try:
+#         pdfkit.from_string(html_content, pdf_file, configuration=config)
+#     except Exception as e:
+#         # Return a failure response with an error message if PDF generation fails
+#         return jsonify({
+#             "message": "PDF generation failed",
+#             "success": False,
+#             "error": str(e)
+#         }), 500
 
-    # Attempt to send the generated PDF file as a download
-    try:
-        return send_file(
-            pdf_file, 
-            as_attachment=True, 
-            download_name=f"MockTest_{username}.pdf"
-        )
-    except Exception as e:
-        # Return a failure response if file sending fails
-        return jsonify({
-            "message": "File sending failed",
-            "success": False,
-            "error": str(e)
-        }), 500
+#     # Attempt to send the generated PDF file as a download
+#     try:
+#         return send_file(
+#             pdf_file, 
+#             as_attachment=True, 
+#             download_name=f"MockTest_{username}.pdf"
+#         )
+#     except Exception as e:
+#         # Return a failure response if file sending fails
+#         return jsonify({
+#             "message": "File sending failed",
+#             "success": False,
+#             "error": str(e)
+#         }), 500
 
-    # Return a success response if the file is sent successfully
-    return jsonify({
-        "message": "PDF generated and downloaded successfully",
-        "success": True,
-        "file_path": pdf_file
-    }), 200
+#     # Return a success response if the file is sent successfully
+#     return jsonify({
+#         "message": "PDF generated and downloaded successfully",
+#         "success": True,
+#         "file_path": pdf_file
+#     }), 200
