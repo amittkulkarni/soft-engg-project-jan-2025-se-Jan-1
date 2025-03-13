@@ -9,8 +9,6 @@ from datetime import datetime
 import pdfkit
 import platform
 from flask_jwt_extended import create_access_token
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 import subprocess
 import tempfile
 import requests
