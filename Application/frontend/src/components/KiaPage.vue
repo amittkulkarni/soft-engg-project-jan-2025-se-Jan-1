@@ -116,10 +116,29 @@
           </div>
           </transition>
 
-          <!-- Markdown Output -->
-          <div v-if="currentContent" class="markdown-output bg-light p-3 rounded shadow-sm mt-4">
-            <vue-markdown :source="currentContent" />
-            <button @click="downloadPDF" class="btn btn-success mt-3">Download PDF</button>
+          <!-- Enhanced Markdown Output -->
+          <div v-if="currentContent" class="markdown-output-container mt-4">
+            <div class="markdown-header d-flex justify-content-between align-items-center">
+              <h4>{{ activeContent === 'generate-notes' ? selectedTopic : selectedWeek }} Notes</h4>
+              <div class="actions">
+                <button @click="copyContent" class="btn btn-sm btn-light me-2">
+                  <i class="bi bi-clipboard"></i> Copy
+                </button>
+                <button @click="downloadPDF" class="btn btn-sm btn-light">
+                  <i class="bi bi-download"></i> Download PDF
+                </button>
+              </div>
+            </div>
+            <div class="markdown-content">
+              <vue-markdown
+                :source="currentContent"
+                :options="{
+                  highlight: function (code, lang) {
+                  // This will handle the syntax highlighting based on language
+                  return require('highlight.js').highlightAuto(code, [lang]).value;
+                  }
+                }"/>
+            </div>
           </div>
         </div>
         <ChatWindow />
@@ -134,6 +153,7 @@ import AppSidebar from "@/components/AppSidebar.vue";
 import ChatWindow from "@/components/ChatWindow.vue";
 import StudentIcon from "@/assets/student.png";
 import VueMarkdown from "vue-markdown-render";
+import 'highlight.js/styles/github.css';
 import { jsPDF } from "jspdf";
 
 export default {
@@ -185,6 +205,16 @@ export default {
       this.searchQuery = suggestion;
       this.suggestions = [];
     },
+    copyContent() {
+      navigator.clipboard.writeText(this.currentContent)
+        .then(() => {
+          // You could add a toast notification here
+          alert('Content copied to clipboard!');
+        })
+        .catch(err => {
+          console.error('Failed to copy content: ', err);
+        });
+    },
     downloadPDF() {
       const doc = new jsPDF();
       const content = this.activeContent === "generate-notes" ? this.generatedNotes : this.generatedSummary;
@@ -200,60 +230,202 @@ export default {
       setTimeout(() => {
         this.isGenerating = false;
       this.generatedNotes = `
-## Alas certa receptus volentem
+# Linear Regression: Fundamentals and Implementation
 
-Lorem markdownum festa. Radiis collo imagine ille, **quibus sine Syrtis** certa
-pectore; quod ultoresque cornum: fuga. Adfatur potuisset qualem **membra fugit
-perspicit** undas.
+## Introduction to Linear Regression
 
-    var property = boot_data.mountain.office(1, 1, baseband_css_cache(30, 1)) +
-            cssArchiePhreaking;
-    if (dsl_bare_sram.logSoapPeopleware(pcb, 1, cpc_clone_function) < mac + ppl
-            - client) {
-        ios += engine(ppmFormatFavicon + favicon, rom(teraflops_ripcording, 18,
-                pageTrojanApache));
-    }
-    var import_repository_ipod = voipBrouterWaveform(recursionWysiwyg) /
-            interactive * linkPasteMode + 3 + backupSubnetBurn;
-    webTokenPrint(bugAbendCarrier, partyRte);
-    installBurn -= samba_sms_cps;
+Linear Regression is a fundamental supervised machine learning algorithm used for predicting a continuous target variable based on one or more predictor variables. It works by finding the best-fitting straight line (or hyperplane in higher dimensions) through the data points.
 
-## Si unius ignis formam undas memorantur clamore
+## Simple Linear Regression Implementation
 
-Sua opprimere sagax, vias pavor, me alii, ad mihi. Non prece requirere nequiquam
-manu satum mox me causa ingemuit! Ait utque et silvae selige, nisi quos qui: me?
-Celas et deducit Heliadum flores tetendi festumque fidem generosaque sitvs
-inveniesque velis.
+Let's start with implementing simple linear regression using Python's scikit-learn:
 
-1. Tacitus superbus utraque fecit cernentem cladibus neutra
-2. Facinus hoc fratre duraeque turba
-3. Forsitan nos corpora
-4. Arma vixque
+\`\`\`python
+# Import necessary libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
 
-## Ipse quae agiturque commissa
+# Generate sample data
+np.random.seed(42)
+X = 2 * np.random.rand(100, 1)
+y = 4 + 3 * X + np.random.randn(100, 1)
 
-Color se gerit deplorata meruisse ruris quo quam gaudere: deerat moderere
-Silenum abire, mihi eundem secum diversas circumfusaeque. Siccis retro. Totusque
-[non vultus](http://www.visa.net/tamen.html) credas ducunt, debueram quibus
-proferre. Animum crescere in tollor at teneros siquis, gentis unum insuperabile
-capiti.
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-Crudelis sit aut sunt Nile finiat nepotis paenitet vident Pallada vertunt
-pectora dum nequeat audire capillis ostendit. Iactarique est namque, cum ait
-Graias *Silenum locus*.
+# Create and train the model
+model = LinearRegression()
+model.fit(X_train, y_train)
 
-## Haec est Perseus voles locum constitit dicique
+# Print model parameters
+print(f"Intercept: {model.intercept_[0]:.4f}")
+print(f"Coefficient: {model.coef_[0][0]:.4f}")
 
-Labefactum aetas; et stella, reserabo solvit, sic exercet ultima orbes sola
-dabimus falsaque. Lumina rupit sororum Danaeius, quin donec adlabimur ferax
-[parte](http://www.que.net/), me sequar. Non horrent **Alcithoe** aestibus, quas
-duri novena in undas capillo? Alias ille detrahis coniuge.
+# Make predictions
+y_pred = model.predict(X_test)
 
-Et vidit, loca *fessa* isdem penetrabit; mittat pulsa suspectum iaculum dapes in
-haec, dea Phoebe. Et inquit feror quam auctor exsiluere et ait. Post virgo
-infecta Oebalide adest tria, ut potuisse puto levatae scelus sumit; ut. In non
-tormenti tecti! Coniunx fugae taurus transfert nolet et vaga protinus, et, me
-carmen poteras parvo, et tamen, Autonoeius.
+# Evaluate the model
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+print(f"Mean Squared Error: {mse:.4f}")
+print(f"R² Score: {r2:.4f}")
+\`\`\`
+
+## Implementing Linear Regression from Scratch
+
+To better understand the algorithm, let's implement linear regression using only NumPy:
+
+\`\`\`python
+class LinearRegressionFromScratch:
+    def __init__(self, learning_rate=0.01, n_iterations=1000):
+        self.learning_rate = learning_rate
+        self.n_iterations = n_iterations
+        self.weights = None
+        self.bias = None
+
+    def fit(self, X, y):
+        # Initialize parameters
+        n_samples, n_features = X.shape
+        self.weights = np.zeros(n_features)
+        self.bias = 0
+
+        # Gradient descent
+        for _ in range(self.n_iterations):
+            y_predicted = np.dot(X, self.weights) + self.bias
+
+            # Compute gradients
+            dw = (1/n_samples) * np.dot(X.T, (y_predicted - y))
+            db = (1/n_samples) * np.sum(y_predicted - y)
+
+            # Update parameters
+            self.weights -= self.learning_rate * dw
+            self.bias -= self.learning_rate * db
+
+        return self
+
+    def predict(self, X):
+        return np.dot(X, self.weights) + self.bias
+\`\`\`
+
+## Visualizing Linear Regression
+
+Visualization helps understand how the model fits the data:
+
+\`\`\`python
+# Plot the data and regression line
+plt.figure(figsize=(10, 6))
+plt.scatter(X_test, y_test, color='blue', label='Test data')
+plt.plot(X_test, y_pred, color='red', linewidth=2, label='Regression line')
+plt.title('Linear Regression Model')
+plt.xlabel('X')
+plt.ylabel('y')
+plt.legend()
+plt.grid(True)
+plt.show()
+\`\`\`
+
+## Multiple Linear Regression
+
+When dealing with multiple features, the implementation is similar but works in higher dimensions:
+
+\`\`\`python
+# Generate multi-feature dataset
+np.random.seed(42)
+X_multi = np.random.rand(100, 3)  # 3 features
+y_multi = 4 + np.dot(X_multi, np.array([2, 3, 4])) + np.random.randn(100)
+
+# Split the data
+X_train_multi, X_test_multi, y_train_multi, y_test_multi = train_test_split(
+    X_multi, y_multi, test_size=0.2, random_state=42)
+
+# Create and train the model
+multi_model = LinearRegression()
+multi_model.fit(X_train_multi, y_train_multi)
+
+# Print model parameters
+print(f"Intercept: {multi_model.intercept_:.4f}")
+print(f"Coefficients: {multi_model.coef_}")
+
+# Make predictions and evaluate
+y_pred_multi = multi_model.predict(X_test_multi)
+mse_multi = mean_squared_error(y_test_multi, y_pred_multi)
+r2_multi = r2_score(y_test_multi, y_pred_multi)
+print(f"MSE: {mse_multi:.4f}, R²: {r2_multi:.4f}")
+\`\`\`
+
+## Regularization Techniques
+
+Regularization helps prevent overfitting by adding a penalty term to the loss function:
+
+### Ridge Regression (L2 Regularization)
+
+\`\`\`python
+from sklearn.linear_model import Ridge
+
+# Create and train Ridge model
+ridge = Ridge(alpha=1.0)  # alpha controls regularization strength
+ridge.fit(X_train_multi, y_train_multi)
+
+# Evaluate
+y_pred_ridge = ridge.predict(X_test_multi)
+print(f"Ridge R²: {r2_score(y_test_multi, y_pred_ridge):.4f}")
+\`\`\`
+
+### Lasso Regression (L1 Regularization)
+
+\`\`\`python
+from sklearn.linear_model import Lasso
+
+# Create and train Lasso model
+lasso = Lasso(alpha=0.1)
+lasso.fit(X_train_multi, y_train_multi)
+
+# Evaluate
+y_pred_lasso = lasso.predict(X_test_multi)
+print(f"Lasso R²: {r2_score(y_test_multi, y_pred_lasso):.4f}")
+print(f"Lasso Coefficients: {lasso.coef_}")  # Notice some might be exactly 0
+\`\`\`
+
+## Assumptions of Linear Regression
+
+For linear regression to provide reliable results, several assumptions should be met:
+
+1. **Linearity**: The relationship between features and target is linear
+2. **Independence**: Observations are independent of each other
+3. **Homoscedasticity**: Residuals have constant variance at every level
+4. **Normality**: Residuals are normally distributed
+5. **No multicollinearity**: Independent variables are not highly correlated
+
+## Testing Assumptions with Code
+
+\`\`\`python
+# Checking residuals
+residuals = y_test - y_pred
+
+# Plot residuals
+plt.figure(figsize=(10, 6))
+plt.scatter(y_pred, residuals)
+plt.axhline(y=0, color='r', linestyle='-')
+plt.title('Residuals vs Predicted Values')
+plt.xlabel('Predicted values')
+plt.ylabel('Residuals')
+plt.grid(True)
+plt.show()
+
+# Checking normality of residuals with Q-Q plot
+import scipy.stats as stats
+plt.figure(figsize=(10, 6))
+stats.probplot(residuals.flatten(), dist="norm", plot=plt)
+plt.title('Q-Q Plot of Residuals')
+plt.grid(True)
+plt.show()
+\`\`\`
+
+By understanding both the theory and implementation of linear regression, you'll have a solid foundation for more complex machine learning algorithms.
 `;
       });
     },
@@ -317,11 +489,165 @@ Netus dignissim placerat cum leo non class iaculis facilisi, habitasse sapien ru
   margin: 0 auto;
 }
 
-.markdown-output {
-  max-width: 800px;
-  margin: 0 auto;
+/* Update your existing .markdown-output-container styles */
+.markdown-output-container {
+  width: 100%; /* Makes it full width of parent */
+  max-width: 1200px; /* Match this to your other divs' max-width */
+  margin: 2rem auto;
+  border: 1px solid #e2e2e2;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background-color: white;
+  overflow: hidden;
 }
 
+/* Enhance code block styling */
+.markdown-content pre {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1.2rem 0;
+  width: 100%; /* Ensure code blocks take full width */
+}
+
+.markdown-header {
+  background-color: #6c1b1b;
+  color: white;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e2e2e2;
+}
+
+.markdown-content {
+  padding: 1.5rem;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: #343a40;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+/* Typography enhancements */
+.markdown-content h1 {
+  font-size: 1.8rem;
+  margin-top: 0;
+  color: #6c1b1b;
+  border-bottom: 2px solid #f0e5e5;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.markdown-content h2 {
+  font-size: 1.5rem;
+  color: #6c1b1b;
+  margin-top: 1.5rem;
+  border-bottom: 1px solid #f0e5e5;
+  padding-bottom: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-content h3 {
+  font-size: 1.25rem;
+  color: #333;
+  margin-top: 1.2rem;
+  margin-bottom: 0.8rem;
+}
+
+.markdown-content p {
+  margin-bottom: 1rem;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-content li {
+  margin-bottom: 0.5rem;
+}
+
+/* Code block formatting */
+.markdown-content pre {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1.2rem 0;
+  position: relative;
+}
+
+.markdown-content pre::before {
+  content: 'Python';
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #e9ecef;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  border-radius: 0 6px 0 6px;
+  color: #495057;
+}
+
+.markdown-content code {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: #212529;
+  background-color: #f8f9fa;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+}
+
+.markdown-content pre code {
+  padding: 0;
+  background-color: transparent;
+  color: #212529;
+  display: block;
+  line-height: 1.5;
+}
+
+/* Inline elements */
+.markdown-content strong {
+  color: #495057;
+  font-weight: 600;
+}
+
+.markdown-content a {
+  color: #6c1b1b;
+  text-decoration: none;
+  border-bottom: 1px solid #6c1b1b33;
+}
+
+.markdown-content a:hover {
+  text-decoration: none;
+  border-bottom: 1px solid #6c1b1b;
+}
+
+/* Tables */
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.markdown-content th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.75rem;
+  border: 1px solid #dee2e6;
+}
+
+.markdown-content td {
+  padding: 0.75rem;
+  border: 1px solid #dee2e6;
+}
+
+.markdown-content tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
@@ -335,6 +661,16 @@ Netus dignissim placerat cum leo non class iaculis facilisi, habitasse sapien ru
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
   margin-bottom: 30px;
+}
+
+.btn-light {
+  background-color: #f8f9fa;
+  color: #333;
+  border: 1px solid #dee2e6;
+}
+
+.btn-light:hover {
+  background-color: #e2e6ea;
 }
 
 .main-content {
@@ -483,16 +819,6 @@ Netus dignissim placerat cum leo non class iaculis facilisi, habitasse sapien ru
 .btn-success {
   background-color: #28a745;
   border-color: #28a745;
-}
-
-/* Markdown Output */
-.markdown-output {
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  padding: 1.5rem;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-  margin-top: 1.5rem;
-  position: relative;
 }
 
 .markdown-output h1,

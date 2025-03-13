@@ -156,7 +156,7 @@ import AppNavbar from "@/components/AppNavbar.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
 import StudentIcon from "@/assets/student.png"
 import ChatWindow from "@/components/ChatWindow.vue";
-
+import api from "@/services/api"
 export default {
   name: "ProgrammingPage",
   components: {
@@ -171,29 +171,29 @@ export default {
       consoleOutput: "",
       testCaseResults: [
         {
-          status: 'failed',
-          title: 'Input Validation',
-          description: 'Missing required price field in row 7'
+          status: 'passed',
+          title: 'Basic Polynomial Fitting',
+          description: 'Successfully predicted prices using degree 3 polynomial'
         },
         {
           status: 'failed',
-          title: 'Boundary Conditions',
-          description: 'Negative feature value not handled'
+          title: 'Edge Case Handling',
+          description: 'Issue with features near boundary values (0 or 1)'
         },
         {
           status: 'passed',
-          title: 'Polynomial Fit',
-          description: 'Degree 3 polynomial validated'
-        },
-        {
-          status: 'pending',
-          title: 'Performance Check',
-          description: 'Processing large dataset...'
+          title: 'Input Parsing',
+          description: 'Correctly parsed F features and N observations'
         },
         {
           status: 'failed',
-          title: 'Output Formatting',
-          description: 'Incorrect decimal precision in results'
+          title: 'Prediction Accuracy',
+          description: 'Predictions exceed 5% error margin on test cases'
+        },
+        {
+          status: 'pending',
+          title: 'Large Dataset Performance',
+          description: 'Testing with maximum constraints (F=5, N=100, T=100)'
         }
       ]
         ,
@@ -221,19 +221,39 @@ Current thread 0x0000000111d85e00 (most recent call first):
     }
   },
   methods: {
-    async submitCode() {
-      // Simulate test case results
-      this.showResults = true;
-//      this.testCaseResults = this.testCaseResults.map(tc => ({
-//        ...tc,
-//        status: Math.random() > 0.7 ? 'passed' :
-//               Math.random() > 0.4 ? 'failed' : 'pending'
-//      }));
+    // When the user submits their code
+async submitCode() {
+  try {
+    this.isLoading = true;
+    this.results = null;
 
-      // Generate complex error
-      this.consoleOutput = `\x1b[31mERROR\x1b[0m: ${this.complexError}`;
-    },
+    const response = await api.post(
+      `/programming_assignments/${this.assignmentId}/execute`,
+      { code: this.code }
+    );
 
+    if (response.data.success) {
+      this.results = response.data;
+      this.testCaseResults = response.data.results.map(result => ({
+        status: result.status,
+        title: `Test Case ${result.test_case_id}`,
+        description: result.status === 'passed'
+          ? 'Output matched expected result'
+          : 'Output did not match expected result'
+      }));
+
+      // Show success message
+      this.showSuccessMessage = true;
+    } else {
+      // Handle error
+      this.errorMessage = response.data.message || 'An error occurred';
+    }
+  } catch (error) {
+    this.errorMessage = error.response?.data?.message || 'An error occurred';
+  } finally {
+    this.isLoading = false;
+  }
+},
     explainError() {
       // Simulate AI error explanation
       this.consoleOutput = `Simplified explanation:

@@ -103,7 +103,14 @@
                     </button>
                   </div>
                   <div class="summary-text p-3 bg-light rounded">
-                    {{ summary }}
+                    <vue-markdown
+                      :source="summary"
+                      :options="{
+                        highlight: function (code, lang) {
+                        // This will handle the syntax highlighting based on language
+                        return require('highlight.js').highlightAuto(code, [lang]).value;
+                        }
+                      }"/>
                   </div>
                 </div>
 
@@ -147,7 +154,7 @@
                     <i class="bi bi-file-pdf resource-icon me-3"></i>
                     <div>
                       <h6 class="mb-1">Lecture Slides</h6>
-                      <small class="text-muted">PDF • 2.4 MB</small>
+                      <small class="text-muted">PDF â€¢ 2.4 MB</small>
                     </div>
                     <button class="btn btn-sm btn-outline-primary ms-auto">Download</button>
                   </div>
@@ -176,14 +183,37 @@ import AppNavbar from '@/components/AppNavbar.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 import StudentIcon from '@/assets/student.png'
 import ChatWindow from "@/components/ChatWindow.vue";
+import VueMarkdown from "vue-markdown-render";
+import 'highlight.js/styles/github.css';
 import axios from 'axios'
+
+const cleanMarkdown = (markdown) => {
+  // Step 1: Remove consecutive blank lines (more than one)
+  markdown = markdown.replace(/\n\s*\n+/g, '\n');
+
+  // Step 2: Trim leading and trailing whitespace
+  markdown = markdown.trim();
+
+  // Step 3: Remove blank lines after headers (e.g., # Header)
+  markdown = markdown.replace(/(\n#+.*)\n+/g, '$1\n');
+
+  // Step 4: Remove blank lines after list items (e.g., - Item or * Item)
+  markdown = markdown.replace(/(\n[-*]\s.*)\n+/g, '$1\n');
+
+  // Step 6: Remove blank lines after paragraphs or text blocks
+  markdown = markdown.replace(/([^\n]+\n)\n+/g, '$1');
+
+  return markdown;
+};
+
 
 export default {
   name: 'LecturePage',
   components: {
     AppNavbar,
     AppSidebar,
-    ChatWindow
+    ChatWindow,
+    VueMarkdown
   },
   data() {
     return {
@@ -226,8 +256,64 @@ export default {
         this.summary = response.data.summary
       } catch (error) {
         console.error('Error fetching summary:', error)
-        this.summary = `Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
-        `
+        const unclean_summary = `# Scikit-learn Dataset Loading and Generation
+
+This document summarizes the methods for loading and generating datasets within the scikit-learn (sklearn) library. Sklearn offers several ways to access data, catering to different data formats and needs.
+
+## Dataset Loaders
+
+Sklearn provides built-in loaders for several small, commonly used datasets. These are readily available and don't require external downloads. Key examples include:
+
+* **Classification Datasets:**
+    * \`load_iris\`: 150 samples, 3 features, 1 label (classification).
+    * \`load_digits\`: 1797 samples, 64 features, 1 label (classification).
+    * \`load_wine\`: 178 samples, 13 features, 1 label (classification).
+    * \`load_breast_cancer\`: 569 samples, 30 features, 1 label (classification).
+
+* **Regression Datasets:**
+    * \`load_diabetes\`: 442 samples, 10 features, 1 label (regression).
+    * \`load_linnerud\`: 20 samples, 3 features, 3 labels (multi-output regression).
+
+* **Larger Datasets (Fetchers):** Sklearn also offers fetchers for larger datasets, often requiring downloads. These include:
+    * \`fetch_olivetti_faces\`: 400 samples, 4096 features, 40 labels (multi-class image classification).
+    * \`fetch_20newsgroups\`: 18846 samples, 1 feature, 20 labels (multi-class text classification).
+    * \`fetch_lfw_people\`: ~13233 samples, 5828 features, ~5749 labels (multi-class image classification).
+    * \`fetch_covtype\`: 581012 samples, 54 features, 7 labels (multi-class classification).
+    * \`fetch_rcv1\`: 804414 samples, 47236 features, 103 labels (multi-class classification).
+    * \`fetch_kddcup99\`: ~4800000 samples, 41 features, 1 label (multi-class classification).
+    * \`fetch_california_housing\`: 20640 samples, 8 features, 1 label (regression).
+
+## Dataset Generators
+
+For situations where existing datasets are insufficient, sklearn provides generators to create synthetic datasets with specific properties. This is useful for controlled experiments or when needing datasets with particular statistical characteristics.
+
+* **Regression:** \`make_regression()\` generates regression datasets. It creates targets as a sparse linear combination of features, adding noise. Users can control the number of informative features and their correlation.
+
+* **Classification:**
+    * \`make_blobs()\`: Generates clusters of normally distributed data points, suitable for single-label classification. Each cluster is then assigned to a class.
+    * \`make_classification()\`: Creates multi-class datasets by generating normally distributed clusters and assigning them to classes.
+    * \`make_multilabel_classification()\`: Generates multi-label datasets where each sample can have multiple labels. It employs a specific generative process with rejection sampling to avoid samples with zero labels.
+
+* **Clustering:** \`make_blobs()\` is also used for generating datasets for clustering tasks, creating normally distributed clusters with specified means and standard deviations.
+
+## Loading External Datasets
+
+Sklearn supports loading data from various external sources:
+
+1. **\`fetch_openml()\`:** Retrieves datasets from the openml.org repository.
+
+2. **\`pandas.io\`:** Reads data from common formats like CSV, Excel, JSON, and SQL databases.
+
+3. **\`scipy.io\`:** Handles binary formats frequently used in scientific computing (e.g., \`.mat\`, \`.arff\`).
+
+4. **\`numpy.routines.io\`:** Loads columnar data directly into NumPy arrays.
+
+5. **\`dataset.load_files()\`:** Loads text data from directories where the directory name represents the label, and each file is a sample (useful for text classification).
+
+6. **HDF5:** For managing large numerical datasets, sklearn recommends using the HDF5 format (Hierarchical Data Format version 5) due to its efficiency. Libraries like \`pandas\`, \`PyTables\`, and \`h5py\` provide interfaces for working with HDF5 files. These formatted datasets load much faster than other formats.
+
+The choice of method depends on the data's format, size, and the specific machine learning task. The functions generally follow a naming convention: loaders start with \`load_\`, fetchers with \`fetch_\`, and generators with \`make_\`.`
+        this.summary = cleanMarkdown(unclean_summary)
       } finally {
         this.isLoading = false
       }
@@ -276,10 +362,6 @@ export default {
       // Extract week number from lecture title if available
       const match = this.lectureTitle.match(/^(\d+)(?=\.)/);
       return match ? `Week ${match[1]}` : 'Current Week';
-    },
-    formatDuration() {
-      // This would ideally come from video metadata
-      return `Duration: ${this.videoDuration}`;
     },
     toggleFullScreen() {
       const iframe = document.querySelector('iframe');
@@ -378,7 +460,7 @@ export default {
 }
 
 .summary-text {
-  line-height: 1.7;
+  line-height: 1.2;
   white-space: pre-line;
 }
 
