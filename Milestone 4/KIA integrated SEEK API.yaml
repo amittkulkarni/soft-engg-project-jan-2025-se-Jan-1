@@ -1,0 +1,2859 @@
+swagger: "2.0"
+info:
+  title:  KIA Integrated SEEK API 
+  version: "1.0.0"
+  description: |
+    ## API-User Story Mapping & GenAI Integration
+    
+
+    1. **Explain Error** (`/explain_error`, POST)
+    - This endpoint fulfills the user story of students needing a detailed analysis of their programming assignment errors. By submitting a code snippet, the AI agent uses advanced natural language processing to analyze the code, identify root causes of errors, and provide clear explanations. This insight helps students correct mistakes and deepens their understanding of common programming pitfalls.
+    - *GenAI Integration*: 
+      - Gemini-1.5 Flash analyzes code structure
+      - HuggingFace CodeBERT identifies error patterns
+
+    2. **Kia Chatbot and Context Retention** (`/chat_history`, POST/GET)
+    - This endpoint fulfills the user stories of students needing quick and accurate answers to academic queries related to specific topics, and persistently remembering last 5 queries and retaining conversational context. By processing the user's query through advanced AI algorithms, the AI agent analyzes the question, retrieves relevant course material, and generates a clear, concise response. This approach ensures the students can access the information they need efficiently, enhancing their learning experience without wasting time on manual searches.
+    - *GenAI Integration*:
+      - HuggingFace sentence-transformers for document retrieval
+      - Gemini-1.5 Flash generates RAG-based responses
+
+    3. **Get Topic Recommendation** (`/topic_recommendation`, POST)
+    - This endpoint addresses the user story for students by recommending specific topics to review if their performance on a mock quiz falls below 80%. By analyzing their quiz results, this endpoint suggests specific topics (e.g., recursion, list handling) that need improvement, helping students focus on weak areas.
+    - *GenAI Integration*:
+      - Gemini-1.5 Flash for natural language processing
+
+    
+    4. **Generate Video Summary** (`/video_summarizer`, POST)
+    - This endpoint addresses the user story where students want to review lecture videos efficiently by summarizing key concepts into concise bullet points. The AI agent processes the video content and extracts the main ideas, enabling students to quickly grasp and review the core concepts without re-watching the entire lecture.
+    - *GenAI Integration*:
+      - Gemini-1.5 Flash processes transcripts, extracts key concepts and formats in student-friendly bullet points
+    
+    5. **Generate Notes** (`/generate_notes`, POST)
+    - This endpoint aligns with the user story where students want key concepts from lecture videos summarized into bullet points or other formats. By submitting a summary type (e.g., bulleted), the API generates concise summaries using AI models, enabling students to review main ideas efficiently without re-watching entire videos.
+    - *GenAI Integration*:
+      - Gemini-1.5 Flash synthesizes content and creates hierarchical note structures
+
+    6. **Generate Week Summary** (`/generate_week_summary`, POST)
+    - This endpoint addresses the user story by enabling the AI agent to generate a comprehensive weekly summary of course content. It aggregates information from lectures, assignments, and other files, synthesizing key concepts and learning objectives covered throughout the week. This allows students to efficiently review the entire week's material in one consolidated view, eliminating the need to revisit individual resources and providing a holistic understanding of the week's learning progression.
+    - *GenAI Integration*:
+      - Gemini-1.5 Flash for content synthesis
+    
+    7. **Generate Mock Questions** (`/generate_mock`, POST)
+    - This endpoint fulfills the user story of students needing mock quizzes or exam simulations tailored to their course content. The API uses the AI agent to generate relevant, challenging questions, leveraging natural language processing. This helps students practice under exam-like conditions and identify areas for improvement.
+    - *GenAI Integration*:
+      - Gemini-1.5 Flash generates question variants
+      - HuggingFace clusters by difficulty
+
+    8. **Generate Topic Specific Questions** (`/generate_topic_specific_questions`, POST)
+    - This endpoint aligns with the user story where students want practice questions for specific topics they are studying. The API uses the AI agent to generate 10 relevant and appropriately challenging questions using advanced NLP techniques. This feature helps students focus their practice effectively and strengthen their knowledge in targeted areas.
+    - *GenAI Integration*:
+      - HuggingFace embeddings for topic mapping
+      - Gemini generates adaptive questions
+
+    **GenAI Integration Table**
+    | Component          | Technologies Used               |
+    |--------------------|---------------------------------|
+    | Content Generation | Gemini-1.5 Flash                |
+    | Text Embeddings    | HuggingFace sentence-transformers|
+    | Code Analysis      | Gemini + HuggingFace CodeBERT   |
+    | NLP Pipeline       | Combined Gemini/HuggingFace     |
+    
+    Adheres to RAG architecture and academic integrity guidelines.
+
+
+host: localhost:5000
+basePath: /api
+schemes:
+  - https
+
+paths:
+  /signup:
+    post:
+      summary: Registers a new user
+      tags:
+        - User Authentication
+      parameters:
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+              email:
+                type: string
+              password:
+                type: string
+              role:
+                type: string
+                default: student
+              google_id:
+                type: string
+      responses:
+        201:
+          description: User registered successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "User registered successfully"
+              user_id:
+                type: integer
+
+        400:
+          description: Validation error or duplicate email/username
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+
+        500:
+          description: Internal Server Error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+
+  /login:
+    post:
+      summary: Authenticates a user and returns an access token
+      tags:
+        - User Authentication
+      parameters:
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+              password:
+                type: string
+      responses:
+        200:
+          description: Login successful
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              access_token:
+                type: string
+              message:
+                type: string
+                example: "Login successful"
+      
+        400:
+          description: Missing required fields
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        401:
+          description: Invalid credentials
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Invalid email or password"
+      
+        403:
+          description: Google Sign-In required
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Please use Google Sign-In"
+        
+  /google_signup:
+    post:
+      tags:
+        -  User Authentication
+      summary: Sign up with Google
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - id_token
+            properties:
+              id_token:
+                type: string
+      responses:
+        201:
+          description: "User registered successfully with Google authentication"
+          schema:
+            type: object
+            properties:
+              Success:
+                type: boolean
+                example: true
+              access_token:
+                type: string
+              message:
+                type: string
+                example: "User registered successfully"
+
+        400:
+          description: "Validation error or invalid Google ID token"
+          schema:
+            type: object
+            properties:
+              Success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Google ID token is required"
+
+        500:
+          description: "Internal server error"
+          schema:
+            type: object
+            properties:
+              Success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+  /google_login:
+    post:
+      tags:
+        - User Authentication
+      summary: Login with Google
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - id_token
+            properties:
+              id_token:
+                type: string
+      responses:
+        200:
+          description: "Login successful with Google authentication"
+          schema:
+            type: object
+            properties:
+              Success:
+                type: boolean
+                example: true
+              access_token:
+                type: string
+              message:
+                type: string
+                example: "Login successful"
+
+        400:
+          description: "Validation error or invalid Google ID token"
+          schema:
+            type: object
+            properties:
+              Success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Invalid Google token: Invalid Value"
+
+        404:
+          description: "User not registered with Google authentication"
+          schema:
+            type: object
+            properties:
+              Success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "User not registered"
+
+        500:
+          description: "Internal server error"
+          schema:
+            type: object
+            properties:
+              Success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+  /weeks:
+    post: 
+      summary: Create a new week
+      tags: 
+        - Weeks
+      parameters:
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              week_number:
+                type: integer
+                description: The week number.
+              title:
+                type: string
+                description: The title of the week.
+      responses:
+        201:
+          description: Week created successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "New week added successfully"
+              week_id:
+                type: integer
+        400:
+          description: Invalid input or validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+        409:
+          description: Week already exists
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Week already exists"
+        500:
+          description: Internal Server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+    get:
+      summary: Get all weeks
+      tags:
+        - Weeks
+      responses:
+        200:
+          description: All weeks details
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Weeks retrieved successfully"
+              weeks:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    week_number:
+                      type: integer
+                    title:
+                      type: string
+      
+        500:
+          description: Internal Server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+  /weeks/{week_id}:
+    get:
+      summary: Get a specific week by ID
+      tags:
+        - Weeks
+      parameters:
+        - in: path
+          name: week_id
+          type: integer
+          required: true
+          description: ID of the week to retrieve
+      responses:
+        200:
+          description: Week Details
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Week details retrieved successfully"
+              week:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  week_number:
+                    type: integer
+                  title:
+                    type: string
+                  lectures:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        title:
+                          type: string
+                        video_id:
+                          type: string
+                  assignments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        title:
+                          type: string
+                        assignment_type:
+                          type: string
+      
+        404:
+          description: Week not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Week not found"
+      
+        500:
+          description: Internal Server Error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+    put:
+      summary: Update a specific week
+      tags:
+        - Weeks
+      parameters:
+        - in: path
+          name: week_id
+          type: integer
+          required: true
+          description: ID of the week to update
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              week_number:
+                type: integer
+                description: The week number.
+              title:
+                type: string
+                description: The title of the week.
+      responses:
+        200:
+          description: Updated Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Week updated successfully"
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+
+        404:
+          description: Week not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Week not found"
+      
+        500:
+          description: Internal Server Error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+                
+    delete:
+      summary: Delete a specific week
+      tags:
+        - Weeks
+      parameters:
+        - in: path
+          name: week_id
+          type: integer
+          required: true
+          description: ID of the week to delete
+      responses:
+        200:
+          description: Deleted Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Week deleted successfully"
+      
+        404:
+          description: Week not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Week not found"
+      
+        500:
+          description: Internal Server Error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+  /lectures:
+    post:
+      summary: Create a new lecture
+      tags:
+        - Lectures
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              week_id:
+                type: integer
+                description: The ID of the week this lecture belongs to.
+              title:
+                type: string
+                description: The title of the lecture.
+              video_id:
+                type: string
+                description: The ID of the video on the hosting platform (e.g., YouTube video ID).
+      responses:
+        201:
+          description: Lecture added successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "New lecture added successfully"
+              lecture_id:
+                type: integer
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        404:
+          description: Week not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Week not found"
+      
+        409:
+          description: Lecture already exists
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Lecture already exists in this week"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+    get:
+      summary: Get all lectures
+      tags:
+        - Lectures
+      responses:
+        200:
+          description: All Lectures
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Lectures retrieved successfully"
+              lectures:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    week_id:
+                      type: integer
+                    title:
+                      type: string
+                    video_id:
+                      type: string
+
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+  /lectures/{lecture_id}:
+    get:
+      summary: Get a specific lecture by ID
+      tags:
+        - Lectures
+      parameters:
+        - in: path
+          name: lecture_id
+          type: integer
+          required: true
+          description: ID of the lecture to retrieve
+      responses:
+        200:
+          description: Lecture Details
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Lecture retrieved successfully"
+              lecture:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  week_id:
+                    type: integer
+                  title:
+                    type: string
+                  video_id:
+                    type: string
+      
+        404:
+          description: Lecture not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Lecture not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+    put:
+      summary: Update a specific lecture
+      tags:
+        - Lectures
+      parameters:
+        - in: path
+          name: lecture_id
+          type: integer
+          required: true
+          description: ID of the lecture to update
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              week_id:
+                type: integer
+                description: The ID of the week this lecture belongs to.
+              title:
+                type: string
+                description: The title of the lecture.
+              video_id:
+                type: string
+                description: The ID of the video on the hosting platform (e.g., YouTube video ID).
+      responses:
+        200:
+          description: Updated Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Lecture updated successfully"
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        404:
+          description: Lecture not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Lecture not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+    delete:
+      summary: Delete a specific lecture
+      tags:
+        - Lectures
+      parameters:
+        - in: path
+          name: lecture_id
+          type: integer
+          required: true
+          description: ID of the lecture to delete
+      responses:
+        200:
+          description: Deleted Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Lecture deleted successfully"
+      
+        404:
+          description: Lecture not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Lecture not found"
+      
+        500:
+          description: Internal Server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+
+  /assignments:
+    post:
+      summary: Create a new assignment
+      tags:
+        - Assignments
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              week_id:
+                type: integer
+                description: The ID of the week this assignment belongs to
+              title:
+                type: string
+                description: The title of the assignment
+              assignment_type:
+                type: string
+                description: The type of assignment (e.g., 'quiz', 'homework')
+              due_date:
+                type: string
+                format: date
+                description: The due date of the assignment (YYYY-MM-DD)
+      responses:
+        201:
+          description: Assignment created successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "New assignment added successfully"
+              assignment_id:
+                type: integer
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        404:
+          description: Week not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Week not found"
+      
+        409:
+          description: Assignment already exists
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Assignment already exists in this week"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+    get:
+      summary: Get all assignments
+      tags:
+        - Assignments
+      responses:
+        200:
+          description: All Assignments
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Assignments retrieved successfully"
+              assignments:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    week_id:
+                      type: integer
+                    title:
+                      type: string
+                    assignment_type:
+                      type: string
+                    due_date:
+                      type: string
+                      format: date
+                    total_points:
+                      type: integer
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+  /assignments/{assignment_id}:
+    get:
+      summary: Get a specific assignment by ID
+      tags:
+        - Assignments
+      parameters:
+        - in: path
+          name: assignment_id
+          type: integer
+          required: true
+          description: ID of the assignment to retrieve
+      responses:
+        200:
+          description: Assignment Details
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Assignment retrieved successfully"
+              assignment:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  week_id:
+                    type: integer
+                  title:
+                    type: string
+                  assignment_type:
+                    type: string
+                  due_date:
+                    type: string
+                    format: date
+                  total_points:
+                    type: integer
+                  questions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        question_text:
+                          type: string
+                        question_type:
+                          type: string
+                        points:
+                          type: integer
+                        options:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                              option_text:
+                                type: string
+                              is_correct:
+                                type: boolean
+      
+        404:
+          description: Assignment not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Assignment not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+    put:
+      summary: Update an existing assignment
+      tags:
+        - Assignments
+      parameters:
+        - in: path
+          name: assignment_id
+          type: integer
+          required: true
+          description: ID of the assignment to update
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              title:
+                type: string
+                description: The title of the assignment
+              assignment_type:
+                type: string
+                description: The type of assignment (e.g., 'quiz', 'homework')
+              due_date:
+                type: string
+                format: date
+                description: The due date of the assignment (YYYY-MM-DD)
+              total_points:
+                type: integer
+                description: Total points for the assignment
+      responses:
+        200:
+          description: Updated Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Assignment updated successfully"
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        404:
+          description: Assignment not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Assignment not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+    delete:
+      summary: Delete an assignment
+      tags:
+        - Assignments
+      parameters:
+        - in: path
+          name: assignment_id
+          type: integer
+          required: true
+          description: ID of the assignment to delete
+      responses:
+        200:
+          description: Deleted Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Assignment deleted successfully"
+      
+        404:
+          description: Assignment not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Assignment not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+  /assignment_questions:
+    post:
+      summary: Create a new assignment question
+      tags:
+        - Assignment Questions
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              assignment_id:
+                type: integer
+                description: The ID of the assignment this question belongs to
+              question_text:
+                type: string
+                description: The text of the question
+              question_type:
+                type: string
+                description: The type of question (e.g., 'multiple_choice', 'true_false')
+              points:
+                type: integer
+                description: The points awarded for answering the question correctly
+      responses:
+        201:
+          description: Created Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "New assignment question added successfully"
+              question_id:
+                type: integer
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        404:
+          description: Assignment not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Assignment not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+    get:
+      summary: Get all assignment questions
+      tags:
+        - Assignment Questions
+      responses:
+        200:
+          description: All Questions
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Assignment questions retrieved successfully"
+              questions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    assignment_id:
+                      type: integer
+                    question_text:
+                      type: string
+                    question_type:
+                      type: string
+                    points:
+                      type: integer
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+  /assignment_questions/{question_id}:
+    get:
+      summary: Get a specific assignment question by ID
+      tags:
+        - Assignment Questions
+      parameters:
+        - in: path
+          name: question_id
+          type: integer
+          required: true
+          description: ID of the assignment question to retrieve
+      responses:
+        200:
+          description: Question Details
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              question:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  assignment_id:
+                    type: integer
+                  question_text:
+                    type: string
+                  question_type:
+                    type: string
+                  points:
+                    type: integer
+                  options:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        option_text:
+                          type: string
+                        is_correct:
+                          type: boolean
+      
+        404:
+          description: Assignment question not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Assignment question not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+    put:
+      summary: Update an existing assignment question
+      tags:
+        - Assignment Questions
+      parameters:
+        - in: path
+          name: question_id
+          type: integer
+          required: true
+          description: ID of the assignment question to update
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              question_text:
+                type: string
+                description: The text of the question
+              question_type:
+                type: string
+                description: The type of question (e.g., 'multiple_choice', 'true_false')
+              points:
+                type: integer
+                description: The points awarded for answering the question correctly
+      responses:
+        200:
+          description: Updated Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Assignment question updated successfully"
+      
+        404:
+          description: Assignment question not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Assignment question not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+    delete:
+      summary: Delete an assignment question
+      tags:
+        - Assignment Questions
+      parameters:
+        - in: path
+          name: question_id
+          type: integer
+          required: true
+          description: ID of the assignment question to delete
+      responses:
+        200:
+          description: Deleted Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Assignment question deleted successfully"
+      
+        404:
+          description: Assignment question not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Assignment question not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+  /options:
+    post:
+      summary: Create a new option for an assignment question
+      tags:
+        - Question Options
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              question_id:
+                type: integer
+                description: The ID of the assignment question this option belongs to
+              option_text:
+                type: string
+                description: The text of the option
+              is_correct:
+                type: boolean
+                description: Whether the option is the correct answer
+      responses:
+        201:
+          description: Created Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "New option added successfully"
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        404:
+          description: Assignment question not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Assignment question not found"
+      
+        409:
+          description: Option already exists
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Option already exists for this question"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+    get:
+      summary: Retrieve all options for assignment questions
+      tags:
+        - Question Options
+      responses:
+        200:
+          description: All Options
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              options:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    question_id:
+                      type: integer
+                    option_text:
+                      type: string
+                    is_correct:
+                      type: boolean
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+  /options/{option_id}:
+    get:
+      summary: Retrieve a specific option by ID
+      tags:
+        - Question Options
+      parameters:
+        - in: path
+          name: option_id
+          type: integer
+          required: true
+          description: ID of the option to retrieve
+      responses:
+        200:
+          description: Option Details
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              option:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  question_id:
+                    type: integer
+                  option_text:
+                    type: string
+                  is_correct:
+                    type: boolean
+      
+        404:
+          description: Option not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Option not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+    put:
+      summary: Update an existing option by ID
+      tags:
+        - Question Options
+      parameters:
+        - in: path
+          name: option_id
+          type: integer
+          required: true
+          description: ID of the option to update
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              option_text:
+                type: string
+                description: The text of the option
+              is_correct:
+                type: boolean
+                description: Whether the option is the correct answer
+      responses:
+        200:
+          description: Updated Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Option updated successfully"
+      
+        404:
+          description: Option not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Option not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+    delete:
+      summary: Delete an option by ID
+      tags:
+        - Question Options
+      parameters:
+        - in: path
+          name: option_id
+          type: integer
+          required: true
+          description: ID of the option to delete
+      responses:
+        200:
+          description: Deleted Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Option deleted successfully"
+      
+        404:
+          description: Option not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Option not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+  /programming_assignments:
+    post:
+      summary: Add a new programming assignment
+      tags:
+        - Programming Assignments
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              assignment_id:
+                type: integer
+                description: The ID of the assignment
+              problem_statement:
+                type: string
+                description: The problem statement of the assignment
+              input_format:
+                type: string
+                description: The input format for the assignment
+              output_format:
+                type: string
+                description: The output format for the assignment
+              constraints:
+                type: string
+                description: Constraints for the assignment
+              sample_input:
+                type: string
+                description: Sample input for the assignment
+              sample_output:
+                type: string
+                description: Sample output for the assignment
+              test_cases:
+                type: array
+                description: Test cases for the assignment
+                items:
+                  type: object
+                  properties:
+                    input:
+                      type: string
+                    output:
+                      type: string
+      responses:
+        201:
+          description: Created Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Programming assignment added successfully"
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        409:
+          description: Conflict - Assignment ID already exists
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Assignment ID already exists"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+  /programming_assignments/{assignment_id}:
+    get:
+      summary: Get a specific programming assignment by ID
+      tags:
+        - Programming Assignments
+      parameters:
+        - in: path
+          name: assignment_id
+          type: integer
+          required: true
+          description: ID of the programming assignment
+      responses:
+        200:
+          description: Assignment Details
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              data:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  assignment_id:
+                    type: integer
+                  problem_statement:
+                    type: string
+                  input_format:
+                    type: string
+                  output_format:
+                    type: string
+                  constraints:
+                    type: string
+                  sample_input:
+                    type: string
+                  sample_output:
+                    type: string
+                  test_cases:
+                    type: array
+                    items:
+                      type: string
+      
+        404:
+          description: Programming assignment not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Programming assignment not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+    put:
+      summary: Update an existing programming assignment
+      tags:
+        - Programming Assignments
+      parameters:
+        - in: path
+          name: assignment_id
+          type: integer
+          required: true
+          description: ID of the programming assignment
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              problem_statement:
+                type: string
+                description: The problem statement of the assignment
+              input_format:
+                type: string
+                description: The input format for the assignment
+              output_format:
+                type: string
+                description: The output format for the assignment
+              constraints:
+                type: string
+                description: Constraints for the assignment
+              sample_input:
+                type: string
+                description: Sample input for the assignment
+              sample_output:
+                type: string
+                description: Sample output for the assignment
+              test_cases:
+                type: array
+                description: Test cases for the assignment
+                items:
+                  type: object
+                  properties:
+                    input:
+                      type: string
+                    output:
+                      type: string
+      responses:
+        200:
+          description: Updated Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Programming assignment updated successfully"
+      
+        404:
+          description: Programming assignment not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Programming assignment not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+    delete:
+      summary: Delete a specific programming assignment
+      tags:
+        - Programming Assignments
+      parameters:
+        - in: path
+          name: assignment_id
+          type: integer
+          required: true
+          description: ID of the programming assignment
+      responses:
+        200:
+          description: Deleted Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Programming assignment deleted successfully"
+      
+        404:
+          description: Programming assignment not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Programming assignment not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+  /assignments/check_score:
+    post:
+      summary: Calculate score based on selected option IDs
+      tags:
+        - Assignments
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              option_ids:
+                type: array
+                description: List of option IDs selected by the user
+                items:
+                  type: integer
+      responses:
+        200:
+          description: Calculated Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Score calculated successfully"
+              total_score:
+                type: integer
+      
+        400:
+          description: Validation error or invalid input data
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+  /generate_topic_specific_questions:
+    post:
+      summary: Generate topic-specific questions
+      tags:
+        - AI Features
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              topic:
+                type: string
+                description: The topic for question generation
+              num_questions:
+                type: integer
+                description: The number of questions to generate (default 5)
+      responses:
+        200:
+          description: Questions Generated
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Questions generated successfully"
+              questions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    question:
+                      type: string
+                    options:
+                      type: array
+                      items:
+                        type: string
+                    answer:
+                      type: string
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+  /video_summarizer:
+    post:
+      summary: Get a summary of a lecture video
+      tags:
+        - AI Features
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              lecture_id:
+                type: integer
+                description: The ID of the lecture
+      responses:
+        200:
+          description: Summary Generated
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Summary generated successfully"
+              summary:
+                type: string
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+  /chat_history:
+    post:
+      summary: Saves user chat interactions
+      tags:
+        - Chatbot
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              user_id:
+                type: integer
+                description: The ID of the user
+              query:
+                type: string
+                description: The user's query
+              response:
+                type: string
+                description: The chatbot's response
+      responses:
+        201:
+          description: Chat History Stored
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Chat history saved successfully"
+              file_path:
+                type: string
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        404:
+          description: User not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+  /chat_history/{user_id}:
+    get:
+      summary: Retrieves the chat history file path for a user
+      tags:
+        - Chatbot
+      parameters:
+        - in: path
+          name: user_id
+          type: integer
+          required: true
+          description: The ID of the user
+      responses:
+        200:
+          description: Chat History Retreived Successfully
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Chat history retrieved successfully"
+              user_id:
+                type: integer
+              file_path:
+                type: string
+      
+        404:
+          description: No chat history found for the user
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "No chat history found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+  /explain_error:
+    post:
+      summary: Explains a given code error
+      tags:
+        - AI Features
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              code_snippet:
+                type: string
+                description: The code snippet with an error
+      responses:
+        200:
+          description: Error Explaination Generated
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Error explanation generated successfully"
+              explanation:
+                type: string
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+  /generate_week_summary:
+    post:
+      summary: Generates a summary for a specific week
+      tags:
+        - AI Features
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              week_id:
+                type: integer
+                description: The ID of the week
+      responses:
+        200:
+          description: Week Summary Generated
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Week summary generated successfully"
+              week_id:
+                type: integer
+              summary:
+                type: string
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        404:
+          description: Week not found
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Week not found"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+  /generate_mock:
+    post:
+      summary: Generates a mock test for a specific topic 
+      tags:
+        - AI Features
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              topic:
+                type: string
+                description: The topic for the mock test
+              num_questions:
+                type: integer
+                description: The number of questions in the mock test (default 10)
+      responses:
+        200:
+          description: Mock Test Generated
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Mock test generated successfully"
+              topic:
+                type: string
+              num_questions:
+                type: integer
+              mock:
+                type: string
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+  /generate_notes:
+    post:
+      summary: Generates notes for a specific topic
+      tags:
+        - AI Features
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              topic:
+                type: string
+                description: The topic for note generation
+      responses:
+        200:
+          description: Notes Generated
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Notes generated successfully"
+              topic:
+                type: string
+              notes:
+                type: string
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+  /topic_recommendation:
+    post:
+      summary: Recommends topics based on incorrectly answered questions
+      tags:
+        - AI Features
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              answers:
+                type: array
+                description: List of user's submitted answers
+                items:
+                  type: object
+                  properties:
+                    question_id:
+                      type: integer
+                    selected_option_id:
+                      type: integer
+      responses:
+        200:
+          description: Topic Recommendations Generated
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Topic recommendations generated successfully"
+              topic_recommendation:
+                type: array
+                items:
+                  type: string
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "answers are required"
+      
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string
+
+
+  /download_report:
+    post:
+      summary: Generate and download a report as a PDF
+      tags:
+        - Reports
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+                description: The username for the report
+              score:
+                type: integer
+                description: The user's score
+              total:
+                type: integer
+                description: The total score possible
+              suggestions:
+                type: array
+                description: List of suggestions
+                items:
+                  type: string
+              questions:
+                type: array
+                description: List of questions in the test
+                items:
+                  type: object
+                  properties:
+                    question_text: 
+                      type: string
+                    options:
+                      type: array
+                      items:
+                        type: string
+                    correct_answer: 
+                      type: string 
+      responses:
+        200:
+          description: PDF generated
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "PDF generated and downloaded successfully"
+              file_path:
+                type: string
+      
+        400:
+          description: Validation error
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+        500:
+          description: Internal server error during PDF generation or file sending
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+              error:
+                type: string

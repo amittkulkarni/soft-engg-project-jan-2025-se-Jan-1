@@ -8,6 +8,7 @@ from token_validation import generate_token
 from datetime import datetime
 import pdfkit
 import platform
+
 from flask_jwt_extended import create_access_token
 import subprocess
 import tempfile
@@ -128,22 +129,13 @@ def login():
     email = data.get('email')
     password = data.get('password')
 
-    # Email must be provided
-    if not email:
-        return jsonify({"message": "Email is required"}), 400
+    # Validate required fields
+    if not all([email, password]):
+        return jsonify({"message": "Email and password are required"}), 400
 
     # Find user by email
     user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({"message": "Invalid email or password"}), 401
-
-
-    # Password must be provided for normal login
-    if not password:
-        return jsonify({"message": "Password is required"}), 400
-
-    # Check if the password is correct
-    if not check_password_hash(user.password, password):
+    if not user or not check_password_hash(user.password, password):
         return jsonify({"message": "Invalid email or password"}), 401
 
     # Generate authentication token
@@ -1475,89 +1467,89 @@ def topic_recommendation():
     
 # ---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
 
-# Automatically detect OS and set the wkhtmltopdf path
-if platform.system() == "Windows":
-    WKHTMLTOPDF_PATH = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
-elif platform.system() == "Darwin":  # macOS
-    WKHTMLTOPDF_PATH = "/usr/local/bin/wkhtmltopdf"
-else:  # Linux
-    WKHTMLTOPDF_PATH = "/usr/bin/wkhtmltopdf"
+# # Automatically detect OS and set the wkhtmltopdf path
+# if platform.system() == "Windows":
+#     WKHTMLTOPDF_PATH = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+# elif platform.system() == "Darwin":  # macOS
+#     WKHTMLTOPDF_PATH = "/usr/local/bin/wkhtmltopdf"
+# else:  # Linux
+#     WKHTMLTOPDF_PATH = "/usr/bin/wkhtmltopdf"
 
-# Ensure wkhtmltopdf exists
-if not os.path.exists(WKHTMLTOPDF_PATH):
-    raise FileNotFoundError(f"wkhtmltopdf not found at {WKHTMLTOPDF_PATH}")
+# # Ensure wkhtmltopdf exists
+# if not os.path.exists(WKHTMLTOPDF_PATH):
+#     raise FileNotFoundError(f"wkhtmltopdf not found at {WKHTMLTOPDF_PATH}")
 
-# Explicitly configure pdfkit
-config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
+# # Explicitly configure pdfkit
+# config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
 
-# Ensure reports directory exists
-BASE_DIR = os.path.abspath(os.path.dirname(__file__)) # Get current directory
-REPORTS_DIR = os.path.join(BASE_DIR, "reports")
-os.makedirs(REPORTS_DIR, exist_ok=True)  
+# # Ensure reports directory exists
+# BASE_DIR = os.path.abspath(os.path.dirname(__file__)) # Get current directory
+# REPORTS_DIR = os.path.join(BASE_DIR, "reports")
+# os.makedirs(REPORTS_DIR, exist_ok=True)
 
 
-# ---------------------------------- Download Report (PDF) ----------------------------------
-@user_routes.route('/download_report', methods=['POST'])
-def download_report():
-    """Generates and downloads a report as a PDF file."""
-    data = request.json
+# # ---------------------------------- Download Report (PDF) ----------------------------------
+# @user_routes.route('/download_report', methods=['POST'])
+# def download_report():
+#     """Generates and downloads a report as a PDF file."""
+#     data = request.json
     
-    # Extract data from the request
-    username = data.get("username")  # Get the username from the request
-    score = data.get("score")        # Get the score from the request
-    total = data.get("total")        # Get the total score from the request
-    suggestions = data.get("suggestions", [])  # Get suggestions list (default to empty if not provided)
-    questions = data.get("questions", [])  # Get questions list (default to empty if not provided)
+#     # Extract data from the request
+#     username = data.get("username")  # Get the username from the request
+#     score = data.get("score")        # Get the score from the request
+#     total = data.get("total")        # Get the total score from the request
+#     suggestions = data.get("suggestions", [])  # Get suggestions list (default to empty if not provided)
+#     questions = data.get("questions", [])  # Get questions list (default to empty if not provided)
 
-    # Validate required fields
-    if not username or score is None or total is None:
-        return jsonify({
-            "message": "Invalid input: 'username', 'score', and 'total' are required fields.",
-            "success": False
-        }), 400
+#     # Validate required fields
+#     if not username or score is None or total is None:
+#         return jsonify({
+#             "message": "Invalid input: 'username', 'score', and 'total' are required fields.",
+#             "success": False
+#         }), 400
 
-    # Render the HTML template with the provided data
-    html_content = render_template(
-        "report.html", 
-        username=username, 
-        score=score, 
-        total=total, 
-        suggestions=suggestions, 
-        questions=questions
-    )
+#     # Render the HTML template with the provided data
+#     html_content = render_template(
+#         "report.html",
+#         username=username,
+#         score=score,
+#         total=total,
+#         suggestions=suggestions,
+#         questions=questions
+#     )
     
-    # Define the file path for the generated PDF inside the "reports" folder
-    pdf_file = os.path.join(REPORTS_DIR, f"MockTest_{username}.pdf")
+#     # Define the file path for the generated PDF inside the "reports" folder
+#     pdf_file = os.path.join(REPORTS_DIR, f"MockTest_{username}.pdf")
 
-    # Attempt to generate the PDF from the rendered HTML content
-    try:
-        pdfkit.from_string(html_content, pdf_file, configuration=config)
-    except Exception as e:
-        # Return a failure response with an error message if PDF generation fails
-        return jsonify({
-            "message": "PDF generation failed",
-            "success": False,
-            "error": str(e)
-        }), 500
+#     # Attempt to generate the PDF from the rendered HTML content
+#     try:
+#         pdfkit.from_string(html_content, pdf_file, configuration=config)
+#     except Exception as e:
+#         # Return a failure response with an error message if PDF generation fails
+#         return jsonify({
+#             "message": "PDF generation failed",
+#             "success": False,
+#             "error": str(e)
+#         }), 500
 
-    # Attempt to send the generated PDF file as a download
-    try:
-        return send_file(
-            pdf_file, 
-            as_attachment=True, 
-            download_name=f"MockTest_{username}.pdf"
-        )
-    except Exception as e:
-        # Return a failure response if file sending fails
-        return jsonify({
-            "message": "File sending failed",
-            "success": False,
-            "error": str(e)
-        }), 500
+#     # Attempt to send the generated PDF file as a download
+#     try:
+#         return send_file(
+#             pdf_file,
+#             as_attachment=True,
+#             download_name=f"MockTest_{username}.pdf"
+#         )
+#     except Exception as e:
+#         # Return a failure response if file sending fails
+#         return jsonify({
+#             "message": "File sending failed",
+#             "success": False,
+#             "error": str(e)
+#         }), 500
 
-    # Return a success response if the file is sent successfully
-    return jsonify({
-        "message": "PDF generated and downloaded successfully",
-        "success": True,
-        "file_path": pdf_file
-    }), 200
+#     # Return a success response if the file is sent successfully
+#     return jsonify({
+#         "message": "PDF generated and downloaded successfully",
+#         "success": True,
+#         "file_path": pdf_file
+#     }), 200
