@@ -8,10 +8,8 @@ from token_validation import generate_token
 from datetime import datetime
 import pdfkit
 import platform
-
+import requests
 from flask_jwt_extended import create_access_token
-# from google.oauth2 import id_token
-# from google.auth.transport import requests as google_requests
 from werkzeug.security import generate_password_hash
 
 
@@ -22,84 +20,108 @@ user_routes = Blueprint('user_routes', __name__)
 
 # Signup Route - Registers a new user
 # Environment variables
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')  # Set your Google Client ID
+# Environment variables
+GOOGLE_CLIENT_ID = "859846322076-3u1k9ter70q7b5jqaum8i7e5jc506mnh.apps.googleusercontent.com"  # Set your Google Client ID
+GOOGLE_CLIENT_SECRET = "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"
 
-# Google Sign-Up Route
-# @user_routes.route('/google_signup', methods=['POST'])
-# def google_signup():
-#     data = request.get_json()
-#     token = data.get('id_token')
+@user_routes.route('/google_signup', methods=['POST'])
+def google_signup():
+    data = request.get_json()
+    access_token = data.get('access_token')
 
-#     if not token:
-#         return jsonify({"Success": False, "message": "Google ID token is required"}), 400
+    if not access_token:
+        return jsonify({"Success": False, "message": "Google access token is required"}), 400
 
-#     try:
-#         # Verify Google ID Token
-#         id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
-#         google_id = id_info.get('sub')  # User's unique Google ID
-#         email = id_info.get('email')
-#         username = id_info.get('name')  # Fallback username from Google profile
+    try:
+        # Use the access token to get user info from Google
+        headers = {
+            'Authorization': f'Bearer {access_token}'
+        }
 
-#         # Check if user with this Google ID already exists
-#         user = User.query.filter_by(google_id=google_id).first()
-#         if user:
-#             return jsonify({"Success": False, "message": "User already exists"}), 400
+        # Fetch user information from Google's userinfo endpoint
+        response = requests.get('https://www.googleapis.com/oauth2/v3/userinfo', headers=headers)
 
-#         # Check if email is already in use
-#         if User.query.filter_by(email=email).first():
-#             return jsonify({"Success": False, "message": "Email already exists"}), 400
+        if response.status_code != 200:
+            return jsonify({"Success": False, "message": f"Failed to verify access token: {response.text}"}), 400
 
-#         # Create a new user with Google ID
-#         new_user = User(
-#             username=username,
-#             email=email,
-#             password=None,  # No password needed for Google Auth
-#             role='student',  # Default role or can be set from data.get('role')
-#             google_id=google_id
-#         )
-        
-#         db.session.add(new_user)
-#         db.session.commit()
+        user_info = response.json()
 
-#         # Generate JWT token
-#         token = create_access_token(identity=new_user.id)
-#         return jsonify({"Success": True, "access_token": token, "message": "User registered successfully"}), 201
+        # Extract user data from the response
+        google_id = user_info.get('sub')
+        email = user_info.get('email')
+        username = user_info.get('name')
+        email_verified = user_info.get('email_verified', False)
 
-#     except ValueError as e:
-#         return jsonify({"Success": False, "message": f"Invalid Google token: {str(e)}"}), 400
+        # Check if email is verified
+        if not email_verified:
+            return jsonify({"Success": False, "message": "Email not verified with Google"}), 400
 
-#     except Exception as e:
-#         return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
+        # Check if user already exists - handle as login case
+        user = User.query.filter_by(google_id=google_id).first()
+        if user:
+            token = create_access_token(identity=user.id)
+            return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
+
+        # Check if email is already in use
+        if User.query.filter_by(email=email).first():
+            return jsonify({"Success": False, "message": "Email already exists"}), 400
+
+        # Create a new user with Google ID
+        new_user = User(
+            username=username,
+            email=email,
+            password=None,  # No password needed for Google Auth
+            role='student',  # Default role
+            google_id=google_id
+        )
+
+        db.session.add(new_user)
+        db.session.commit()
+
+        # Generate JWT token
+        token = create_access_token(identity=new_user.id)
+        return jsonify({"Success": True, "access_token": token, "message": "User registered successfully"}), 201
+
+    except Exception as e:
+        return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
 
 
-# # Google Login Route
-# @user_routes.route('/google_login', methods=['POST'])
-# def google_login():
-#     data = request.get_json()
-#     token = data.get('id_token')
+@user_routes.route('/google_login', methods=['POST'])
+def google_login():
+    data = request.get_json()
+    access_token = data.get('access_token')
 
-#     if not token:
-#         return jsonify({"Success": False, "message": "Google ID token is required"}), 400
+    if not access_token:
+        return jsonify({"Success": False, "message": "Google access token is required"}), 400
 
-#     try:
-#         # Verify Google ID Token
-#         # id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
-#         google_id = id_info.get('sub')  # User's unique Google ID
+    try:
+        # Use the access token to get user info from Google
+        headers = {
+            'Authorization': f'Bearer {access_token}'
+        }
 
-#         # Check if the user exists with the provided Google ID
-#         user = User.query.filter_by(google_id=google_id).first()
-#         if not user:
-#             return jsonify({"Success": False, "message": "User not registered"}), 404
+        # Fetch user information from Google's userinfo endpoint
+        response = requests.get('https://www.googleapis.com/oauth2/v3/userinfo', headers=headers)
 
-#         # Generate JWT token
-#         token = create_access_token(identity=user.id)
-#         return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
+        if response.status_code != 200:
+            return jsonify({"Success": False, "message": f"Failed to verify access token: {response.text}"}), 400
 
-#     except ValueError as e:
-#         return jsonify({"Success": False, "message": f"Invalid Google token: {str(e)}"}), 400
+        user_info = response.json()
 
-#     except Exception as e:
-#         return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
+        # Extract user's Google ID
+        google_id = user_info.get('sub')
+
+        # Check if the user exists with the provided Google ID
+        user = User.query.filter_by(google_id=google_id).first()
+        if not user:
+            return jsonify({"Success": False, "message": "User not registered"}), 404
+
+        # Generate JWT token
+        token = create_access_token(identity=user.id)
+        return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
+
+    except Exception as e:
+        return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
 
 
 # Signup Route - Registers a new user
