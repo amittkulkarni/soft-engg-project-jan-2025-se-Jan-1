@@ -10,11 +10,9 @@ import pdfkit
 import platform
 
 from flask_jwt_extended import create_access_token
-# from google.oauth2 import id_token
-# from google.auth.transport import requests as google_requests
-from werkzeug.security import generate_password_hash
-
-
+import subprocess
+import tempfile
+import requests
 
 user_routes = Blueprint('user_routes', __name__)
 
@@ -22,122 +20,107 @@ user_routes = Blueprint('user_routes', __name__)
 
 # Signup Route - Registers a new user
 # Environment variables
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')  # Set your Google Client ID
+GOOGLE_CLIENT_ID = "859846322076-3u1k9ter70q7b5jqaum8i7e5jc506mnh.apps.googleusercontent.com"  # Set your Google Client ID
+GOOGLE_CLIENT_SECRET = "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"
 
-# Google Sign-Up Route
-# @user_routes.route('/google_signup', methods=['POST'])
-# def google_signup():
-#     data = request.get_json()
-#     token = data.get('id_token')
-
-#     if not token:
-#         return jsonify({"Success": False, "message": "Google ID token is required"}), 400
-
-#     try:
-#         # Verify Google ID Token
-#         id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
-#         google_id = id_info.get('sub')  # User's unique Google ID
-#         email = id_info.get('email')
-#         username = id_info.get('name')  # Fallback username from Google profile
-
-#         # Check if user with this Google ID already exists
-#         user = User.query.filter_by(google_id=google_id).first()
-#         if user:
-#             return jsonify({"Success": False, "message": "User already exists"}), 400
-
-#         # Check if email is already in use
-#         if User.query.filter_by(email=email).first():
-#             return jsonify({"Success": False, "message": "Email already exists"}), 400
-
-#         # Create a new user with Google ID
-#         new_user = User(
-#             username=username,
-#             email=email,
-#             password=None,  # No password needed for Google Auth
-#             role='student',  # Default role or can be set from data.get('role')
-#             google_id=google_id
-#         )
-        
-#         db.session.add(new_user)
-#         db.session.commit()
-
-#         # Generate JWT token
-#         token = create_access_token(identity=new_user.id)
-#         return jsonify({"Success": True, "access_token": token, "message": "User registered successfully"}), 201
-
-#     except ValueError as e:
-#         return jsonify({"Success": False, "message": f"Invalid Google token: {str(e)}"}), 400
-
-#     except Exception as e:
-#         return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
-
-
-# # Google Login Route
-# @user_routes.route('/google_login', methods=['POST'])
-# def google_login():
-#     data = request.get_json()
-#     token = data.get('id_token')
-
-#     if not token:
-#         return jsonify({"Success": False, "message": "Google ID token is required"}), 400
-
-#     try:
-#         # Verify Google ID Token
-#         # id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
-#         google_id = id_info.get('sub')  # User's unique Google ID
-
-#         # Check if the user exists with the provided Google ID
-#         user = User.query.filter_by(google_id=google_id).first()
-#         if not user:
-#             return jsonify({"Success": False, "message": "User not registered"}), 404
-
-#         # Generate JWT token
-#         token = create_access_token(identity=user.id)
-#         return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
-
-#     except ValueError as e:
-#         return jsonify({"Success": False, "message": f"Invalid Google token: {str(e)}"}), 400
-
-#     except Exception as e:
-#         return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
-
-
-# Signup Route - Registers a new user
-@user_routes.route('/signup', methods=['POST'])
-def signup():
+@user_routes.route('/google_signup', methods=['POST'])
+def google_signup():
     data = request.get_json()
-    username = data.get('username')
-    email = data.get('email')
-    password = data.get('password')
-    role = data.get('role', 'student')  # Default to 'student' if not provided
+    access_token = data.get('access_token')
 
-    # Check if the username exists only if provided
-    if username and User.query.filter_by(username=username).first():
-        return jsonify({"message": "Username already exists"}), 400
+    if not access_token:
+        return jsonify({"Success": False, "message": "Google access token is required"}), 400
 
-    # Validate required fields
-    if not all([email, password]):
-        return jsonify({"message": "Email and password are required"}), 400
-    
-    # Check if the email already exists
-    if User.query.filter_by(email=email).first():
-        return jsonify({"message": "Email already exists"}), 400
+    try:
+        # Use the access token to get user info from Google
+        headers = {
+            'Authorization': f'Bearer {access_token}'
+        }
 
-    # Hash the password
-    hashed_password = generate_password_hash(password, method='pbkdf2:sha256') 
+        # Fetch user information from Google's userinfo endpoint
+        response = requests.get('https://www.googleapis.com/oauth2/v3/userinfo', headers=headers)
 
-    # Create and save new user
-    new_user = User(
-        username=username,
-        email=email,
-        password=hashed_password,
-        role=role
-    )
+        if response.status_code != 200:
+            return jsonify({"Success": False, "message": f"Failed to verify access token: {response.text}"}), 400
 
-    db.session.add(new_user)
-    db.session.commit()
+        user_info = response.json()
 
-    return jsonify({"message": "User registered successfully"}), 201
+        # Extract user data from the response
+        google_id = user_info.get('sub')
+        email = user_info.get('email')
+        username = user_info.get('name')
+        email_verified = user_info.get('email_verified', False)
+
+        # Check if email is verified
+        if not email_verified:
+            return jsonify({"Success": False, "message": "Email not verified with Google"}), 400
+
+        # Check if user already exists - handle as login case
+        user = User.query.filter_by(google_id=google_id).first()
+        if user:
+            token = create_access_token(identity=user.id)
+            return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
+
+        # Check if email is already in use
+        if User.query.filter_by(email=email).first():
+            return jsonify({"Success": False, "message": "Email already exists"}), 400
+
+        # Create a new user with Google ID
+        new_user = User(
+            username=username,
+            email=email,
+            password=None,  # No password needed for Google Auth
+            role='student',  # Default role
+            google_id=google_id
+        )
+
+        db.session.add(new_user)
+        db.session.commit()
+
+        # Generate JWT token
+        token = create_access_token(identity=new_user.id)
+        return jsonify({"Success": True, "access_token": token, "message": "User registered successfully"}), 201
+
+    except Exception as e:
+        return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
+
+
+@user_routes.route('/google_login', methods=['POST'])
+def google_login():
+    data = request.get_json()
+    access_token = data.get('access_token')
+
+    if not access_token:
+        return jsonify({"Success": False, "message": "Google access token is required"}), 400
+
+    try:
+        # Use the access token to get user info from Google
+        headers = {
+            'Authorization': f'Bearer {access_token}'
+        }
+
+        # Fetch user information from Google's userinfo endpoint
+        response = requests.get('https://www.googleapis.com/oauth2/v3/userinfo', headers=headers)
+
+        if response.status_code != 200:
+            return jsonify({"Success": False, "message": f"Failed to verify access token: {response.text}"}), 400
+
+        user_info = response.json()
+
+        # Extract user's Google ID
+        google_id = user_info.get('sub')
+
+        # Check if the user exists with the provided Google ID
+        user = User.query.filter_by(google_id=google_id).first()
+        if not user:
+            return jsonify({"Success": False, "message": "User not registered"}), 404
+
+        # Generate JWT token
+        token = create_access_token(identity=user.id)
+        return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
+
+    except Exception as e:
+        return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
 
 # Login Route - Authenticates a user and returns an access token
 @user_routes.route('/login', methods=['POST'])
@@ -145,7 +128,7 @@ def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
-    
+
     # Validate required fields
     if not all([email, password]):
         return jsonify({"message": "Email and password are required"}), 400
@@ -1047,7 +1030,141 @@ def delete_ProgrammingAssignment(assignment_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
-    
+
+@user_routes.route('/programming_assignments/<int:assignment_id>/execute', methods=['POST'])
+def execute_solution(assignment_id):
+    try:
+        # Parse the request data
+        data = request.get_json()
+        code = data.get("code")
+
+        if not code:
+            return jsonify({"success": False, "message": "No code submitted"}), 400
+
+        # Fetch the assignment to verify it exists
+        assignment = ProgrammingAssignment.query.get(assignment_id)
+        if not assignment:
+            return jsonify({"success": False, "message": "Programming assignment not found"}), 404
+
+        # Get test cases from the assignment
+        test_cases = assignment.get_test_cases()
+
+        # Execute the code against the test cases
+        results = []
+        passed_count = 0
+        total_cases = len(test_cases)
+
+        for i, test_case in enumerate(test_cases):
+            try:
+                # Get input for this test case
+                input_data = test_case["input"]
+                expected_output = test_case["expected_output"]
+
+                # Execute the code with this input
+                actual_output = execute_python_code(code, input_data)
+
+                # Compare output with expected
+                is_correct = compare_ml_outputs(actual_output, expected_output)
+
+                if is_correct:
+                    status = "passed"
+                    passed_count += 1
+                else:
+                    status = "failed"
+
+                # Add result
+                results.append({
+                    "test_case_id": i + 1,
+                    "status": status,
+                    "input": input_data,
+                    "expected_output": expected_output,
+                    "actual_output": actual_output
+                })
+
+            except Exception as e:
+                # Handle execution errors
+                results.append({
+                    "test_case_id": i + 1,
+                    "status": "error",
+                    "error_message": str(e)
+                })
+
+        # Calculate score
+        score = (passed_count / total_cases) * 100 if total_cases > 0 else 0
+
+        # Return results
+        return jsonify({
+            "success": True,
+            "score": score,
+            "passed_count": passed_count,
+            "total_cases": total_cases,
+            "results": results,
+        }), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": "Error executing code", "error": str(e)}), 500
+
+# Helper function to execute Python code
+def execute_python_code(code, input_data):
+    """
+Execute python code with provided input and return the output
+    """
+    # Create temporary files for code and input
+    with tempfile.NamedTemporaryFile(suffix='.py', mode='w', delete=False) as f:
+        f.write(code)
+        code_file = f.name
+
+    with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+        f.write(input_data)
+        input_file = f.name
+
+    try:
+        # Execute the code with the input
+        result = subprocess.run(
+            ['python', code_file],
+            input=input_data,
+            capture_output=True,
+            text=True,
+            timeout=10  # 10 second timeout
+        )
+
+        if result.returncode != 0:
+            # If execution failed, return the error
+            return f"Execution Error: {result.stderr}"
+
+        return result.stdout
+
+    finally:
+        # Clean up temporary files
+        os.unlink(code_file)
+        os.unlink(input_file)
+
+# Function to compare Machine Learning outputs with tolerance
+def compare_ml_outputs(actual_output, expected_output):
+    """
+Compare ML prediction outputs with a tolerance for floating-point differences
+    """
+    try:
+        # Parse outputs (assuming they're newline-separated numeric values)
+        actual_values = [float(line.strip()) for line in actual_output.strip().split('\n') if line.strip()]
+        expected_values = [float(line.strip()) for line in expected_output.strip().split('\n') if line.strip()]
+
+        # Check if number of predictions matches
+        if len(actual_values) != len(expected_values):
+            return False
+
+        # Check if each prediction is within acceptable error margin (5%)
+        for actual, expected in zip(actual_values, expected_values):
+            error_margin = abs(expected) * 0.05  # 5% tolerance
+            if abs(actual - expected) > error_margin:
+                return False
+
+        return True
+
+    except Exception:
+        # If parsing fails, fall back to exact string comparison
+        return actual_output.strip() == expected_output.strip()
+
     
 #-----------------------------------------Score Checking ----------------------------------------------------------------
 # Calculate score based on selected option IDs
@@ -1368,7 +1485,7 @@ def topic_recommendation():
 # # Ensure reports directory exists
 # BASE_DIR = os.path.abspath(os.path.dirname(__file__)) # Get current directory
 # REPORTS_DIR = os.path.join(BASE_DIR, "reports")
-# os.makedirs(REPORTS_DIR, exist_ok=True)  
+# os.makedirs(REPORTS_DIR, exist_ok=True)
 
 
 # # ---------------------------------- Download Report (PDF) ----------------------------------
@@ -1393,11 +1510,11 @@ def topic_recommendation():
 
 #     # Render the HTML template with the provided data
 #     html_content = render_template(
-#         "report.html", 
-#         username=username, 
-#         score=score, 
-#         total=total, 
-#         suggestions=suggestions, 
+#         "report.html",
+#         username=username,
+#         score=score,
+#         total=total,
+#         suggestions=suggestions,
 #         questions=questions
 #     )
     
@@ -1418,8 +1535,8 @@ def topic_recommendation():
 #     # Attempt to send the generated PDF file as a download
 #     try:
 #         return send_file(
-#             pdf_file, 
-#             as_attachment=True, 
+#             pdf_file,
+#             as_attachment=True,
 #             download_name=f"MockTest_{username}.pdf"
 #         )
 #     except Exception as e:

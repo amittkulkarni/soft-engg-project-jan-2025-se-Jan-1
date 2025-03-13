@@ -7,7 +7,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from typing import List
 
-
 # Define the schema for MCQ output
 class MCQQuestion(BaseModel):
     question: str = Field(description="The question text")

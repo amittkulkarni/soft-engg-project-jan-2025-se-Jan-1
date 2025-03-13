@@ -34,15 +34,20 @@
                     </div>
 
                     <!-- Google Login Button -->
-                    <button type="button" class="google-btn" @click="handleGoogleLogin">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 300 300" id="google">
-                    <path fill="#4285F4" d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.875-56.282 38.875-96.027"></path>
-                    <path fill="#34A853" d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-40.298 31.187-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1"></path>
-                    <path fill="#FBBC05" d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782"></path>
-                    <path fill="#EB4335" d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251"></path>
-                  </svg>
-                        Sign In with Google
-                    </button>
+                    <GoogleLogin
+                        :callback="handleGoogleCallback"
+                        popup-type="TOKEN"
+                    >
+                        <button type="button" class="google-btn">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 300 300" id="google">
+                            <path fill="#4285F4" d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.875-56.282 38.875-96.027"></path>
+                            <path fill="#34A853" d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-40.298 31.187-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1"></path>
+                            <path fill="#FBBC05" d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782"></path>
+                            <path fill="#EB4335" d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251"></path>
+                          </svg>
+                          Sign In with Google
+                        </button>
+                    </GoogleLogin>
                     <div v-if="errorMessage" class="error-message">
                         {{ errorMessage }}
                     </div>
@@ -56,12 +61,15 @@
     </div>
 </template>
 
-
 <script>
 import api from '@/services/api'
+import { GoogleLogin } from 'vue3-google-login'
 
 export default {
     name: "LoginPage",
+    components: {
+        GoogleLogin
+    },
     data() {
         return {
             email: "",
@@ -89,31 +97,52 @@ export default {
             } catch (error) {
                 // Handle errors
                 if (error.response) {
-                    // The request was made and the server responded with a status code
-                    // that falls out of the range of 2xx
                     this.errorMessage = error.response.data.message || "Login failed. Please try again.";
                 } else if (error.request) {
-                    // The request was made but no response was received
                     this.errorMessage = "No response from server. Please try again later.";
                 } else {
-                    // Something happened in setting up the request
                     this.errorMessage = "Error: " + error.message;
                 }
             } finally {
                 this.isLoading = false;
             }
         },
-        handleGoogleLogin() {
-            // Implement Google login functionality here
-            // This would typically redirect to your backend Google OAuth endpoint
-            // window.location.href = '/api/auth/google';
-            alert("Google login not implemented yet");
+        handleGoogleCallback(response) {
+            const access_token = response.access_token;
+            console.log("Google access token received:", access_token);
+
+            // Send the access token to backend
+            fetch('http://localhost:5000/google_login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 'access_token': access_token }),
+                credentials: 'include'
+            })
+            .then(response => {
+                return response.json().then(data => {
+                    if (!response.ok) {
+                        throw new Error(data.message || `Error: ${response.status}`);
+                    }
+                    return data;
+                });
+            })
+            .then(data => {
+                if (data.Success) {
+                    // Store token for authenticated requests
+                    localStorage.setItem('access_token', data.access_token);
+                    this.$router.push("/course");
+                } else {
+                    this.errorMessage = data.message || "Login failed";
+                }
+            })
+            .catch(error => {
+                console.error("Fetch error:", error);
+                this.errorMessage = `Authentication failed: ${error.message}`;
+            });
         }
-    },
+    }
 };
 </script>
-
-
 <style scoped>
 .login-page {
     display: flex;
