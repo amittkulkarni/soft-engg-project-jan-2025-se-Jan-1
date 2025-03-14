@@ -959,29 +959,40 @@ def add_ProgrammingAssignment():
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['GET'])
 def get_ProgrammingAssignment(assignment_id):
     try:
-        # Fetch the assignment from the database
-        assignment = ProgrammingAssignment.query.get(assignment_id)
+        # Explicitly set starting table to resolve join ambiguity
+        assignment = db.session.query(
+            ProgrammingAssignment, Week
+        ).select_from(ProgrammingAssignment)  \
+        .join(Assignment, ProgrammingAssignment.assignment_id == Assignment.id)  \
+        .join(Week, Assignment.week_id == Week.id)  \
+        .filter(ProgrammingAssignment.id == assignment_id).first()
+
         if not assignment:
             return jsonify({"success": False, "message": "Programming assignment not found"}), 404
-        
-        # Return the assignment details as JSON
+
+        programming_assignment, week = assignment  # Extract details from the joined result
+
+        # Return the assignment details along with the week number
         return jsonify({
             "success": True,
             "data": {
-                "id": assignment.id,
-                "assignment_id": assignment.assignment_id,
-                "problem_statement": assignment.problem_statement,
-                "input_format": assignment.input_format,
-                "output_format": assignment.output_format,
-                "constraints": assignment.constraints,
-                "sample_input": assignment.sample_input,
-                "sample_output": assignment.sample_output,
-                "test_cases": assignment.get_test_cases()
+                "id": programming_assignment.id,
+                "assignment_id": programming_assignment.assignment_id,
+                "problem_statement": programming_assignment.problem_statement,
+                "input_format": programming_assignment.input_format,
+                "output_format": programming_assignment.output_format,
+                "constraints": programming_assignment.constraints,
+                "sample_input": programming_assignment.sample_input,
+                "sample_output": programming_assignment.sample_output,
+                "test_cases": programming_assignment.get_test_cases(),
+                "week_number": week.week_number  # Added week number here
             }
         }), 200
+
     except Exception as e:
         return jsonify({"success": False, "message": "Error retrieving assignment", "error": str(e)}), 500
-    
+
+
     
 # Update an existing programming assignment
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['PUT'])
