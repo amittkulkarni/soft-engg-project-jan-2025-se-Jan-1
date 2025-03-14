@@ -10,7 +10,6 @@
       </li>
 
       <!-- Collapsible Items -->
-      <!--<template v-for="(sectionGroup, groupIndex) in sectionGroups" :key="'group-' + groupIndex">-->
       <template v-if="sidebarSections.length > 0">
       <li v-for="(section, index) in sidebarSections" :key="'section-' + index" class="list-group-item">
         <div
@@ -33,17 +32,7 @@
             class="list-group-item child-list-item"
           >
             <router-link
-              :to="item.itemType === 'lecture' ?
-                {
-                  path: item.link,
-                  query: {
-                    title: item.text,
-                    videoId: item.videoId
-                  }
-                } :
-                {
-                  path: item.link
-                }"
+              :to="getItemLink(item)"
               class="no-link"
             >
               <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style="width:16px;"/>
@@ -90,17 +79,7 @@
             class="list-group-item child-list-item"
           >
             <router-link
-              :to="item.itemType === 'lecture' ?
-                {
-                  path: item.link,
-                  query: {
-                    title: item.text,
-                    videoId: item.videoId
-                  }
-                } :
-                {
-                  path: item.link
-                }"
+              :to="getItemLink(item)"
               class="no-link"
             >
               <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style="width:16px;"/>
@@ -146,17 +125,7 @@
             class="list-group-item child-list-item"
           >
             <router-link
-              :to="item.itemType === 'lecture' ?
-                {
-                  path: item.link,
-                  query: {
-                    title: item.text,
-                    videoId: item.videoId
-                  }
-                } :
-                {
-                  path: item.link
-                }"
+              :to="getItemLink(item)"
               class="no-link"
             >
               <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style="width:16px;"/>
@@ -342,6 +311,32 @@ export default {
         }
       });
     },
+
+    // New method to get the appropriate link based on item type
+    getItemLink(item) {
+      if (item.itemType === 'lecture') {
+        return {
+          path: item.link,
+          query: {
+            title: item.text,
+            videoId: item.videoId
+          }
+        };
+      } else if (item.itemType === 'assignment') {
+        // Check assignment type for programming assignments
+        if (item.assignmentType === 'programming') {
+          return {
+            path: `/programming/${item.assignmentId}`,
+            query: { title: item.text }
+          };
+        } else {
+          return { path: item.link };
+        }
+      } else {
+        return { path: item.link };
+      }
+    },
+
     formatDate(dateString) {
       if (!dateString) return '';
       const date = new Date(dateString);
@@ -350,6 +345,7 @@ export default {
         day: 'numeric'
       });
     },
+
     getAssignmentIcon(assignmentType) {
       // Return different icons based on assignment type
       switch(assignmentType) {
@@ -357,10 +353,13 @@ export default {
           return require('@/assets/assignment-svgrepo-com.svg');
         case 'practice':
           return require('@/assets/discuss.svg');
+        case 'programming':
+          return require('@/assets/programming-svgrepo-com.svg'); // Add a code icon for programming assignments
         default:
           return require('@/assets/discuss.svg');
       }
     },
+
     handleCollapse(sectionId) {
       if (this.activeSection === sectionId) {
         this.collapseInstances[sectionId].hide();

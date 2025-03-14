@@ -26,7 +26,7 @@ const routes = [
     component: CoursePage
   },
   {
-    path: "/grpa",
+    path: "/programming/:id",
     name: "ProgrammingAssignment",
     component: ProgrammingPage
   },

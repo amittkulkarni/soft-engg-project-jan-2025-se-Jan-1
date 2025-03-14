@@ -193,6 +193,30 @@ export default {
   async created() {
     await this.fetchAssignmentData();
   },
+  watch: {
+    // Watch for changes in the route parameter
+    '$route.params.id': function() {
+      // Reset component state
+      this.loading = true;
+      this.error = null;
+      this.assignment = {
+        id: null,
+        title: '',
+        assignment_type: '',
+        due_date: null,
+        total_points: 0,
+      };
+      this.questions = [];
+      this.userAnswers = [];
+      this.correctAnswers = [];
+      this.pointsPerQuestion = [];
+      this.score = 0;
+      this.showScore = false;
+
+      // Fetch the new assignment data
+      this.fetchAssignmentData();
+    }
+  },
   methods: {
     async fetchAssignmentData() {
       try {

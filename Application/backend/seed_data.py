@@ -51,9 +51,13 @@ def seed_lectures(weeks):
 def seed_assignments(weeks):
     """Seed assignments."""
     assignments = [
-        Assignment(week_id=weeks[0].id, title="Assignment 1", assignment_type="graded",
+        Assignment(week_id=weeks[0].id, title="Graded Assignment 1", assignment_type="graded",
                    due_date=datetime.now() + timedelta(days=7), total_points=25),
-        Assignment(week_id=weeks[1].id, title="Assignment 3", assignment_type="graded",
+        Assignment(week_id=weeks[1].id, title="Graded Assignment 2", assignment_type="graded",
+                   due_date=datetime.now() + timedelta(days=7), total_points=25),
+        Assignment(week_id=weeks[0].id, title="Programming Assignment 1", assignment_type="programming",
+                   due_date=datetime.now() + timedelta(days=7), total_points=25),
+        Assignment(week_id=weeks[1].id, title="Programming Assignment 2", assignment_type="programming",
                    due_date=datetime.now() + timedelta(days=7), total_points=25)
     ]
     db.session.add_all(assignments)
@@ -123,7 +127,7 @@ def seed_programming_assignments(assignments):
     """Seed programming assignments linked to existing assignments."""
     programming_assignments = [
         ProgrammingAssignment(
-            assignment_id=assignments[0].id,  
+            assignment_id=assignments[2].id,
             problem_statement="Write a Python function to check if a number is prime.",
             input_format="A single integer N (1 <= N <= 10^6).",
             output_format="Output 'YES' if N is prime, otherwise 'NO'.",
@@ -138,7 +142,7 @@ def seed_programming_assignments(assignments):
             ])
         ),
         ProgrammingAssignment(
-            assignment_id=assignments[0].id,  
+            assignment_id=assignments[3].id,
             problem_statement="Write a function to return the sum of an array.",
             input_format="First line contains an integer N, followed by N space-separated integers.",
             output_format="Output a single integer, the sum of the array.",
