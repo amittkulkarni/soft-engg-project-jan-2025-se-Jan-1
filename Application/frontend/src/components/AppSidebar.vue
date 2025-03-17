@@ -149,12 +149,10 @@
 
       <!-- Additional Mock Quizzes -->
       <li class="list-group-item mt-2">
-        <router-link :to=" {
-                       path: '/ga',
-                       query: { title: 'Mock End Term' }
-                     }" class="no-link">
-          <span><i class="bi bi-pencil-square me-2"></i> Generate Mock End Term</span>
-        </router-link>
+        <router-link to="/mock-quiz" class="nav-link">
+          <i class="bi bi-lightning-charge me-2"></i>
+          Mock Quiz Generator
+        </router-link>        
       </li>
 
       <li class="list-group-item mt-2">
