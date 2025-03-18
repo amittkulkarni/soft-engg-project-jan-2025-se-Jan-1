@@ -955,18 +955,11 @@ def add_ProgrammingAssignment():
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
     
     
-# Retrieve a specific programming assignment by ID
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['GET'])
 def get_ProgrammingAssignment(assignment_id):
     try:
-        # Explicitly set starting table to resolve join ambiguity
-        assignment = db.session.query(
-            ProgrammingAssignment, Week
-        ).select_from(ProgrammingAssignment)  \
-        .join(Assignment, ProgrammingAssignment.assignment_id == Assignment.id)  \
-        .join(Week, Assignment.week_id == Week.id)  \
-        .filter(ProgrammingAssignment.id == assignment_id).first()
-
+        # Fetch the assignment from the database
+        assignment = ProgrammingAssignment.query.get(assignment_id)
         if not assignment:
             return jsonify({"success": False, "message": "Programming assignment not found"}), 404
 
@@ -976,16 +969,15 @@ def get_ProgrammingAssignment(assignment_id):
         return jsonify({
             "success": True,
             "data": {
-                "id": programming_assignment.id,
-                "assignment_id": programming_assignment.assignment_id,
-                "problem_statement": programming_assignment.problem_statement,
-                "input_format": programming_assignment.input_format,
-                "output_format": programming_assignment.output_format,
-                "constraints": programming_assignment.constraints,
-                "sample_input": programming_assignment.sample_input,
-                "sample_output": programming_assignment.sample_output,
-                "test_cases": programming_assignment.get_test_cases(),
-                "week_number": week.week_number  # Added week number here
+                "id": assignment.id,
+                "assignment_id": assignment.assignment_id,
+                "problem_statement": assignment.problem_statement,
+                "input_format": assignment.input_format,
+                "output_format": assignment.output_format,
+                "constraints": assignment.constraints,
+                "sample_input": assignment.sample_input,
+                "sample_output": assignment.sample_output,
+                "test_cases": assignment.get_test_cases()
             }
         }), 200
 
@@ -1069,15 +1061,19 @@ def execute_solution(assignment_id):
             try:
                 # Get input for this test case
                 input_data = test_case["input"]
-                expected_output = test_case["expected_output"]
+
+                if "output" in test_case:
+                    expected_output = test_case["output"]
+                else:
+                    raise KeyError(f"Test case {i+1} is missing output field")
 
                 # Execute the code with this input
                 actual_output = execute_python_code(code, input_data)
 
                 # Compare output with expected
-                is_correct = compare_ml_outputs(actual_output, expected_output)
+                # is_correct = compare_ml_outputs(actual_output, expected_output)
 
-                if is_correct:
+                if actual_output.strip() == expected_output.strip():
                     status = "passed"
                     passed_count += 1
                 else:
@@ -1113,21 +1109,29 @@ def execute_solution(assignment_id):
         }), 200
 
     except Exception as e:
-        return jsonify({"success": False, "message": "Error executing code", "error": str(e)}), 500
+        import traceback
+        traceback.print_exc()  # Print stacktrace for debugging
+        return jsonify({"success": False, "message": f"Error executing code: {str(e)}", "error": str(e)}), 500
 
 # Helper function to execute Python code
 def execute_python_code(code, input_data):
     """
 Execute python code with provided input and return the output
     """
-    # Create temporary files for code and input
+    # Add debugging to help diagnose issues
+    print(f"Debug - Input data: '{input_data}'")
+
+    # Ensure input ends with newline
+    if not input_data.endswith('\n'):
+        input_data += '\n'
+        print(f"Debug - Modified input: '{input_data}'")
+
+    # Create temporary files for code
     with tempfile.NamedTemporaryFile(suffix='.py', mode='w', delete=False) as f:
         f.write(code)
         code_file = f.name
-
-    with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
-        f.write(input_data)
-        input_file = f.name
+        print(f"Debug - Code file: {code_file}")
+        print(f"Debug - Code content: \n{code}")
 
     try:
         # Execute the code with the input
@@ -1139,6 +1143,10 @@ Execute python code with provided input and return the output
             timeout=10  # 10 second timeout
         )
 
+        print(f"Debug - Return code: {result.returncode}")
+        print(f"Debug - Stdout: '{result.stdout}'")
+        print(f"Debug - Stderr: '{result.stderr}'")
+
         if result.returncode != 0:
             # If execution failed, return the error
             return f"Execution Error: {result.stderr}"
@@ -1148,33 +1156,32 @@ Execute python code with provided input and return the output
     finally:
         # Clean up temporary files
         os.unlink(code_file)
-        os.unlink(input_file)
 
 # Function to compare Machine Learning outputs with tolerance
-def compare_ml_outputs(actual_output, expected_output):
-    """
-Compare ML prediction outputs with a tolerance for floating-point differences
-    """
-    try:
-        # Parse outputs (assuming they're newline-separated numeric values)
-        actual_values = [float(line.strip()) for line in actual_output.strip().split('\n') if line.strip()]
-        expected_values = [float(line.strip()) for line in expected_output.strip().split('\n') if line.strip()]
-
-        # Check if number of predictions matches
-        if len(actual_values) != len(expected_values):
-            return False
-
-        # Check if each prediction is within acceptable error margin (5%)
-        for actual, expected in zip(actual_values, expected_values):
-            error_margin = abs(expected) * 0.05  # 5% tolerance
-            if abs(actual - expected) > error_margin:
-                return False
-
-        return True
-
-    except Exception:
-        # If parsing fails, fall back to exact string comparison
-        return actual_output.strip() == expected_output.strip()
+# def compare_ml_outputs(actual_output, expected_output):
+#     """
+# Compare ML prediction outputs with a tolerance for floating-point differences
+#     """
+#     try:
+#         # Parse outputs (assuming they're newline-separated numeric values)
+#         actual_values = [float(line.strip()) for line in actual_output.strip().split('\n') if line.strip()]
+#         expected_values = [float(line.strip()) for line in expected_output.strip().split('\n') if line.strip()]
+#
+#         # Check if number of predictions matches
+#         if len(actual_values) != len(expected_values):
+#             return False
+#
+#         # Check if each prediction is within acceptable error margin (5%)
+#         for actual, expected in zip(actual_values, expected_values):
+#             error_margin = abs(expected) * 0.05  # 5% tolerance
+#             if abs(actual - expected) > error_margin:
+#                 return False
+#
+#         return True
+#
+#     except Exception:
+#         # If parsing fails, fall back to exact string comparison
+#         return actual_output.strip() == expected_output.strip()
 
     
 #-----------------------------------------Score Checking ----------------------------------------------------------------

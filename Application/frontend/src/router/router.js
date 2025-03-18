@@ -7,6 +7,7 @@ import LecturePage from "@/components/LecturePage.vue"
 import AssignmentsPage from "@/components/AssignmentsPage.vue";
 import GenerateMock from "@/components/GenerateMock.vue";
 import KiaPage from "@/components/KiaPage.vue";
+import MockQuizPage from "@/components/MockQuizPage.vue";
 
 const routes = [
   {
@@ -26,7 +27,7 @@ const routes = [
     component: CoursePage
   },
   {
-    path: "/grpa",
+    path: "/programming/:id",
     name: "ProgrammingAssignment",
     component: ProgrammingPage
   },
@@ -50,6 +51,11 @@ const routes = [
     name: "KiaPage",
     component: KiaPage
   },
+  {
+    path: '/mock-quiz',
+    name: 'MockQuiz',
+    component: MockQuizPage
+  }
 ];
 
 const router = createRouter({

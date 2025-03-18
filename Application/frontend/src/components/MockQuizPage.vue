@@ -13,7 +13,7 @@
             <div class="spinner-border text-primary" role="status">
               <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="mt-2">Loading assignment...</p>
+            <p class="mt-2">Initializing mock quiz generator...</p>
           </div>
 
           <!-- Error State -->
@@ -21,20 +21,66 @@
             {{ error }}
           </div>
 
-          <!-- Assignment Content -->
+          <!-- Mock Quiz Generator (when no quiz is generated yet) -->
+          <div v-else-if="!mockQuizGenerated" class="mock-quiz-container mb-4 p-4 rounded shadow-sm">
+            <h3 class="mb-3 text-center">Generate Mock Quizzes</h3>
+
+            <!-- Configuration Options (removed question count) -->
+            <div class="row mb-4 justify-content-center">
+              <div class="col-md-6">
+                <div class="form-group mb-3">
+                  <label for="difficultySelect">Difficulty:</label>
+                  <select id="difficultySelect" v-model="mockDifficulty" class="form-select">
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Centralized Buttons -->
+            <div class="d-flex flex-wrap gap-3 mb-4 justify-content-center">
+              <button
+                @click="generateMockQuiz('mock_quiz_1')"
+                class="btn btn-outline-primary btn-lg">
+                <i class="bi bi-lightning me-1"></i> Mock Quiz 1
+              </button>
+              <button
+                @click="generateMockQuiz('mock_quiz_2')"
+                class="btn btn-outline-primary btn-lg">
+                <i class="bi bi-lightning-fill me-1"></i> Mock Quiz 2
+              </button>
+              <button
+                @click="generateMockQuiz('end_term')"
+                class="btn btn-outline-danger btn-lg">
+                <i class="bi bi-file-earmark-text me-1"></i> End Term Practice
+              </button>
+            </div>
+
+            <div v-if="generatingMock" class="d-flex align-items-center justify-content-center mt-3">
+              <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <span>Generating {{ mockType }} questions...</span>
+            </div>
+          </div>
+
+          <!-- Mock Quiz Content (after generation) -->
           <div v-else>
-            <!-- Assignment Header -->
+            <!-- Quiz Header -->
             <div class="assignment-header mb-4">
-              <h3>{{ assignment.title }}</h3>
+              <div class="d-flex justify-content-between align-items-center">
+                <h3>{{ mockQuiz.title }}</h3>
+                <span class="badge bg-info">Practice Material</span>
+              </div>
               <div class="assignment-meta d-flex flex-wrap gap-3 mt-2">
-                <span class="badge" :class="getTypeClass(assignment.assignment_type)">
-                  {{ formatType(assignment.assignment_type) }}
+                <span class="badge bg-success">Practice Quiz</span>
+                <span class="text-muted">
+                  <i class="bi bi-award me-1"></i> {{ mockQuiz.total_points }} Points
                 </span>
                 <span class="text-muted">
-                  <i class="bi bi-calendar-event me-1"></i> Due: {{ formatDate(assignment.due_date) }}
-                </span>
-                <span class="text-muted">
-                  <i class="bi bi-award me-1"></i> {{ assignment.total_points }} Points
+                  <i class="bi bi-gear me-1"></i> Difficulty: {{ mockDifficulty }}
                 </span>
               </div>
             </div>
@@ -105,7 +151,7 @@
                 @click="checkScore"
                 class="btn btn-primary"
                 :disabled="!isAllAnswered || showScore">
-                Submit Assignment
+                Submit Quiz
               </button>
 
               <button
@@ -113,6 +159,12 @@
                 @click="downloadPDF"
                 class="btn btn-outline-secondary">
                 <i class="bi bi-download me-1"></i> Download Report
+              </button>
+
+              <button
+                @click="resetQuiz"
+                class="btn btn-outline-danger">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Generate New Quiz
               </button>
             </div>
 
@@ -143,14 +195,13 @@
 </template>
 
 <script>
-import axios from 'axios';
 import AppSidebar from "@/components/AppSidebar.vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import ChatWindow from "@/components/ChatWindow.vue";
 import { jsPDF } from "jspdf";
 
 export default {
-  name: "AssignmentsPage",
+  name: "MockQuizPage",
   components: {
     AppNavbar,
     AppSidebar,
@@ -158,13 +209,15 @@ export default {
   },
   data() {
     return {
-      loading: true,
+      loading: false,
       error: null,
-      assignment: {
+      mockQuizGenerated: false,
+      generatingMock: false,
+      mockType: null,
+      mockDifficulty: 'medium',
+      mockQuiz: {
         id: null,
         title: '',
-        assignment_type: '',
-        due_date: null,
         total_points: 0,
       },
       questions: [],
@@ -184,63 +237,44 @@ export default {
       return (this.answeredCount / this.questions.length) * 100;
     },
     isAllAnswered() {
-      return this.answeredCount === this.questions.length;
+      return this.answeredCount === this.questions.length && this.questions.length > 0;
     },
     totalPossiblePoints() {
       return this.pointsPerQuestion.reduce((sum, points) => sum + points, 0);
     }
   },
-  async created() {
-    await this.fetchAssignmentData();
-  },
-  watch: {
-    // Watch for changes in the route parameter
-    '$route.params.id': function() {
-      // Reset component state
-      this.loading = true;
-      this.error = null;
-      this.assignment = {
-        id: null,
-        title: '',
-        assignment_type: '',
-        due_date: null,
-        total_points: 0,
-      };
-      this.questions = [];
-      this.userAnswers = [];
-      this.correctAnswers = [];
-      this.pointsPerQuestion = [];
-      this.score = 0;
-      this.showScore = false;
-
-      // Fetch the new assignment data
-      this.fetchAssignmentData();
-    }
+  created() {
+    // Nothing to load at initialization since we're using placeholders
+    this.loading = false;
   },
   methods: {
-    async fetchAssignmentData() {
+    async generateMockQuiz(quizType) {
       try {
-        this.loading = true;
-        // Get assignment ID from route params
-        const assignmentId = this.$route.params.id;
+        this.generatingMock = true;
+        this.mockType = this.formatMockType(quizType);
+        this.error = null;
 
-        // Fetch assignment data from API
-        const response = await axios.get(`http://127.0.0.1:5000/assignments/${assignmentId}`);
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
-        if (response.data.success) {
-          const assignmentData = response.data.assignment;
+        // Generate placeholder questions instead of API call
+        const response = this.generatePlaceholderQuestions(
+          quizType,
+          this.mockDifficulty,
+          5
+        );
 
-          // Set basic assignment data
-          this.assignment = {
-            id: assignmentData.id,
-            title: assignmentData.title,
-            assignment_type: assignmentData.assignment_type,
-            due_date: assignmentData.due_date,
-            total_points: assignmentData.total_points,
+        // Process the response
+        if (response.success) {
+          // Set mock quiz data
+          this.mockQuiz = {
+            id: 'mock-' + Date.now(),
+            title: this.formatMockType(quizType),
+            total_points: response.total_points,
           };
 
           // Transform questions data
-          this.questions = assignmentData.questions.map(q => ({
+          this.questions = response.questions.map(q => ({
             id: q.id,
             text: q.question_text,
             type: q.question_type,
@@ -252,27 +286,139 @@ export default {
             }))
           }));
 
-          // Initialize answers array
+          // Initialize answers and extract correct answers
           this.userAnswers = Array(this.questions.length).fill(null);
-
-          // Extract correct answers and points
           this.correctAnswers = this.questions.map(q =>
             q.options.find(opt => opt.isCorrect)?.id || null
           );
-
           this.pointsPerQuestion = this.questions.map(q => q.points);
 
-          // Generate default suggestions based on assignment type
+          // Reset other state
+          this.showScore = false;
+          this.score = 0;
+          this.mockQuizGenerated = true;
+
+          // Generate default suggestions
           this.generateDefaultSuggestions();
         } else {
-          this.error = response.data.message || 'Failed to load assignment';
+          this.error = 'Failed to generate mock quiz';
         }
       } catch (error) {
-        console.error('Error fetching assignment:', error);
-        this.error = 'Error loading assignment. Please try again.';
+        console.error('Error generating mock quiz:', error);
+        this.error = 'Error generating mock quiz. Please try again.';
       } finally {
-        this.loading = false;
+        this.generatingMock = false;
       }
+    },
+
+    // Generate placeholder questions for testing
+    generatePlaceholderQuestions(quizType, difficulty, count) {
+      const questions = [];
+
+      // Question templates based on difficulty
+      const questionTemplates = {
+        easy: [
+          "What is the primary purpose of a constructor in object-oriented programming?",
+          "Which data structure follows the First-In-First-Out principle?",
+          "What does HTML stand for?",
+          "Which of these is NOT a JavaScript data type?",
+          "What is the purpose of CSS in web development?"
+        ],
+        medium: [
+          "What is the time complexity of binary search?",
+          "Which design pattern is used to create a single instance of a class?",
+          "What is the difference between == and === in JavaScript?",
+          "Explain the concept of function hoisting in JavaScript",
+          "What is the box model in CSS?"
+        ],
+        hard: [
+          "Explain the differences between a process and a thread in operating systems",
+          "What are the ACID properties in database transactions?",
+          "Describe the principles of RESTful API design",
+          "Compare and contrast virtual memory and physical memory",
+          "Explain how the event loop works in Node.js"
+        ]
+      };
+
+      // Options templates based on difficulty
+      const optionsTemplates = {
+        easy: [
+          ["To initialize object properties", "To destroy objects", "To define class methods", "To export the class"],
+          ["Queue", "Stack", "Tree", "Hash Table"],
+          ["Hypertext Markup Language", "High-level Technical Machine Language", "Hyper Transfer Markup Language", "Home Tool Markup Language"],
+          ["Object", "String", "Array", "Character"],
+          ["To add functionality", "To structure content", "To style web pages", "To handle server requests"]
+        ],
+        medium: [
+          ["O(1)", "O(n)", "O(log n)", "O(n²)"],
+          ["Factory Pattern", "Observer Pattern", "Singleton Pattern", "Decorator Pattern"],
+          ["They are identical", "== compares values, === compares values and types", "=== is deprecated", "== is faster"],
+          ["Functions are always available regardless of where they're defined", "Functions are moved to the top of their scope", "Functions are hidden until called", "Functions are copied to every scope"],
+          ["A layout paradigm for arranging elements", "A CSS framework", "A JavaScript library", "A HTML structure"]
+        ],
+        hard: [
+          ["Processes are lightweight, threads are heavyweight", "Processes share memory space, threads don't", "Threads have separate memory spaces, processes share memory", "Processes can contain multiple threads, threads are single-execution units"],
+          ["Atomicity, Consistency, Isolation, Durability", "Authentication, Caching, Integration, Deployment", "Authority, Control, Independence, Distribution", "Accuracy, Completeness, Integrity, Delivery"],
+          ["Using only GET and POST methods", "Resource-based URLs, proper HTTP methods, statelessness", "Always returning JSON responses", "Requiring authentication for all endpoints"],
+          ["Virtual memory is faster but more expensive", "Physical memory is larger than virtual memory", "Virtual memory uses disk space to extend RAM", "There's no difference in modern systems"],
+          ["It processes events in parallel using multiple threads", "It runs a single thread that processes an event queue", "It delegates events to the operating system", "It creates a new process for each event"]
+        ]
+      };
+
+      // Correct answers based on difficulty (index of correct option)
+      const correctAnswersIndex = {
+        easy: [0, 0, 0, 3, 2],
+        medium: [2, 2, 1, 1, 0],
+        hard: [3, 0, 1, 2, 1]
+      };
+
+      // Point values for each difficulty
+      const pointValues = {
+        easy: 5,
+        medium: 10,
+        hard: 15
+      };
+
+      // Use number of questions requested (capped at available templates)
+      const numQuestions = Math.min(count, questionTemplates[difficulty].length);
+
+      for (let i = 0; i < numQuestions; i++) {
+        const questionText = questionTemplates[difficulty][i];
+        const options = optionsTemplates[difficulty][i];
+        const correctIndex = correctAnswersIndex[difficulty][i];
+
+        // Create question object
+        const question = {
+          id: `q-${i + 1}`,
+          question_text: questionText,
+          question_type: 'multiple_choice',
+          points: pointValues[difficulty],
+          options: options.map((text, idx) => ({
+            id: `opt-${i + 1}-${idx + 1}`,
+            option_text: text,
+            is_correct: idx === correctIndex
+          }))
+        };
+
+        questions.push(question);
+      }
+
+      return {
+        success: true,
+        questions: questions,
+        total_points: numQuestions * pointValues[difficulty]
+      };
+    },
+
+    resetQuiz() {
+      this.mockQuizGenerated = false;
+      this.questions = [];
+      this.userAnswers = [];
+      this.correctAnswers = [];
+      this.pointsPerQuestion = [];
+      this.score = 0;
+      this.showScore = false;
+      this.error = null;
     },
 
     checkScore() {
@@ -297,25 +443,17 @@ export default {
     },
 
     generateDefaultSuggestions() {
-      // Default suggestions based on assignment type
-      if (this.assignment.assignment_type === 'practice') {
-        this.suggestions = [
-          "Take your time to understand each concept thoroughly.",
-          "Review related lecture materials before attempting again.",
-          "Try practicing similar problems for better understanding."
-        ];
-      } else {
-        this.suggestions = [
-          "Focus on understanding core concepts rather than memorizing.",
-          "Review lecture material for topics you struggled with.",
-          "Practice with additional exercises in areas where you made mistakes."
-        ];
-      }
+      // Default suggestions for mock quizzes
+      this.suggestions = [
+        "Take your time to understand each concept thoroughly.",
+        "Review related lecture materials before attempting again.",
+        "Try practicing similar problems for better understanding.",
+        "Focus on understanding the reasoning behind each correct answer."
+      ];
     },
 
     generateSuggestions(wrongQuestions) {
       // Generate more specific suggestions based on wrong answers
-      // This is a simplified version - could be enhanced with more specific feedback
       const specificSuggestions = [];
 
       if (wrongQuestions.length > 0) {
@@ -324,6 +462,10 @@ export default {
 
       if (this.score / this.totalPossiblePoints < 0.7) {
         specificSuggestions.push("Consider revisiting the course materials before proceeding to more advanced topics.");
+      }
+
+      if (this.mockDifficulty === 'hard' && this.score / this.totalPossiblePoints < 0.5) {
+        specificSuggestions.push("Try generating a medium difficulty quiz first to build confidence.");
       }
 
       if (specificSuggestions.length > 0) {
@@ -336,11 +478,11 @@ export default {
 
       // Add title and basic info
       doc.setFontSize(16);
-      doc.text(this.assignment.title, 20, 20);
+      doc.text(this.mockQuiz.title, 20, 20);
 
       doc.setFontSize(12);
-      doc.text(`Assignment Type: ${this.formatType(this.assignment.assignment_type)}`, 20, 30);
-      doc.text(`Due Date: ${this.formatDate(this.assignment.due_date)}`, 20, 38);
+      doc.text(`Practice Material (${this.mockDifficulty} difficulty)`, 20, 30);
+      doc.text(`Generated on: ${this.getCurrentDate()}`, 20, 38);
 
       // Add score
       doc.setFontSize(14);
@@ -393,30 +535,24 @@ export default {
         yPosition += 5;
       });
 
-      doc.save(`${this.assignment.title}_Report.pdf`);
+      doc.save(`${this.mockQuiz.title}_Report.pdf`);
     },
 
-    formatDate(dateString) {
-      if (!dateString) return 'N/A';
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
+    getCurrentDate() {
+      const now = new Date();
+      return now.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
     },
 
-    formatType(type) {
-      if (!type) return 'Assignment';
-      return type.charAt(0).toUpperCase() + type.slice(1) + ' Assignment';
-    },
-
-    getTypeClass(type) {
-      switch (type) {
-        case 'graded': return 'bg-primary';
-        case 'practice': return 'bg-success';
-        case 'quiz': return 'bg-warning';
-        default: return 'bg-secondary';
+    formatMockType(type) {
+      switch(type) {
+        case 'mock_quiz_1': return 'Mock Quiz 1';
+        case 'mock_quiz_2': return 'Mock Quiz 2';
+        case 'end_term': return 'End Term Practice';
+        default: return 'Practice Quiz';
       }
     },
 
@@ -473,6 +609,11 @@ export default {
 
 .suggestions-list li {
   margin-bottom: 8px;
+}
+
+.mock-quiz-container {
+  background-color: #f0f8ff;
+  border-left: 4px solid #0d6efd;
 }
 
 /* Responsive adjustments */
