@@ -14,13 +14,14 @@ import subprocess
 import tempfile
 import requests
 
-from topic_specfic_mock import generate_mcqs
+from topic_specfic_mock import topic_generate_mcqs
 from quiz_mock import generate_mcqs
 from error_explainer import explain_error as explain_error_util
 from lecture_summarizer import summarize_lecture
 from week_summarizer import summarize_week_slides
 from notes_generator import generate_topic_notes
 from kia_chatbot import save_chat_turn_to_db,initialize_database,load_chat_history_from_db
+from topic_suggestions import generate_topic_suggestions
 
 user_routes = Blueprint('user_routes', __name__)
 
@@ -1245,8 +1246,8 @@ def generate_topic_specific_questions():
 
         # Generate dynamic MCQs using the imported function
         try:
-            mcq_set = generate_mcqs(topic, num_questions)
-            print(mcq_set)
+            mcq_set = topic_generate_mcqs(topic, num_questions)
+            
             response_data = {
                 'message': 'Questions generated successfully',
                 'success': True,
@@ -1522,15 +1523,15 @@ def map_question_to_topic(question_text):
 # ---------------------------- Topic Recommendation ----------------------------
 @user_routes.route('/topic_recommendation', methods=['POST'])
 def topic_recommendation():
-    '''API to recommend study topics based on incorrectly answered questions'''
+    """API to recommend study topics and learning resources based on incorrect answers"""
     data = request.get_json()
     submitted_answers = data.get('answers', [])  # List of {"question_id": X, "selected_option_id": Y}
 
     # Validate if answers list is provided
     if not submitted_answers:
-        return jsonify({'message': 'answers are required', 'success': False}), 400
+        return jsonify({'message': 'Answers are required', 'success': False}), 400
 
-    topic_recommendation = []
+    wrong_questions = []
 
     # Iterate through submitted answers to identify incorrect answers
     for answer in submitted_answers:
@@ -1538,21 +1539,34 @@ def topic_recommendation():
         selected_option_id = answer.get('selected_option_id')
 
         # Fetch the correct option for the question from the database
-        correct_option = QuestionOption.query.filter_by(question_id=question_id, is_correct=True).first()
+        correct_option = QuestionOption.query.filter_by(
+            question_id=question_id, 
+            is_correct=True
+        ).first()
 
-        # If the selected option is incorrect, map the question to a topic
+        # If the selected option is incorrect, add the question to wrong_questions
         if correct_option and correct_option.id != selected_option_id:
             question = AssignmentQuestion.query.get(question_id)
-            topic = map_question_to_topic(question.question_text)
-            topic_recommendation.append(topic)
+            if question:
+                wrong_questions.append(question.question_text)
 
-    # Return the list of recommended topics
-    return jsonify({
-        'message': 'Topic recommendations generated successfully',
-        'success': True,
-        'topic_recommendation': topic_recommendation
-    }), 200
-    
+    # If no incorrect questions found
+    if not wrong_questions:
+        return jsonify({
+            'message': 'All answers are correct! Great job! 🎯',
+            'success': True,
+            'suggestions': {
+                'overall_assessment': "All questions were answered correctly. Excellent performance!",
+                'topic_suggestions': [],
+                'general_tips': ["Continue practicing to maintain your knowledge. 🚀"]
+            }
+        }), 200
+
+    # Generate personalized suggestions
+    suggestions = generate_topic_suggestions(wrong_questions)
+
+    return jsonify(suggestions), 200
+
     
 # ---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
 
