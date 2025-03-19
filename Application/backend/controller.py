@@ -122,6 +122,47 @@ def google_login():
     except Exception as e:
         return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
 
+# Signup Route - Registers a new user
+ 
+@user_routes.route('/signup', methods=['POST']) 
+def signup():
+    data = request.get_json()
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    role = data.get('role', 'student')  # Default to 'student' if not provided
+ 
+    # Check if the username exists only if provided
+    if username and User.query.filter_by(username=username).first():
+        return jsonify({"message": "Username already exists"}), 400
+ 
+    # Check if the email is provided
+    if not email:
+        return jsonify({"message": "Email is required"}), 400
+ 
+    # Check if the email already exists
+    if User.query.filter_by(email=email).first():
+        return jsonify({"message": "Email already exists"}), 400
+
+    # Password validation (required if not signing up via Google) 
+    if not password:
+        return jsonify({"message": "Password is required"}), 400
+ 
+    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+ 
+    # Create and save new user 
+    new_user = User(
+        username=username,
+        email=email,
+        password=hashed_password,
+        role=role,
+    )
+  
+    db.session.add(new_user)
+    db.session.commit()
+ 
+    return jsonify({"message": "User registered successfully"}), 201
+
 # Login Route - Authenticates a user and returns an access token
 @user_routes.route('/login', methods=['POST'])
 def login():
