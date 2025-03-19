@@ -9,135 +9,41 @@
         </router-link>
       </li>
 
-      <!-- Collapsible Items -->
-      <template v-if="sidebarSections.length > 0">
-      <li v-for="(section, index) in sidebarSections" :key="'section-' + index" class="list-group-item">
-        <div
-          class="d-flex justify-content-between align-items-center section-header"
-          @click="handleCollapse(section.id)"
-        >
-          <span>
-            <i class="bi me-2"
-               :class="activeSection === section.id ? 'bi-caret-down-fill' : 'bi-caret-right-fill'">
-            </i> {{ section.title }}
-          </span>
-        </div>
-        <!-- Collapsible Content -->
-        <ul :id="section.id"
-            class="collapse list-group child-list mt-2"
-        >
-          <li
-            v-for="(item, itemIndex) in section.items"
-            :key="'child-' + itemIndex"
-            class="list-group-item child-list-item"
+      <template v-if="allSidebarSections.length > 0">
+        <li v-for="(section, index) in allSidebarSections" :key="'section-' + index" class="list-group-item">
+          <div
+            class="d-flex justify-content-between align-items-center section-header"
+            @click="handleCollapse(section.id)"
           >
-            <router-link
-              :to="getItemLink(item)"
-              class="no-link"
-            >
-              <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style="width:16px;"/>
-              <span>{{ item.text }}</span>
-              <!-- Show due date for assignments if available -->
-              <small v-if="item.itemType === 'assignment' && item.dueDate" class="ms-2 text-danger">
-                Due: {{ formatDate(item.dueDate) }}
-              </small>
-            </router-link>
-          </li>
-
-        </ul>
-      </li>
-      </template>
-      <!-- Mock Quiz 1 -->
-      <li class="list-group-item mt-2">
-        <router-link :to=" {
-                       path: '/ga',
-                       query: { title: 'Mock Quiz 1' }
-                     }" class="no-link">
-          <span><i class="bi bi-pencil-square me-2"></i> Generate Mock Quiz 1</span>
-        </router-link>
-      </li>
-
-      <template v-if="sidebarSectionsAfterMockQuiz1.length > 0">
-      <li v-for="(section, index) in sidebarSectionsAfterMockQuiz1" :key="'after1-' + index" class="list-group-item">
-        <div
-          class="d-flex justify-content-between align-items-center section-header"
-          @click="handleCollapse(section.id)"
-        >
-          <span>
-            <i class="bi me-2"
-               :class="activeSection === section.id ? 'bi-caret-down-fill' : 'bi-caret-right-fill'">
-            </i> {{ section.title }}
-          </span>
-        </div>
-        <!-- Collapsible Content -->
-        <ul :id="section.id"
-            class="collapse list-group child-list mt-2"
-        >
-          <li
-            v-for="(item, itemIndex) in section.items"
-            :key="'child-' + itemIndex"
-            class="list-group-item child-list-item"
+            <span>
+              <i class="bi me-2"
+                 :class="activeSection === section.id ? 'bi-caret-down-fill' : 'bi-caret-right-fill'">
+              </i> {{ section.title }}
+            </span>
+          </div>
+          <!-- Collapsible Content -->
+          <ul :id="section.id"
+              class="collapse list-group child-list mt-2"
           >
-            <router-link
-              :to="getItemLink(item)"
-              class="no-link"
+            <li
+              v-for="(item, itemIndex) in section.items"
+              :key="'child-' + itemIndex"
+              class="list-group-item child-list-item"
             >
-              <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style="width:16px;"/>
-              <span>{{ item.text }}</span>
-              <!-- Show due date for assignments if available -->
-              <small v-if="item.itemType === 'assignment' && item.dueDate" class="ms-2 text-danger">
-                Due: {{ formatDate(item.dueDate) }}
-              </small>
-            </router-link>
-          </li>
-        </ul>
-      </li>
-      </template>
-      <!-- Mock Quiz 2 -->
-      <li class="list-group-item mt-2">
-        <router-link :to=" {
-                       path: '/ga',
-                       query: { title: 'Mock Quiz 2' }
-                     }" class="no-link">
-          <span><i class="bi bi-pencil-square me-2"></i> Generate Mock Quiz 2</span>
-        </router-link>
-      </li>
-
-      <template v-if="sidebarSectionsAfterMockQuiz2.length > 0">
-      <li v-for="(section, index) in sidebarSectionsAfterMockQuiz2" :key="'after2-' + index" class="list-group-item">
-        <div
-          class="d-flex justify-content-between align-items-center section-header"
-          @click="handleCollapse(section.id)"
-        >
-          <span>
-            <i class="bi me-2"
-               :class="activeSection === section.id ? 'bi-caret-down-fill' : 'bi-caret-right-fill'">
-            </i> {{ section.title }}
-          </span>
-        </div>
-        <!-- Collapsible Content -->
-        <ul :id="section.id"
-            class="collapse list-group child-list mt-2"
-        >
-          <li
-            v-for="(item, itemIndex) in section.items"
-            :key="'child-' + itemIndex"
-            class="list-group-item child-list-item"
-          >
-            <router-link
-              :to="getItemLink(item)"
-              class="no-link"
-            >
-              <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style="width:16px;"/>
-              <span>{{ item.text }}</span>
-              <!-- Show due date for assignments if available -->
-              <small v-if="item.itemType === 'assignment' && item.dueDate" class="ms-2 text-danger">
-                Due: {{ formatDate(item.dueDate) }}
-              </small>
-            </router-link>
-          </li>
-        </ul>
-      </li>
+              <router-link
+                :to="getItemLink(item)"
+                class="no-link"
+              >
+                <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style="width:16px;"/>
+                <span>{{ item.text }}</span>
+                <!-- Show due date for assignments if available -->
+                <small v-if="item.itemType === 'assignment' && item.dueDate" class="ms-2 text-danger">
+                  Due: {{ formatDate(item.dueDate) }}
+                </small>
+              </router-link>
+            </li>
+          </ul>
+        </li>
       </template>
 
       <!-- Loading State -->
@@ -179,26 +85,21 @@ export default {
     return {
       activeSection: localStorage.getItem("activeSection") || null,
       collapseInstances: {},
-      sidebarSections: [],
-      sidebarSectionsAfterMockQuiz1: [],
-      sidebarSectionsAfterMockQuiz2: []
+      allSidebarSections: []
     };
   },
   computed: {
     sectionGroups() {
       return [
-        this.sidebarSections,
-        this.sidebarSectionsAfterMockQuiz1,
-        this.sidebarSectionsAfterMockQuiz2
+        this.allSidebarSections,
       ]
     }
   },
   async mounted() {
-
     await this.fetchWeeks();
 
     this.$nextTick(() => {
-      this.sectionGroups.flat().forEach((section) => {
+      this.allSidebarSections.forEach((section) => {
         const element = document.getElementById(section.id);
         this.collapseInstances[section.id] = new bootstrap.Collapse(element, {
           toggle: false,
@@ -222,7 +123,7 @@ export default {
         this.collapseInstances[storedSection].show();
       }
     });
-  },
+  },  
   methods: {
     // In your methods section
     async fetchWeeks() {
@@ -299,14 +200,15 @@ export default {
           };
         }));
 
-        // Categorize by week number ranges
-        if (week.week_number <= 4) {
-          this.sidebarSections.push(section);
-        } else if (week.week_number <= 8) {
-          this.sidebarSectionsAfterMockQuiz1.push(section);
-        } else {
-          this.sidebarSectionsAfterMockQuiz2.push(section);
-        }
+        // Add all sections to a single array, sorted by week number
+        this.allSidebarSections.push(section);
+      });
+
+      // Sort sections by week number if needed
+      this.allSidebarSections.sort((a, b) => {
+        const weekA = parseInt(a.id.replace('week', '').replace('Collapse', ''));
+        const weekB = parseInt(b.id.replace('week', '').replace('Collapse', ''));
+        return weekA - weekB;
       });
     },
 
