@@ -15,7 +15,12 @@ import tempfile
 import requests
 
 from topic_specfic_mock import generate_mcqs
+from quiz_mock import generate_mcqs
 from error_explainer import explain_error as explain_error_util
+from lecture_summarizer import summarize_lecture
+from week_summarizer import summarize_week_slides
+from notes_generator import generate_topic_notes
+from kia_chatbot import save_chat_turn_to_db,initialize_database,load_chat_history_from_db
 
 user_routes = Blueprint('user_routes', __name__)
 
@@ -1275,10 +1280,25 @@ def video_summarizer():
     if not lecture_id:
         return jsonify({'message': 'lecture_id is required', 'success': False}), 400
 
-    # Generate summary
-    summary = f'Summary of lecture {lecture_id}: This lecture provides a detailed explanation of the topic, covering key concepts and important points in a clear and concise manner.'
+    # Extract week and lecture number from lecture_id
+    try:
+        lecture = db.session.query(
+            Week.week_number,
+            Lecture.id.label('lecture_id'),   # Add Lecture.id
+            Lecture.title.label('lecture_title')
+        ).join(Week).filter(Lecture.id == lecture_id).first()
 
-    return jsonify({'message': 'Summary generated successfully', 'success': True, 'summary': summary}), 200
+        
+        print(lecture)
+        week = lecture.week_number
+        lecture_num =lecture.lecture_id 
+    except ValueError:
+        return jsonify({'message': 'Invalid lecture_id format. Use format: week_lecture (e.g., 3_2)', 'success': False}), 400
+
+    # Generate summary using lecture_summarizer logic
+    result = summarize_lecture(week, lecture_num)
+
+    return jsonify(result), 200 if result['success'] else 404
 
 
 
@@ -1291,63 +1311,79 @@ os.makedirs("chat_logs", exist_ok=True)
 
 @user_routes.route('/chat_history', methods=['POST'])
 def save_chat_history():
-    """API to save user chat interactions as an SQL file and store file path in DB"""
+    """API to save user chat interactions in SQLite database"""
     data = request.get_json()
     user_id = data.get("user_id")
     query = data.get("query")
     response = data.get("response")
 
+    # Validation for required fields
     if not all([user_id, query, response]):
         return jsonify({"success": False, "message": "Missing required fields"}), 400
-    
-    # Check if the user exists
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"success": False, "message": "User ID not found"}), 404
-    
-    file_path = f"chat_logs/user_{user_id}_chat.sql"
-
-    # Generate SQL entry 
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
-    sql_entry = (
-        "INSERT INTO chat_logs (user_id, query, response, created_at) VALUES "
-        "({}, '{}', '{}', '{}');\n"
-    ).format(user_id, query.replace("'", "''"), response.replace("'", "''"), timestamp)
 
     try:
-        # Append to the SQL file
-        with open(file_path, "a", encoding="utf-8") as f:
-            f.write(sql_entry)
+        # Initialize database if not present
+        initialize_database()
 
-        # Store file path in the database if not already stored
-        sql_store_path = text(
-            "INSERT INTO chat_history (user_id, file_path) VALUES (:user_id, :file_path) "
-            "ON CONFLICT (user_id) DO NOTHING;"
-        )
+        # Save chat interaction in the database
+        save_chat_turn_to_db(user_id, query, response)
 
-        db.session.execute(sql_store_path, {"user_id": user_id, "file_path": file_path})
-        db.session.commit()
-
-        return jsonify({"success": True, "message": "Chat history saved successfully", "file_path": file_path}), 201
+        return jsonify({
+            "success": True,
+            "message": "Chat history saved successfully",
+            "user_id": user_id
+        }), 201
 
     except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": f"Failed to save chat history: {str(e)}"}), 500 
+        return jsonify({
+            "success": False,
+            "message": f"Failed to save chat history: {str(e)}"
+        }), 500
+
 
 
 # ---------------------------- Get Chat History ----------------------------
 @user_routes.route('/chat_history/<int:user_id>', methods=['GET'])
 def get_chat_history(user_id):
-    '''API to retrieve chat history file path for a user'''
-    # Fetch chat record for the user
-    chat_record = ChatHistory.query.filter_by(user_id=user_id).first()
+    """API to retrieve chat history for a given user"""
+    
+    try:
+        # Load chat history using the provided function
+        chat_history = load_chat_history_from_db(user_id)
 
-    # Validate if chat history exists
-    if not chat_record:
-        return jsonify({'success': False, 'message': 'No chat history found'}), 404
+        # Check if chat history exists
+        if not chat_history.messages:
+            return jsonify({
+                'success': False,
+                'message': 'No chat history found for the given user ID',
+                'user_id': user_id
+            }), 404
 
-    return jsonify({'success': True, 'message': 'Chat history retrieved successfully', 'user_id': user_id, 'file_path': chat_record.file_path}), 200
+        # Format chat history
+        formatted_history = []
+        for i in range(0, len(chat_history.messages), 2):
+            query = chat_history.messages[i].content
+            response = chat_history.messages[i + 1].content if i + 1 < len(chat_history.messages) else "No response recorded"
+            
+            formatted_history.append({
+                "query": query,
+                "response": response
+            })
+
+        return jsonify({
+            'success': True,
+            'message': 'Chat history retrieved successfully',
+            'user_id': user_id,
+            'chat_history': formatted_history
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Failed to retrieve chat history: {str(e)}',
+            'user_id': user_id
+        }), 500
+
 
     
 # Explain Error API
@@ -1387,41 +1423,48 @@ def generate_week_summary():
     # Validate if week_id is provided
     if not week_id:
         return jsonify({'message': 'week_id is required', 'success': False}), 400
-    
+
     # Check if the week exists in the database
     week = Week.query.get(week_id)
     if not week:
         return jsonify({'message': 'Week not found', 'success': False}), 404
-    
-    # Return the generated summary
-    return jsonify({
-        'message': 'Week summary generated successfully',
-        'success': True,
-        'week_id': week_id,
-        'summary': f'Summary for week {week_id} is generated.'
-    }), 200
 
+    # Generate summary using slides_summarizer logic
+    result = summarize_week_slides(week.week_number)
+
+    # Return result
+    return jsonify(result), 200 if result['success'] else 404
 
 # ---------------------------- Generate Mock Test ----------------------------
 @user_routes.route('/generate_mock', methods=['POST'])
 def generate_mock():
     '''API to generate a mock test based on a specific topic'''
     data = request.get_json()
-    topic = data.get('topic')
+    quiz_type = data.get('quiz_type')
     num_questions = data.get('num_questions', 10)  # Default to 10 questions if not provided
 
-    # Validate if topic is provided
-    if not topic:
-        return jsonify({'message': 'topic is required', 'success': False}), 400
-    
-    # Return the mock test generation status
-    return jsonify({
-        'message': 'Mock test generated successfully',
-        'success': True,
-        'topic': topic,
-        'num_questions': num_questions,
-        'mock': f'Mock test for topic {topic} with {num_questions} questions is being generated.'
-    }), 200
+    # Validate required fields
+    if not quiz_type:
+        return jsonify({'message': 'quiz_type is required', 'success': False}), 400
+
+    # Generate MCQs using the provided logic
+    result = generate_mcqs(quiz_type, num_questions)
+
+    # Return the generated mock test or error response
+    if result['success']:
+        return jsonify({
+            'message': f'Mock test generated successfully for {quiz_type}',
+            'success': True,
+            'quiz_type': quiz_type,
+            'num_questions': num_questions,
+            'questions': result['questions']
+        }), 200
+    else:
+        return jsonify({
+            'message': result['message'],
+            'success': False,
+            'quiz_type': quiz_type
+        }), 404
 
 
 # ---------------------------- Generate Notes ----------------------------
@@ -1434,14 +1477,25 @@ def generate_notes():
     # Validate if topic is provided
     if not topic:
         return jsonify({'message': 'topic is required', 'success': False}), 400
-    
-    # Return the generated notes information
-    return jsonify({
-        'message': 'Notes generated successfully',
-        'success': True,
-        'topic': topic,
-        'notes': f'Notes for topic {topic} are generated.'
-    }), 200
+
+    # Generate notes using the provided logic
+    result = generate_topic_notes(topic)
+
+    # Return the generated notes or error response
+    if result['success']:
+        return jsonify({
+            'message': f'Notes generated successfully for topic "{topic}"',
+            'success': True,
+            'topic': topic,
+            'notes': result['notes']
+        }), 200
+    else:
+        return jsonify({
+            'message': result['message'],
+            'success': False,
+            'topic': topic
+        }), 404
+
 
 
 # ---------------------------- Helper Function: Map Questions to Topics ----------------------------
