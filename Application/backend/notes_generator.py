@@ -18,7 +18,7 @@ _notes_cache = {}
 
 def get_api_key() -> str:
     """Get API key for Google Generative AI"""
-    api_key = os.environ.get("GOOGLE_API_KEY")
+    api_key = "AIzaSyCM6GqDinlFWZ436DUKgQPtTcEyHY5yeaQ"
     if not api_key:
         raise ValueError("Google API key is not set")
     return api_key
@@ -61,13 +61,20 @@ def generate_topic_summary(text: str, topic: str) -> str:
     prompt = (
         f"You are an expert machine learning educator creating concise study notes. "
         f"Create detailed yet concise notes on '{topic}' based on the following content. "
-        f"Your response MUST be in Markdown format with:"
-        f"\n- Clear hierarchical headings (## for main sections, ### for subsections)"
-        f"\n- Bullet points for key concepts and important points"
-        f"\n- Code examples with proper syntax highlighting when relevant"
-        f"\n- Mathematical formulas using LaTeX notation (\\( \\) for inline, \\[ \\] for display)"
-        f"\n- A small table to compare concepts if applicable"
-        f"\n\nKeep the notes between 300-500 words. Focus on technical accuracy and clarity."
+        f"Your response MUST be in Markdown format with careful attention to spacing:"
+        f"\n- Add two blank lines before each heading AND one blank line after each heading"
+        f"\n- Use clear hierarchical headings (## for main sections, ### for subsections)"
+        f"\n- Include a blank line after each bullet point list"
+        f"\n- Ensure proper table formatting with spaces between columns and rows"
+        f"\n- For tables, use this format with proper alignment and spacing:\n"
+        f"  | Column1 | Column2 | Column3 |\n"
+        f"  | ------- | :-----: | ------: |\n"
+        f"  | Left    | Center  | Right   |\n"
+        f"\n- Add a blank line before and after code blocks and tables"
+        f"\n- Use bullet points for key concepts with a blank line between lists"
+        f"\n- Include code examples with proper syntax highlighting when relevant"
+        f"\n- Add mathematical formulas using LaTeX notation (\\( \\) for inline, \\[ \\] for display)"
+        f"\n\nKeep the notes between 600-700 words. Focus on technical accuracy and clarity."
         f"\nEnd with a brief concluding paragraph summarizing the importance of {topic} in machine learning."
         f"\n\nContent to summarize:\n{text}"
     )

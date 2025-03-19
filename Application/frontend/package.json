@@ -15,6 +15,7 @@
     "core-js": "^3.8.3",
     "highlight.js": "^11.11.1",
     "jspdf": "^3.0.0",
+    "katex": "^0.13.24",
     "markdown-it": "^14.1.0",
     "markdown-it-highlightjs": "^4.2.0",
     "marked": "^15.0.7",

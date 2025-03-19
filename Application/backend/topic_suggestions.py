@@ -32,7 +32,7 @@ class SuggestionSet(BaseModel):
 
 def get_api_key() -> str:
     """Get API key for Google Generative AI"""
-    api_key = os.environ.get("GOOGLE_API_KEY")
+    api_key = "AIzaSyCM6GqDinlFWZ436DUKgQPtTcEyHY5yeaQ"
     if not api_key:
         raise ValueError("Google API key is not set")
     return api_key

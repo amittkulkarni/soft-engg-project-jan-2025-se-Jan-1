@@ -14,6 +14,11 @@ import subprocess
 import tempfile
 import requests
 
+from topic_suggestions import generate_topic_suggestions
+from notes_generator import generate_topic_notes
+from quiz_mock import generate_mcqs
+from week_summarizer import summarize_week_slides
+
 user_routes = Blueprint('user_routes', __name__)
 
 # ------------------------- User Authentication Routes -------------------------
@@ -1417,19 +1422,17 @@ def generate_week_summary():
     # Validate if week_id is provided
     if not week_id:
         return jsonify({'message': 'week_id is required', 'success': False}), 400
-    
+
     # Check if the week exists in the database
     week = Week.query.get(week_id)
     if not week:
         return jsonify({'message': 'Week not found', 'success': False}), 404
-    
-    # Return the generated summary
-    return jsonify({
-        'message': 'Week summary generated successfully',
-        'success': True,
-        'week_id': week_id,
-        'summary': f'Summary for week {week_id} is generated.'
-    }), 200
+
+    # Generate summary using slides_summarizer logic
+    result = summarize_week_slides(week.week_number)
+
+    # Return result
+    return jsonify(result), 200 if result['success'] else 404
 
 
 # ---------------------------- Generate Mock Test ----------------------------
@@ -1437,21 +1440,31 @@ def generate_week_summary():
 def generate_mock():
     '''API to generate a mock test based on a specific topic'''
     data = request.get_json()
-    topic = data.get('topic')
+    quiz_type = data.get('quiz_type')
     num_questions = data.get('num_questions', 10)  # Default to 10 questions if not provided
 
-    # Validate if topic is provided
-    if not topic:
-        return jsonify({'message': 'topic is required', 'success': False}), 400
-    
-    # Return the mock test generation status
-    return jsonify({
-        'message': 'Mock test generated successfully',
-        'success': True,
-        'topic': topic,
-        'num_questions': num_questions,
-        'mock': f'Mock test for topic {topic} with {num_questions} questions is being generated.'
-    }), 200
+    # Validate required fields
+    if not quiz_type:
+        return jsonify({'message': 'quiz_type is required', 'success': False}), 400
+
+    # Generate MCQs using the provided logic
+    result = generate_mcqs(quiz_type, num_questions)
+
+    # Return the generated mock test or error response
+    if result['success']:
+        return jsonify({
+            'message': f'Mock test generated successfully for {quiz_type}',
+            'success': True,
+            'quiz_type': quiz_type,
+            'num_questions': num_questions,
+            'questions': result['questions']
+        }), 200
+    else:
+        return jsonify({
+            'message': result['message'],
+            'success': False,
+            'quiz_type': quiz_type
+        }), 404
 
 
 # ---------------------------- Generate Notes ----------------------------
@@ -1464,14 +1477,24 @@ def generate_notes():
     # Validate if topic is provided
     if not topic:
         return jsonify({'message': 'topic is required', 'success': False}), 400
-    
-    # Return the generated notes information
-    return jsonify({
-        'message': 'Notes generated successfully',
-        'success': True,
-        'topic': topic,
-        'notes': f'Notes for topic {topic} are generated.'
-    }), 200
+
+    # Generate notes using the provided logic
+    result = generate_topic_notes(topic)
+
+    # Return the generated notes or error response
+    if result['success']:
+        return jsonify({
+            'message': f'Notes generated successfully for topic "{topic}"',
+            'success': True,
+            'topic': topic,
+            'notes': result['notes']
+        }), 200
+    else:
+        return jsonify({
+            'message': result['message'],
+            'success': False,
+            'topic': topic
+        }), 404
 
 
 # ---------------------------- Helper Function: Map Questions to Topics ----------------------------
@@ -1498,15 +1521,15 @@ def map_question_to_topic(question_text):
 # ---------------------------- Topic Recommendation ----------------------------
 @user_routes.route('/topic_recommendation', methods=['POST'])
 def topic_recommendation():
-    '''API to recommend study topics based on incorrectly answered questions'''
+    """API to recommend study topics and learning resources based on incorrect answers"""
     data = request.get_json()
     submitted_answers = data.get('answers', [])  # List of {"question_id": X, "selected_option_id": Y}
 
     # Validate if answers list is provided
     if not submitted_answers:
-        return jsonify({'message': 'answers are required', 'success': False}), 400
+        return jsonify({'message': 'Answers are required', 'success': False}), 400
 
-    topic_recommendation = []
+    wrong_questions = []
 
     # Iterate through submitted answers to identify incorrect answers
     for answer in submitted_answers:
@@ -1514,21 +1537,33 @@ def topic_recommendation():
         selected_option_id = answer.get('selected_option_id')
 
         # Fetch the correct option for the question from the database
-        correct_option = QuestionOption.query.filter_by(question_id=question_id, is_correct=True).first()
+        correct_option = QuestionOption.query.filter_by(
+            question_id=question_id,
+            is_correct=True
+        ).first()
 
-        # If the selected option is incorrect, map the question to a topic
+        # If the selected option is incorrect, add the question to wrong_questions
         if correct_option and correct_option.id != selected_option_id:
             question = AssignmentQuestion.query.get(question_id)
-            topic = map_question_to_topic(question.question_text)
-            topic_recommendation.append(topic)
+            if question:
+                wrong_questions.append(question.question_text)
 
-    # Return the list of recommended topics
-    return jsonify({
-        'message': 'Topic recommendations generated successfully',
-        'success': True,
-        'topic_recommendation': topic_recommendation
-    }), 200
-    
+    # If no incorrect questions found
+    if not wrong_questions:
+        return jsonify({
+            'message': 'All answers are correct! Great job! 🎯',
+            'success': True,
+            'suggestions': {
+                'overall_assessment': "All questions were answered correctly. Excellent performance!",
+                'topic_suggestions': [],
+                'general_tips': ["Continue practicing to maintain your knowledge. 🚀"]
+            }
+        }), 200
+
+    # Generate personalized suggestions
+    suggestions = generate_topic_suggestions(wrong_questions)
+
+    return jsonify(suggestions), 200
     
 # ---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
 

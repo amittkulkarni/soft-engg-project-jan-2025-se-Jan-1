@@ -18,7 +18,7 @@ _summary_cache = {}
 
 def get_api_key() -> str:
     """Get API key from environment variable"""
-    api_key = os.environ.get("GOOGLE_API_KEY") | "AIzaSyAmZBJC_WzWLlaUdfiM3GMu9UkCjAWOJ0o"
+    api_key = "AIzaSyAmZBJC_WzWLlaUdfiM3GMu9UkCjAWOJ0o"
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable is not set")
     return api_key
@@ -63,18 +63,31 @@ def generate_slides_summary(text: str, week: int) -> str:
     llm = get_llm()
 
     prompt = (
-        f"You are an academic summarizer for Machine Learning Practice course at IIT Madras. "
-        f"Summarize the following Week {week} slides in 300-500 words. "
-        f"Focus on key concepts, algorithms, techniques, and important code examples covered in the week. "
-        f"Make the summary informative, educational, and well-structured. "
-        f"Return your answer in Markdown format with: "
-        f"1. A clear heading for Week {week} "
-        f"2. Subheadings for major topics "
-        f"3. Bullet points for key concepts "
-        f"4. Code examples if present (formatted in code blocks) "
-        f"Start the first paragraph after the heading with 'In Week {week},' and "
-        f"end with a brief concluding paragraph starting with 'In conclusion, Week {week}'. "
-        f"If Dr. Ashish Tendulkar is mentioned, include his name in the conclusion as 'Prof. Ashish'. "
+        f"You are an expert Machine Learning educator creating comprehensive week summaries. "
+        f"Create a detailed summary of Week {week} slides (700-900 words) that captures all key concepts. "
+        f"Your response MUST be in Markdown format with:"
+        f"\n\n## Formatting Requirements:"
+        f"\n- Clear hierarchical headings (# for title, ## for main sections, ### for subsections)"
+        f"\n- Add a blank line before AND after each heading"
+        f"\n- Use bullet points for key concepts with a blank line between lists"
+        f"\n- Format code examples in proper code blocks with Python syntax highlighting:``````"
+        f"\n- Present mathematical formulas using LaTeX notation (\\( \\) for inline, \\[ \\] for display)"
+        f"\n- For tables, use proper Markdown table formatting with alignment:\n"
+        f"  | Column1 | Column2 | Column3 |\n"
+        f"  | ------- | :-----: | ------: |\n"
+        f"  | Left    | Center  | Right   |"
+        f"\n- Add a blank line before and after code blocks and tables"
+
+        f"\n\n## Content Requirements:"
+        f"\n- Begin with a clear heading: '# Week {week}: [Main Topic]'"
+        f"\n- Start the first paragraph with 'In Week {week},' introducing the main topics"
+        f"\n- Include major concepts, algorithms, mathematical formulas, and code implementations"
+        f"\n- Explain relationships between concepts and their practical applications"
+        f"\n- If present, include computational complexity and performance considerations"
+        f"\n- Highlight important functions, libraries, and implementation details"
+        f"\n- End with a comprehensive conclusion starting with 'In conclusion, Week {week}'"
+        f"\n- If Dr. Ashish Tendulkar is mentioned, refer to him as 'Prof. Ashish' in the conclusion"
+
         f"\n\nSlides content:\n{text}"
     )
 

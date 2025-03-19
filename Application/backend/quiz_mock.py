@@ -24,14 +24,13 @@ class MCQQuestion(BaseModel):
     question: str = Field(description="The question text")
     options: List[str] = Field(description="List of 4 options")
     correct_answer: str = Field(description="The correct answer")
-    explanation: str = Field(description="Explanation of why the answer is correct")
 
 class MCQSet(BaseModel):
     questions: List[MCQQuestion] = Field(description="List of MCQ questions")
 
 def get_api_key() -> str:
     """Get API key for Google Generative AI"""
-    api_key =  os.environ.get("GOOGLE_API_KEY")
+    api_key =  "AIzaSyAmZBJC_WzWLlaUdfiM3GMu9UkCjAWOJ0o"
     if not api_key:
         raise ValueError("Google API key is not set")
     return api_key
@@ -94,14 +93,13 @@ Guidelines:
 - Include code snippets from scikit-learn, NumPy, pandas, TensorFlow, or PyTorch when relevant
 - Make the questions challenging but fair, testing conceptual understanding rather than memorization
 - Ensure options are not too similar to each other to avoid ambiguity
-- Provide a clear, educational explanation for why the correct answer is right
 
 Context: {{context}}
             Number of questions: {{num_questions}}"""
         ),
         (
             "human",
-            "Generate MCQ questions in JSON format with question text, options, correct answer, and explanation."
+            "Generate MCQ questions in JSON format with question text, options and correct answer"
         )
     ])
 
@@ -195,4 +193,3 @@ def clear_cache():
     global _mcq_cache
     _mcq_cache = {}
     get_mcq_prompt.cache_clear()
-

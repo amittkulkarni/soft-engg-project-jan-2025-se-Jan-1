@@ -112,10 +112,22 @@
                 Generate {{ selectedWeek }} Summary
               </button>
             </div>
-          </div>
+
+            <!-- Week Summary Generation Status -->
+            <div v-if="isGenerating" class="generation-status text-center p-4 mt-4">
+              <div class="spinner-grow text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p>Generating comprehensive summary for <strong>{{ selectedWeek }}</strong>...</p>
+            </div>
+          </div>          
           </div>
           </transition>
-
+          <!-- Error message (add this before the markdown-output-container) -->
+          <div v-if="apiError" class="alert alert-danger mt-4">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            {{ apiErrorMessage }}
+          </div>
           <!-- Enhanced Markdown Output -->
           <div v-if="currentContent" class="markdown-output-container mt-4">
             <div class="markdown-header d-flex justify-content-between align-items-center">
@@ -130,14 +142,7 @@
               </div>
             </div>
             <div class="markdown-content">
-              <vue-markdown
-                :source="currentContent"
-                :options="{
-                  highlight: function (code, lang) {
-                  // This will handle the syntax highlighting based on language
-                  return require('highlight.js').highlightAuto(code, [lang]).value;
-                  }
-                }"/>
+              <markdown-renderer :content="currentContent" />
             </div>
           </div>
         </div>
@@ -152,9 +157,9 @@ import AppNavbar from "@/components/AppNavbar.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
 import ChatWindow from "@/components/ChatWindow.vue";
 import StudentIcon from "@/assets/student.png";
-import VueMarkdown from "vue-markdown-render";
-import 'highlight.js/styles/github.css';
+import MarkdownRenderer from "@/components/MarkdownRenderer.vue";
 import { jsPDF } from "jspdf";
+import axios from 'axios';
 
 export default {
   name: "KiaPage",
@@ -170,13 +175,15 @@ export default {
       selectedWeek: "Week 1",
       selectedTopic: "",
       generatedSummary: "",
+      apiError: false,
+      apiErrorMessage: ""
     };
   },
   components: {
     AppSidebar,
     AppNavbar,
     ChatWindow,
-    VueMarkdown
+    MarkdownRenderer
   },
   computed: {
     currentContent() {
@@ -194,11 +201,31 @@ export default {
       this.generatedNotes = "";
       this.generatedSummary = "";
     },
-    fetchSuggestions() {
-      const topics = ["Regression", "Linear Regression", "Logistic Regression", "Auto-regressive model"];
+    async fetchSuggestions() {
+      // Clear suggestions if search query is empty
+      if (!this.searchQuery || this.searchQuery.length < 2) {
+        this.suggestions = [];
+        return;
+      }
+
+      // You can replace this with a real API call to get topic suggestions
+      // For now, we'll use a more comprehensive list of ML topics
+      const topics = [
+        "Regression", "Linear Regression", "Logistic Regression",
+        "Decision Trees", "Random Forests", "Support Vector Machines",
+        "Neural Networks", "Deep Learning", "Convolutional Neural Networks",
+        "Recurrent Neural Networks", "Natural Language Processing",
+        "K-Means Clustering", "Hierarchical Clustering", "DBSCAN",
+        "Principal Component Analysis", "Feature Engineering",
+        "Gradient Descent", "Backpropagation", "Overfitting", "Regularization",
+        "Cross-Validation", "Precision and Recall", "ROC Curves", "AUC",
+        "Naive Bayes", "Ensemble Methods", "Boosting", "Bagging",
+        "Transfer Learning", "Reinforcement Learning"
+      ];
+
       this.suggestions = topics.filter(topic =>
         topic.toLowerCase().includes(this.searchQuery.toLowerCase())
-      );
+      ).slice(0, 5); // Limit to 5 suggestions
     },
     selectSuggestion(suggestion) {
       this.selectedTopic = suggestion;
@@ -225,238 +252,74 @@ export default {
       doc.save(fileName);
     },
     async generateNotes() {
+      // Only proceed if a topic is selected
+      if (!this.selectedTopic) {
+        return;
+      }
+
+      // Reset previous content and show loading state
       this.generatedNotes = "";
       this.isGenerating = true;
-      setTimeout(() => {
+
+      try {
+        // Call the backend API
+        const response = await axios.post('http://127.0.0.1:5000/generate_notes', {
+          topic: this.selectedTopic
+        });
+
+        // Check if successful
+        if (response.data.success) {
+          // Store the notes content
+          this.generatedNotes = response.data.notes;
+        } else {
+          // Handle API error
+          this.generatedNotes = `## Error\n\nFailed to generate notes: ${response.data.message}`;
+        }
+      } catch (error) {
+        console.error('Error generating notes:', error);
+        this.apiError = true;
+        this.apiErrorMessage = error.response?.data?.message || 'Failed to connect to the server';
+        this.generatedNotes = "## Error\n\nUnable to generate notes at this time. Please try again later.";
+      } finally {
+        // Hide loading indicator when done (success or failure)
         this.isGenerating = false;
-      this.generatedNotes = `
-# Linear Regression: Fundamentals and Implementation
-
-## Introduction to Linear Regression
-
-Linear Regression is a fundamental supervised machine learning algorithm used for predicting a continuous target variable based on one or more predictor variables. It works by finding the best-fitting straight line (or hyperplane in higher dimensions) through the data points.
-
-## Simple Linear Regression Implementation
-
-Let's start with implementing simple linear regression using Python's scikit-learn:
-
-\`\`\`python
-# Import necessary libraries
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score
-
-# Generate sample data
-np.random.seed(42)
-X = 2 * np.random.rand(100, 1)
-y = 4 + 3 * X + np.random.randn(100, 1)
-
-# Split the data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Create and train the model
-model = LinearRegression()
-model.fit(X_train, y_train)
-
-# Print model parameters
-print(f"Intercept: {model.intercept_[0]:.4f}")
-print(f"Coefficient: {model.coef_[0][0]:.4f}")
-
-# Make predictions
-y_pred = model.predict(X_test)
-
-# Evaluate the model
-mse = mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
-print(f"Mean Squared Error: {mse:.4f}")
-print(f"R² Score: {r2:.4f}")
-\`\`\`
-
-## Implementing Linear Regression from Scratch
-
-To better understand the algorithm, let's implement linear regression using only NumPy:
-
-\`\`\`python
-class LinearRegressionFromScratch:
-    def __init__(self, learning_rate=0.01, n_iterations=1000):
-        self.learning_rate = learning_rate
-        self.n_iterations = n_iterations
-        self.weights = None
-        self.bias = None
-
-    def fit(self, X, y):
-        # Initialize parameters
-        n_samples, n_features = X.shape
-        self.weights = np.zeros(n_features)
-        self.bias = 0
-
-        # Gradient descent
-        for _ in range(self.n_iterations):
-            y_predicted = np.dot(X, self.weights) + self.bias
-
-            # Compute gradients
-            dw = (1/n_samples) * np.dot(X.T, (y_predicted - y))
-            db = (1/n_samples) * np.sum(y_predicted - y)
-
-            # Update parameters
-            self.weights -= self.learning_rate * dw
-            self.bias -= self.learning_rate * db
-
-        return self
-
-    def predict(self, X):
-        return np.dot(X, self.weights) + self.bias
-\`\`\`
-
-## Visualizing Linear Regression
-
-Visualization helps understand how the model fits the data:
-
-\`\`\`python
-# Plot the data and regression line
-plt.figure(figsize=(10, 6))
-plt.scatter(X_test, y_test, color='blue', label='Test data')
-plt.plot(X_test, y_pred, color='red', linewidth=2, label='Regression line')
-plt.title('Linear Regression Model')
-plt.xlabel('X')
-plt.ylabel('y')
-plt.legend()
-plt.grid(True)
-plt.show()
-\`\`\`
-
-## Multiple Linear Regression
-
-When dealing with multiple features, the implementation is similar but works in higher dimensions:
-
-\`\`\`python
-# Generate multi-feature dataset
-np.random.seed(42)
-X_multi = np.random.rand(100, 3)  # 3 features
-y_multi = 4 + np.dot(X_multi, np.array([2, 3, 4])) + np.random.randn(100)
-
-# Split the data
-X_train_multi, X_test_multi, y_train_multi, y_test_multi = train_test_split(
-    X_multi, y_multi, test_size=0.2, random_state=42)
-
-# Create and train the model
-multi_model = LinearRegression()
-multi_model.fit(X_train_multi, y_train_multi)
-
-# Print model parameters
-print(f"Intercept: {multi_model.intercept_:.4f}")
-print(f"Coefficients: {multi_model.coef_}")
-
-# Make predictions and evaluate
-y_pred_multi = multi_model.predict(X_test_multi)
-mse_multi = mean_squared_error(y_test_multi, y_pred_multi)
-r2_multi = r2_score(y_test_multi, y_pred_multi)
-print(f"MSE: {mse_multi:.4f}, R²: {r2_multi:.4f}")
-\`\`\`
-
-## Regularization Techniques
-
-Regularization helps prevent overfitting by adding a penalty term to the loss function:
-
-### Ridge Regression (L2 Regularization)
-
-\`\`\`python
-from sklearn.linear_model import Ridge
-
-# Create and train Ridge model
-ridge = Ridge(alpha=1.0)  # alpha controls regularization strength
-ridge.fit(X_train_multi, y_train_multi)
-
-# Evaluate
-y_pred_ridge = ridge.predict(X_test_multi)
-print(f"Ridge R²: {r2_score(y_test_multi, y_pred_ridge):.4f}")
-\`\`\`
-
-### Lasso Regression (L1 Regularization)
-
-\`\`\`python
-from sklearn.linear_model import Lasso
-
-# Create and train Lasso model
-lasso = Lasso(alpha=0.1)
-lasso.fit(X_train_multi, y_train_multi)
-
-# Evaluate
-y_pred_lasso = lasso.predict(X_test_multi)
-print(f"Lasso R²: {r2_score(y_test_multi, y_pred_lasso):.4f}")
-print(f"Lasso Coefficients: {lasso.coef_}")  # Notice some might be exactly 0
-\`\`\`
-
-## Assumptions of Linear Regression
-
-For linear regression to provide reliable results, several assumptions should be met:
-
-1. **Linearity**: The relationship between features and target is linear
-2. **Independence**: Observations are independent of each other
-3. **Homoscedasticity**: Residuals have constant variance at every level
-4. **Normality**: Residuals are normally distributed
-5. **No multicollinearity**: Independent variables are not highly correlated
-
-## Testing Assumptions with Code
-
-\`\`\`python
-# Checking residuals
-residuals = y_test - y_pred
-
-# Plot residuals
-plt.figure(figsize=(10, 6))
-plt.scatter(y_pred, residuals)
-plt.axhline(y=0, color='r', linestyle='-')
-plt.title('Residuals vs Predicted Values')
-plt.xlabel('Predicted values')
-plt.ylabel('Residuals')
-plt.grid(True)
-plt.show()
-
-# Checking normality of residuals with Q-Q plot
-import scipy.stats as stats
-plt.figure(figsize=(10, 6))
-stats.probplot(residuals.flatten(), dist="norm", plot=plt)
-plt.title('Q-Q Plot of Residuals')
-plt.grid(True)
-plt.show()
-\`\`\`
-
-By understanding both the theory and implementation of linear regression, you'll have a solid foundation for more complex machine learning algorithms.
-`;
-      });
+      }
     },
-    generateWeekSummary() {
-      this.generatedSummary = "";
-      this.isGenerating = true;
-      setTimeout(() => {
-            this.isGenerating = false;
-            this.generatedSummary = `
-# Summary of ${this.selectedWeek}
+    async generateWeekSummary() {
+      try {
+        // Reset previous content and show loading state
+        this.generatedSummary = "";
+        this.isGenerating = true;
+        this.apiError = false;
 
+        // Extract week number from the selected week (e.g., "Week 1" -> 1)
+        const weekNumber = parseInt(this.selectedWeek.replace("Week ", ""));
 
-Lorem ipsum dolor sit amet consectetur adipiscing elit, non porttitor nec dictum sodales posuere, natoque orci class habitant ultricies semper. In condimentum vel blandit ante dis phasellus nunc vivamus aptent tempor metus, eget nibh congue morbi eu neque nascetur gravida aenean interdum. Risus convallis hac suscipit per ligula donec laoreet curabitur lectus aptent tellus proin vel dignissim gravida habitasse tincidunt maecenas odio rutrum, non torquent neque porta ullamcorper magna faucibus velit taciti est etiam sapien consequat interdum eros quam nullam fusce bibendum.
+        // Call the backend API
+        const response = await axios.post('http://127.0.0.1:5000/generate_week_summary', {
+          week_id: weekNumber
+        });
 
-Sodales leo morbi auctor rhoncus purus arcu torquent dis, natoque quis cursus tortor lacinia eget tellus primis fusce, vivamus porttitor lacus senectus integer curabitur tempus. Netus platea consequat eu posuere velit porttitor suspendisse at proin, bibendum nisi dapibus pellentesque quam luctus semper mi, donec in hendrerit primis nisl sed porta pharetra.
-
-## Posuere felis non scelerisque scelerisque
-
-- Potenti nam id ridiculus, quam mollis, convallis accumsan.
-
-- Magnis morbi aliquet nisl nullam, ante faucibus eget.
-
-- Ad hendrerit praesent rutrum fames, laoreet hac purus.
-
-- Nulla nisl massa eu iaculis, enim ac a.
-
-Auctor nascetur condimentum sollicitudin laoreet proin faucibus nostra imperdiet, nunc metus aptent hac varius arcu cum ullamcorper, eget magna placerat ligula curabitur vulputate odio.
-
-Netus dignissim placerat cum leo non class iaculis facilisi, habitasse sapien rutrum habitant tristique pellentesque curabitur cubilia, at nullam donec tempus metus nibh tempor. Pulvinar condimentum sociis vivamus egestas erat luctus sodales, convallis ad litora urna porttitor dignissim, netus cursus justo cubilia proin hendrerit. Tortor nam interdum montes ultrices parturient sapien sociis gravida, commodo conubia sem consequat tincidunt auctor taciti at, dignissim curabitur luctus congue aenean neque donec. `;
-      }, 1500);
-    },
+        // Check if successful
+        if (response.data.success) {
+          // Store the summary content
+          this.generatedSummary = response.data.summary;
+        } else {
+          // Handle API error
+          this.apiError = true;
+          this.apiErrorMessage = response.data.message || 'Failed to generate week summary';
+          this.generatedSummary = `## Error\n\nFailed to generate summary: ${response.data.message}`;
+        }
+      } catch (error) {
+        console.error('Error generating week summary:', error);
+        this.apiError = true;
+        this.apiErrorMessage = error.response?.data?.message || 'Failed to connect to the server';
+        this.generatedSummary = "## Error\n\nUnable to generate week summary at this time. Please try again later.";
+      } finally {
+        // Hide loading indicator when done (success or failure)
+        this.isGenerating = false;
+      }
+    }
   }
 };
 </script>
@@ -778,14 +641,6 @@ Netus dignissim placerat cum leo non class iaculis facilisi, habitasse sapien ru
   margin-bottom: 0;
 }
 
-/* Content Panel */
-.content-panel {
-  background: white;
-  border-radius: 12px;
-  margin-bottom: 2rem;
-  border-top: 4px solid #6c1b1b;
-}
-
 /* Form Elements */
 .form-control, .form-select {
   border-radius: 8px;
@@ -814,11 +669,6 @@ Netus dignissim placerat cum leo non class iaculis facilisi, habitasse sapien ru
 .btn-dark:hover {
   background-color: #5a1717;
   border-color: #5a1717;
-}
-
-.btn-success {
-  background-color: #28a745;
-  border-color: #28a745;
 }
 
 .markdown-output h1,
@@ -871,6 +721,45 @@ Netus dignissim placerat cum leo non class iaculis facilisi, habitasse sapien ru
   font-weight: 500;
 }
 
+/* Add more spacing to headings */
+.markdown-content h1, .markdown-content h2, .markdown-content h3 {
+  margin-top: 1.8rem;
+  margin-bottom: 1.2rem;
+}
+
+/* Fix table spacing */
+.markdown-content table {
+  margin: 1.5rem 0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.markdown-content th, .markdown-content td {
+  padding: 0.8rem 1rem;
+  border: 1px solid #dee2e6;
+}
+
+/* Add space after lists */
+.markdown-content ul, .markdown-content ol {
+  margin-bottom: 1.2rem;
+}
+
+/* Add space between list items */
+.markdown-content li {
+  margin-bottom: 0.5rem;
+}
+
+.generation-status {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.week-item.active {
+  background-color: #6c1b1b;
+  color: white;
+  border-color: #6c1b1b;
+}
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {
