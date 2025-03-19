@@ -48,7 +48,7 @@ def get_llm():
     global _llm
     if _llm is None:
         _llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-exp",
+            model="gemini-1.5-flash",
             google_api_key=get_api_key(),
             temperature=0.7
         )
