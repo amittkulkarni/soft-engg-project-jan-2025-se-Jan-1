@@ -1,45 +1,106 @@
+import os
+from typing import Dict
+from functools import lru_cache
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from typing import Optional
-from pydantic import SecretStr
 
-def categorize_error(error_message: str):
-    """Categorize the error to provide more specific explanations"""
+# Global singleton for LLM
+_llm = None
 
-    error_categories = {
-        "SyntaxError": "syntax",
-        "IndentationError": "syntax",
-        "NameError": "variable",
-        "TypeError": "type",
-        "ValueError": "value",
-        "IndexError": "index",
-        "KeyError": "key",
-        "AttributeError": "attribute",
-        "ImportError": "import",
-        "ModuleNotFoundError": "import",
-        "ZeroDivisionError": "logic",
-        "FileNotFoundError": "file",
-        "PermissionError": "permission",
-        "RuntimeError": "runtime",
-        "RecursionError": "recursion"
-    }
+def get_api_key() -> str:
+    """Get API key from environment variable"""
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        raise ValueError("GOOGLE_API_KEY environment variable not set")
+    return api_key
 
-    for error_type, category in error_categories.items():
-        if error_type in error_message:
+def get_llm():
+    """Singleton pattern for LLM to avoid multiple initializations"""
+    global _llm
+    if _llm is None:
+        _llm = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash",
+            google_api_key=get_api_key(),
+            temperature=0.2
+        )
+    return _llm
+
+# Error categorization with expanded categories
+ERROR_CATEGORIES: Dict[str, str] = {
+    # Syntax errors
+    "SyntaxError": "syntax",
+    "IndentationError": "syntax",
+    "TabError": "syntax",
+
+    # Variable errors
+    "NameError": "variable",
+    "UnboundLocalError": "variable",
+
+    # Type errors
+    "TypeError": "type",
+    "ValueError": "value",
+
+    # Collection errors
+    "IndexError": "index",
+    "KeyError": "key",
+    "AttributeError": "attribute",
+
+    # Module errors
+    "ImportError": "import",
+    "ModuleNotFoundError": "import",
+
+    # Logic errors
+    "ZeroDivisionError": "logic",
+    "OverflowError": "logic",
+    "ArithmeticError": "logic",
+
+    # File errors
+    "FileNotFoundError": "file",
+    "PermissionError": "permission",
+    "IOError": "file",
+
+    # Other errors
+    "RuntimeError": "runtime",
+    "RecursionError": "recursion",
+    "MemoryError": "memory",
+    "TimeoutError": "timeout",
+
+    # ML-specific errors
+    "ValueError: Input contains NaN": "data_quality",
+    "ValueError: Found input variables with inconsistent": "data_shape",
+    "could not convert string to float": "data_type",
+    "not fitted yet": "model_state",
+    "not callable": "function_call"
+}
+
+def categorize_error(error_message: str) -> str:
+    """
+    Categorize the error based on its type to provide more specific explanations.
+
+    Args:
+        error_message: The complete error message to analyze
+
+    Returns:
+        A category string representing the type of error
+    """
+    # First check for specific ML errors that might be substrings
+    for error_pattern, category in ERROR_CATEGORIES.items():
+        if ":" not in error_pattern and error_pattern in error_message:
             return category
 
+    # Then check for standard Python error types
+    for error_type, category in ERROR_CATEGORIES.items():
+        if ":" in error_type and error_type.split(":")[0] in error_message:
+            return category
+
+    # Default category
     return "general"
 
-def initialize_error_explainer(google_api_key: Optional[SecretStr] = None):
-    """Initialize error explainer with examples for common error categories"""
+def get_error_explanation_chain():
+    """Create and return the error explanation chain"""
+    llm = get_llm()
 
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        google_api_key=google_api_key,
-        temperature=0.2
-    )
-
-    # Create a more detailed prompt with examples
     error_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are an expert programming instructor specializing in explaining Python errors to beginners.
 Your task is to explain the following error message in simple, human-readable terms.
@@ -56,106 +117,61 @@ For your explanation:
         ("human", "Error message: {error_message}")
     ])
 
+    return error_prompt | llm
+
+@lru_cache(maxsize=50)
+def cached_explain_error(error_message: str, error_category: str):
+    """
+Cached version of error explanation for common errors.
+
+Args:
+error_message: The error message to explain
+error_category: The category of the error
+
+Returns:
+A human-readable explanation of the error
+    """
     # Create the chain
-    error_explanation_chain = error_prompt | llm
+    error_explanation_chain = get_error_explanation_chain()
 
-    return error_explanation_chain
+    # Process the error with the chain
+    response = error_explanation_chain.invoke({
+        "error_message": error_message,
+        "error_category": error_category
+    })
 
-def explain_error(error_message: str, google_api_key: Optional[SecretStr] = None):
-    """Enhanced error explanation with categorization"""
+    # Extract content based on response format
+    if hasattr(response, 'content'):
+        return response.content
+    elif isinstance(response, str):
+        return response
+    else:
+        return str(response)
 
-    # Categorize the error
-    error_category = categorize_error(error_message)
+def explain_error(error_message: str) -> str:
+    """
+Explains a Python error message in human-readable terms.
 
-    # Initialize the chain
-    error_explanation_chain = initialize_error_explainer(google_api_key)
+Args:
+error_message: The error message to explain
 
-    # Process the error message with category
+Returns:
+A human-readable explanation of the error
+    """
     try:
-        explanation = error_explanation_chain.invoke({
-            "error_message": error_message,
-            "error_category": error_category
-        })
-
-        # Extract content based on response format
-        if hasattr(explanation, 'content'):
-            return explanation.content
-        elif isinstance(explanation, str):
-            return explanation
+        # Extract just the actual error line if it's a full traceback
+        if "Traceback" in error_message:
+            error_lines = error_message.strip().split('\n')
+            actual_error = error_lines[-1] if error_lines else error_message
         else:
-            return str(explanation)
+            actual_error = error_message
+
+        # Categorize the error
+        error_category = categorize_error(error_message)
+
+        # Use the cached version for efficiency
+        return cached_explain_error(actual_error, error_category)
 
     except Exception as e:
+        # Graceful fallback if something goes wrong
         return f"I couldn't analyze this error properly. Basic details: {error_message.split('Traceback')[0]}"
-
-
-type_error = """
-Traceback (most recent call last):
-File "<stdin>", line 1, in <module>
-File "<__array_function__ internals>", line 180, in mean
-File "/usr/local/lib/python3.8/dist-packages/numpy/core/fromnumeric.py", line 3432, in mean
-return _methods._mean(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
-File "/usr/local/lib/python3.8/dist-packages/numpy/core/_methods.py", line 153, in _mean
-arr = asanyarray(a)
-File "/usr/local/lib/python3.8/dist-packages/numpy/core/_asarray.py", line 83, in asanyarray
-return array(a, dtype, copy=False, order=order, subok=True)
-TypeError: int() argument must be a string, a bytes-like object or a number, not 'list'
-            """
-
-value_error = """
-Traceback (most recent call last):
-File "<stdin>", line 5, in <module>
-File "/usr/local/lib/python3.8/dist-packages/sklearn/linear_model/_base.py", line 647, in fit
-X, y = self._validate_data(X, y, accept_sparse=accept_sparse,
-File "/usr/local/lib/python3.8/dist-packages/sklearn/base.py", line 581, in _validate_data
-X, y = check_X_y(X, y, accept_sparse=accept_sparse,
-File "/usr/local/lib/python3.8/dist-packages/sklearn/utils/validation.py", line 964, in check_X_y
-X = check_array(X, accept_sparse=accept_sparse,
-File "/usr/local/lib/python3.8/dist-packages/sklearn/utils/validation.py", line 746, in check_array
-array = np.asarray(array, order=order, dtype=dtype)
-ValueError: Found input variables with inconsistent numbers of samples: [5, 6]
-            """
-
-inf_error = """Traceback (most recent call last):
-File "<stdin>", line 6, in <module>
-File "/usr/local/lib/python3.8/dist-packages/sklearn/linear_model/_base.py", line 647, in fit
-X, y = self._validate_data(X, y, accept_sparse=accept_sparse,
-File "/usr/local/lib/python3.8/dist-packages/sklearn/base.py", line 581, in _validate_data
-X, y = check_X_y(X, y, accept_sparse=accept_sparse,
-File "/usr/local/lib/python3.8/dist-packages/sklearn/utils/validation.py", line 964, in check_X_y
-X = check_array(X, accept_sparse=accept_sparse,
-File "/usr/local/lib/python3.8/dist-packages/sklearn/utils/validation.py", line 746, in check_array
-array = np.asarray(array, order=order, dtype=dtype)
-File "/usr/local/lib/python3.8/dist-packages/numpy/core/_asarray.py", line 83, in asarray
-return array(a, dtype, copy=False, order=order)
-ValueError: Input contains NaN, infinity or a value too large for dtype('float64').
-"""
-
-from rich.console import Console
-from rich.markdown import Markdown
-
-def print_error_explanation(error_message, explanation):
-    """Display error explanation with markdown formatting"""
-    console = Console()
-
-    # Print a divider and the original error summary
-    console.print("\n[bold red]Error Message:[/bold red]", style="bold red")
-    console.print(error_message.split("\n")[-1], style="red")
-
-    # Print the explanation with markdown formatting
-    console.print("\n[bold green]Explanation:[/bold green]", style="bold green")
-    md = Markdown(explanation)
-    console.print(md)
-
-    # Print a divider for better readability
-    console.print("\n" + "-" * 80 + "\n")
-
-# Usage with your existing code
-type_error_output = explain_error(type_error)
-print_error_explanation(type_error, type_error_output)
-
-value_error_output = explain_error(value_error)
-print_error_explanation(value_error, value_error_output)
-
-inf_error_output = explain_error(inf_error)
-print_error_explanation(inf_error, inf_error_output)
