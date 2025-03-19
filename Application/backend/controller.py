@@ -14,6 +14,9 @@ import subprocess
 import tempfile
 import requests
 
+from topic_specfic_mock import generate_mcqs
+from error_explainer import explain_error as explain_error_util
+
 user_routes = Blueprint('user_routes', __name__)
 
 # ------------------------- User Authentication Routes -------------------------
@@ -1235,28 +1238,30 @@ def generate_topic_specific_questions():
         if not topic:
             return jsonify({'success': False, 'message': 'Topic is required'}), 400
 
-        # Placeholder response with mock questions
-        mock_response = {
-            'message': 'Questions generated successfully',
-            'success': True,
-            'questions': [
-                {
-                    'question': f'Sample question 1 about {topic}?',
-                    'options': ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
-                    'answer': 'Option 1'
-                },
-                {
-                    'question': f'Sample question 2 about {topic}?',
-                    'options': ['Option A', 'Option B', 'Option C', 'Option D'],
-                    'answer': 'Option B'
-                }
-            ][:num_questions]
-        }
+        # Generate dynamic MCQs using the imported function
+        try:
+            mcq_set = generate_mcqs(topic, num_questions)
+            print(mcq_set)
+            response_data = {
+                'message': 'Questions generated successfully',
+                'success': True,
+                'questions': [
+                    {
+                        'question': q['question_text'],
+                        'options': q['options'],
+                        'answer': q['correct_answer'],
+                        'explanation': q['explanation']
+                    } for q in mcq_set
+                ]
+            }
+        except Exception as e:
+            return jsonify({'success': False, 'message': 'Failed to generate dynamic questions', 'error': str(e)}), 500
 
-        return jsonify(mock_response), 200
+        return jsonify(response_data), 200
 
     except Exception as e:
         return jsonify({'success': False, 'message': 'Failed to generate questions', 'error': str(e)}), 500
+
 
 
 # Video Summarizer API 
@@ -1356,15 +1361,20 @@ def explain_error():
     if not code_snippet:
         return jsonify({'message': 'Code snippet is required', 'success': False}), 400
 
-    # Return a mock explanation of the error (this could be dynamically generated)
-    return jsonify({
-        'success': True,
-        'message': 'Error explanation generated successfully',
-        'explanation': "SyntaxError: Unexpected indent. This error occurs when there is an unexpected indentation "
-                       "in the code. Python relies on indentation to define code blocks, and inconsistent indentation "
-                       "can lead to this error. To fix this, check the indentation of your code. Ensure you use consistent "
-                       "spaces or tabs and avoid mixing both."
-    }), 200
+    # Attempt to analyze the error using error_explainer logic
+    try:
+        explanation = explain_error_util(code_snippet)
+        return jsonify({
+            'success': True,
+            'message': 'Error explanation generated successfully',
+            'explanation': explanation
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': 'Failed to generate error explanation',
+            'error': str(e)
+        }), 500
 
 
 # Generate Week Summary

@@ -7,6 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
+
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
@@ -27,7 +28,8 @@ _embeddings = None
 
 def get_api_key() -> str:
     """Get API key from environment variable"""
-    api_key = os.environ.get("GOOGLE_API_KEY")
+    #api_key = os.environ.get("GOOGLE_API_KEY")
+    api_key = "AIzaSyCV5i-u0oROux-Wt0TMqiRivVD6H0rGbjc"
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable not set")
     return api_key
