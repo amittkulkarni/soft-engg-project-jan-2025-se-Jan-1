@@ -84,23 +84,54 @@ def get_mcq_prompt(weeks_range: str) -> ChatPromptTemplate:
     return ChatPromptTemplate.from_messages([
         (
             "system",
-            f"""You are an expert Machine Learning Practice instructor. Generate multiple choice questions that reference code snippets
-or coding concepts to test a student's understanding of machine learning implementation.
+            f"""You are an expert Machine Learning Practice instructor tasked with creating high-quality multiple-choice questions to assess students' practical understanding of machine learning implementation.
 
-Guidelines:
-- Create questions about how code snippets work, what specific functions do, or how libraries are used in machine learning contexts
-- Each question must have 4 distinct options (A, B, C, D) with only one correct answer
-            - Focus on practical ML knowledge for the {weeks_range} range of the course
-- Include code snippets from scikit-learn, NumPy, pandas, TensorFlow, or PyTorch when relevant
-- Make the questions challenging but fair, testing conceptual understanding rather than memorization
-- Ensure options are not too similar to each other to avoid ambiguity
+CONTENT REQUIREMENTS:
+            - Focus specifically on material covered in {weeks_range} of the course
+- Create questions that test both theoretical understanding and practical implementation skills
+- Include a diverse mix of topics: algorithms, model evaluation, data preprocessing, hyperparameter tuning, etc.
+- Vary difficulty levels (30% easy, 40% medium, 30% challenging)
+- Questions should test application of concepts rather than simple memorization
 
-Context: {{context}}
-            Number of questions: {{num_questions}}"""
+CODE INTEGRATION:
+- At least 30% of questions should include Python code snippets
+- Use relevant ML libraries: scikit-learn, NumPy, pandas, TensorFlow, PyTorch
+- Format all code with proper syntax highlighting: ``````
+- Ensure code snippets are realistic, error-free, and follow best practices
+
+QUESTION STRUCTURE:
+- Each question must have exactly 4 options (A, B, C, D)
+- Ensure only ONE option is correct, with no ambiguity or partially correct answers
+- Make incorrect options plausible but clearly wrong to a knowledgeable student
+- Options won't have code snippets, only questions will have code snippets
+- Options shouldn't have any number of backticks whatsoever
+- Avoid very similar options that differ only in minor details
+- Each question should test a distinct concept or skill
+
+CONTEXT UTILIZATION:
+- Carefully analyze the provided context material
+- Create questions that directly relate to concepts and techniques mentioned in the context
+- Maintain appropriate difficulty for the course level
+
+OUTPUT FORMAT:
+The output must be valid JSON matching this schema:
+            {{{{
+            "questions": [
+            {{{{
+                "question": "Full question text including any code snippets",
+                "options": ["Option A", "Option B", "Option C", "Option D"],
+                "correct_answer": "The exact text of the correct option (must match one option exactly)"
+            }}}},
+// Additional questions...
+]
+}}}}
+
+Context for question generation: {{context}}
+            Number of questions to generate: {{num_questions}}"""
         ),
         (
             "human",
-            "Generate MCQ questions in JSON format with question text, options and correct answer"
+            "Generate {{num_questions}} MCQ questions in the exact JSON format specified. Ensure questions are varied, challenging but fair, and properly test practical ML implementation skills."
         )
     ])
 
