@@ -176,3 +176,81 @@ def test_chatbot_missing_query(client):
 
     assert data["success"] is False
     assert data["message"] == "Missing required fields"
+
+#---------------------------------- Test Case for Generate Mock API---------------------------------
+
+#Test case for successful generation of a mock test
+def test_generate_mock_success(client):
+    response = client.post('/generate_mock', json={'quiz_type': 'quiz1', 'num_questions': 10})
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['success'] is True
+    assert 'questions' in data
+
+# Test case: Missing quiz_type field
+def test_generate_mock_missing_quiz_type(client):
+    response = client.post('/generate_mock', json={
+        'num_questions': 5
+    })
+    
+    assert response.status_code == 400
+    data = response.get_json()
+    assert data['success'] is False
+    assert data['message'] == 'quiz_type is required'
+
+# Test case: Non-existent quiz_type
+def test_generate_mock_non_existent_quiz_type(client):
+    response = client.post('/generate_mock', json={
+        'quiz_type': 'unknown_quiz',
+        'num_questions': 5
+    })
+    
+    assert response.status_code == 404
+    data = response.get_json()
+    assert data['success'] is False
+    assert 'message' in data
+
+#------------------------------------ Test Case for Generate Notes API ------------------------------
+
+#Test Case: Generate Notes Successfully
+def test_generate_notes_success(client):
+    response = client.post('/generate_notes', json={"topic": "Reinforcement Learning"})
+
+    assert response.status_code == 200
+    assert response.json['success'] is True
+    assert response.json['message'] == 'Notes generated successfully for topic "Reinforcement Learning"'
+    assert 'notes' in response.json
+
+#Test Case: missing topic 
+def test_generate_notes_missing_topic(client):
+    response = client.post('/generate_notes', json={})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'topic is required'
+
+#----------------------------------- Test Case for Week Summary API --------------------------------
+
+#Test case for successful summary generation when the week exists.
+def test_generate_week_summary_success(client):
+    response = client.post('/generate_week_summary', json={"week_id": 2})
+    assert response.status_code == 200
+    assert response.json['success'] is True
+    assert 'summary' in response.json
+
+#Test case when `week_id` is missing in the request body.
+def test_generate_week_summary_missing_week_id(client):
+    response = client.post('/generate_week_summary', json={})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'week_id is required'
+
+#Test case when `week_id` does not exist in the database.
+def test_generate_week_summary_non_existent_week(client):
+    response = client.post('/generate_week_summary', json={"week_id": 999})
+
+    assert response.status_code == 404
+    assert response.json['success'] is False
+    assert response.json['message'] == 'Week not found'
