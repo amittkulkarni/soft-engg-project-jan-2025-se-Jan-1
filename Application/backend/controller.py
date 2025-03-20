@@ -131,6 +131,47 @@ def google_login():
     except Exception as e:
         return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
 
+# Signup Route - Registers a new user
+ 
+@user_routes.route('/signup', methods=['POST']) 
+def signup():
+    data = request.get_json()
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    role = data.get('role', 'student')  # Default to 'student' if not provided
+ 
+    # Check if the username exists only if provided
+    if username and User.query.filter_by(username=username).first():
+        return jsonify({"message": "Username already exists"}), 400
+ 
+    # Check if the email is provided
+    if not email:
+        return jsonify({"message": "Email is required"}), 400
+ 
+    # Check if the email already exists
+    if User.query.filter_by(email=email).first():
+        return jsonify({"message": "Email already exists"}), 400
+
+    # Password validation (required if not signing up via Google) 
+    if not password:
+        return jsonify({"message": "Password is required"}), 400
+ 
+    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+ 
+    # Create and save new user 
+    new_user = User(
+        username=username,
+        email=email,
+        password=hashed_password,
+        role=role,
+    )
+  
+    db.session.add(new_user)
+    db.session.commit()
+ 
+    return jsonify({"message": "User registered successfully"}), 201
+
 # Login Route - Authenticates a user and returns an access token
 @user_routes.route('/login', methods=['POST'])
 def login():
@@ -1240,9 +1281,15 @@ def generate_topic_specific_questions():
         topic = data.get('topic')
         num_questions = data.get('num_questions', 5)
 
-        # Validate input
+        # Input Validations
         if not topic:
             return jsonify({'success': False, 'message': 'Topic is required'}), 400
+        
+        if not isinstance(num_questions, int):
+            return jsonify({'success': False, 'message': 'Invalid data type for num_questions'}), 400
+        
+        if num_questions < 1:
+            return jsonify({'success': False, 'message': 'Number of questions must be at least 1'}), 400
 
         # Generate dynamic MCQs using the imported function
         try:
@@ -1253,20 +1300,29 @@ def generate_topic_specific_questions():
                 'success': True,
                 'questions': [
                     {
-                        'question': q['question_text'],
+                        'question': q['question'],
                         'options': q['options'],
-                        'answer': q['correct_answer'],
+                        'answer': q['answer'],
                         'explanation': q['explanation']
                     } for q in mcq_set
                 ]
             }
         except Exception as e:
-            return jsonify({'success': False, 'message': 'Failed to generate dynamic questions', 'error': str(e)}), 500
+            return jsonify({
+                'success': False,
+                'message': 'Failed to generate dynamic questions',
+                'error': str(e)
+            }), 500
 
         return jsonify(response_data), 200
 
     except Exception as e:
-        return jsonify({'success': False, 'message': 'Failed to generate questions', 'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'message': 'Failed to generate questions',
+            'error': str(e)
+        }), 500
+
 
 
 
@@ -1289,12 +1345,14 @@ def video_summarizer():
             Lecture.title.label('lecture_title')
         ).join(Week).filter(Lecture.id == lecture_id).first()
 
+        if not lecture:
+            return jsonify({'message': 'Lecture not found', 'success': False}), 404
         
         print(lecture)
         week = lecture.week_number
         lecture_num =lecture.lecture_id 
     except ValueError:
-        return jsonify({'message': 'Invalid lecture_id format. Use format: week_lecture (e.g., 3_2)', 'success': False}), 400
+        return jsonify({'message': 'Invalid lecture_id format.', 'success': False}), 400
 
     # Generate summary using lecture_summarizer logic
     result = summarize_lecture(week, lecture_num)

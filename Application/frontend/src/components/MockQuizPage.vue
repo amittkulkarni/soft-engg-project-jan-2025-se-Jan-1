@@ -23,46 +23,53 @@
 
           <!-- Mock Quiz Generator (when no quiz is generated yet) -->
           <div v-else-if="!mockQuizGenerated" class="mock-quiz-container mb-4 p-4 rounded shadow-sm">
-            <h3 class="mb-3 text-center">Generate Mock Quizzes</h3>
+            <h2 class="mb-4 text-center">Generate Mock Quizzes</h2>
+            <p class="text-center text-muted mb-4">Select one of the quiz types below to challenge yourself</p>
 
-            <!-- Configuration Options (removed question count) -->
-            <div class="row mb-4 justify-content-center">
-              <div class="col-md-6">
-                <div class="form-group mb-3">
-                  <label for="difficultySelect">Difficulty:</label>
-                  <select id="difficultySelect" v-model="mockDifficulty" class="form-select">
-                    <option value="easy">Easy</option>
-                    <option value="medium">Medium</option>
-                    <option value="hard">Hard</option>
-                  </select>
+            <!-- Enhanced Quiz Buttons -->
+            <div class="quiz-buttons-container">
+              <button
+                @click="generateMockQuiz('quiz1')"
+                class="quiz-button quiz1-button">
+                <div class="icon-container">
+                  <i class="bi bi-lightning-charge"></i>
                 </div>
-              </div>
+                <div class="button-content">
+                  <h4>Mock Quiz 1</h4>
+                  <p>Covers weeks 1-4</p>
+                </div>
+              </button>
+
+              <button
+                @click="generateMockQuiz('quiz2')"
+                class="quiz-button quiz2-button">
+                <div class="icon-container">
+                  <i class="bi bi-lightning-charge-fill"></i>
+                </div>
+                <div class="button-content">
+                  <h4>Mock Quiz 2</h4>
+                  <p>Covers weeks 1-8</p>
+                </div>
+              </button>
+
+              <button
+                @click="generateMockQuiz('endterm')"
+                class="quiz-button endterm-button">
+                <div class="icon-container">
+                  <i class="bi bi-stars"></i>
+                </div>
+                <div class="button-content">
+                  <h4>End Term</h4>
+                  <p>Covers entire course</p>
+                </div>
+              </button>
             </div>
 
-            <!-- Centralized Buttons -->
-            <div class="d-flex flex-wrap gap-3 mb-4 justify-content-center">
-              <button
-                @click="generateMockQuiz('mock_quiz_1')"
-                class="btn btn-outline-primary btn-lg">
-                <i class="bi bi-lightning me-1"></i> Mock Quiz 1
-              </button>
-              <button
-                @click="generateMockQuiz('mock_quiz_2')"
-                class="btn btn-outline-primary btn-lg">
-                <i class="bi bi-lightning-fill me-1"></i> Mock Quiz 2
-              </button>
-              <button
-                @click="generateMockQuiz('end_term')"
-                class="btn btn-outline-danger btn-lg">
-                <i class="bi bi-file-earmark-text me-1"></i> End Term Practice
-              </button>
-            </div>
-
-            <div v-if="generatingMock" class="d-flex align-items-center justify-content-center mt-3">
-              <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+            <div v-if="generatingMock" class="text-center mt-4">
+              <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
               </div>
-              <span>Generating {{ mockType }} questions...</span>
+              <p class="mt-2">Generating {{ mockType }} questions...</p>
             </div>
           </div>
 
@@ -78,9 +85,6 @@
                 <span class="badge bg-success">Practice Quiz</span>
                 <span class="text-muted">
                   <i class="bi bi-award me-1"></i> {{ mockQuiz.total_points }} Points
-                </span>
-                <span class="text-muted">
-                  <i class="bi bi-gear me-1"></i> Difficulty: {{ mockDifficulty }}
                 </span>
               </div>
             </div>
@@ -101,8 +105,11 @@
             <!-- Questions Section -->
             <div v-for="(question, index) in questions" :key="question.id" class="question-container mb-4 p-4 rounded">
               <div class="d-flex justify-content-between">
-                <p class="question-text mb-3"><strong>{{ index + 1 }}. {{ question.text }}</strong></p>
-                <span class="badge bg-secondary">{{ question.points }} pts</span>
+                <div class="question-text mb-3">
+                  <strong>{{ index + 1 }}. </strong>
+                  <markdown-renderer :content="question.text"></markdown-renderer>
+                </div>
+                <span class="badge bg-secondary p-2" style="height: 25px">{{ question.points }} pts</span>
               </div>
 
               <div class="options-container">
@@ -198,14 +205,17 @@
 import AppSidebar from "@/components/AppSidebar.vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import ChatWindow from "@/components/ChatWindow.vue";
+import MarkdownRenderer from "@/components/MarkdownRenderer.vue";
 import { jsPDF } from "jspdf";
+import axios from 'axios';
 
 export default {
   name: "MockQuizPage",
   components: {
     AppNavbar,
     AppSidebar,
-    ChatWindow
+    ChatWindow,
+    MarkdownRenderer
   },
   data() {
     return {
@@ -214,7 +224,6 @@ export default {
       mockQuizGenerated: false,
       generatingMock: false,
       mockType: null,
-      mockDifficulty: 'medium',
       mockQuiz: {
         id: null,
         title: '',
@@ -226,7 +235,7 @@ export default {
       pointsPerQuestion: [],
       score: 0,
       showScore: false,
-      suggestions: []
+      suggestions: [],
     };
   },
   computed: {
@@ -254,35 +263,31 @@ export default {
         this.mockType = this.formatMockType(quizType);
         this.error = null;
 
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Generate placeholder questions instead of API call
-        const response = this.generatePlaceholderQuestions(
-          quizType,
-          this.mockDifficulty,
-          5
-        );
+        // Call the API endpoint
+        const response = await axios.post('http://127.0.0.1:5000/generate_mock', {
+          quiz_type: quizType,
+          num_questions: 10 // Fixed number of questions
+        });
 
         // Process the response
-        if (response.success) {
+        if (response.data.success) {
           // Set mock quiz data
           this.mockQuiz = {
             id: 'mock-' + Date.now(),
             title: this.formatMockType(quizType),
-            total_points: response.total_points,
+            total_points: response.data.questions.length * 5, // 5 points per question
           };
 
-          // Transform questions data
-          this.questions = response.questions.map(q => ({
-            id: q.id,
-            text: q.question_text,
-            type: q.question_type,
-            points: q.points,
-            options: q.options.map(opt => ({
-              id: opt.id,
-              text: opt.option_text,
-              isCorrect: opt.is_correct
+          // Transform questions data with A, B, C, D option format
+          this.questions = response.data.questions.map((q, index) => ({
+            id: index,
+            text: q.question,
+            type: 'multiple_choice',
+            points: 5,
+            options: Object.entries(q.options).map(([key, optText]) => ({
+              id: `opt-${index}-${key}`,
+              text: `${key}. ${optText}`, // Include the option letter (A, B, C, D) in the display text
+              isCorrect: key === q.answer // Compare the key (A, B, C, D) with the answer
             }))
           }));
 
@@ -297,119 +302,23 @@ export default {
           this.showScore = false;
           this.score = 0;
           this.mockQuizGenerated = true;
-
-          // Generate default suggestions
           this.generateDefaultSuggestions();
         } else {
-          this.error = 'Failed to generate mock quiz';
+          this.error = response.data.message || 'Failed to generate mock quiz';
         }
       } catch (error) {
         console.error('Error generating mock quiz:', error);
-        this.error = 'Error generating mock quiz. Please try again.';
+        if (error.response) {
+          this.error = `Server error: ${error.response.status} - ${error.response.data.message || 'Unknown error'}`;
+        } else if (error.request) {
+          this.error = 'Could not connect to the server. Please check if the backend is running.';
+        } else {
+          this.error = `Error: ${error.message}`;
+        }
       } finally {
         this.generatingMock = false;
       }
     },
-
-    // Generate placeholder questions for testing
-    generatePlaceholderQuestions(quizType, difficulty, count) {
-      const questions = [];
-
-      // Question templates based on difficulty
-      const questionTemplates = {
-        easy: [
-          "What is the primary purpose of a constructor in object-oriented programming?",
-          "Which data structure follows the First-In-First-Out principle?",
-          "What does HTML stand for?",
-          "Which of these is NOT a JavaScript data type?",
-          "What is the purpose of CSS in web development?"
-        ],
-        medium: [
-          "What is the time complexity of binary search?",
-          "Which design pattern is used to create a single instance of a class?",
-          "What is the difference between == and === in JavaScript?",
-          "Explain the concept of function hoisting in JavaScript",
-          "What is the box model in CSS?"
-        ],
-        hard: [
-          "Explain the differences between a process and a thread in operating systems",
-          "What are the ACID properties in database transactions?",
-          "Describe the principles of RESTful API design",
-          "Compare and contrast virtual memory and physical memory",
-          "Explain how the event loop works in Node.js"
-        ]
-      };
-
-      // Options templates based on difficulty
-      const optionsTemplates = {
-        easy: [
-          ["To initialize object properties", "To destroy objects", "To define class methods", "To export the class"],
-          ["Queue", "Stack", "Tree", "Hash Table"],
-          ["Hypertext Markup Language", "High-level Technical Machine Language", "Hyper Transfer Markup Language", "Home Tool Markup Language"],
-          ["Object", "String", "Array", "Character"],
-          ["To add functionality", "To structure content", "To style web pages", "To handle server requests"]
-        ],
-        medium: [
-          ["O(1)", "O(n)", "O(log n)", "O(n²)"],
-          ["Factory Pattern", "Observer Pattern", "Singleton Pattern", "Decorator Pattern"],
-          ["They are identical", "== compares values, === compares values and types", "=== is deprecated", "== is faster"],
-          ["Functions are always available regardless of where they're defined", "Functions are moved to the top of their scope", "Functions are hidden until called", "Functions are copied to every scope"],
-          ["A layout paradigm for arranging elements", "A CSS framework", "A JavaScript library", "A HTML structure"]
-        ],
-        hard: [
-          ["Processes are lightweight, threads are heavyweight", "Processes share memory space, threads don't", "Threads have separate memory spaces, processes share memory", "Processes can contain multiple threads, threads are single-execution units"],
-          ["Atomicity, Consistency, Isolation, Durability", "Authentication, Caching, Integration, Deployment", "Authority, Control, Independence, Distribution", "Accuracy, Completeness, Integrity, Delivery"],
-          ["Using only GET and POST methods", "Resource-based URLs, proper HTTP methods, statelessness", "Always returning JSON responses", "Requiring authentication for all endpoints"],
-          ["Virtual memory is faster but more expensive", "Physical memory is larger than virtual memory", "Virtual memory uses disk space to extend RAM", "There's no difference in modern systems"],
-          ["It processes events in parallel using multiple threads", "It runs a single thread that processes an event queue", "It delegates events to the operating system", "It creates a new process for each event"]
-        ]
-      };
-
-      // Correct answers based on difficulty (index of correct option)
-      const correctAnswersIndex = {
-        easy: [0, 0, 0, 3, 2],
-        medium: [2, 2, 1, 1, 0],
-        hard: [3, 0, 1, 2, 1]
-      };
-
-      // Point values for each difficulty
-      const pointValues = {
-        easy: 5,
-        medium: 10,
-        hard: 15
-      };
-
-      // Use number of questions requested (capped at available templates)
-      const numQuestions = Math.min(count, questionTemplates[difficulty].length);
-
-      for (let i = 0; i < numQuestions; i++) {
-        const questionText = questionTemplates[difficulty][i];
-        const options = optionsTemplates[difficulty][i];
-        const correctIndex = correctAnswersIndex[difficulty][i];
-
-        // Create question object
-        const question = {
-          id: `q-${i + 1}`,
-          question_text: questionText,
-          question_type: 'multiple_choice',
-          points: pointValues[difficulty],
-          options: options.map((text, idx) => ({
-            id: `opt-${i + 1}-${idx + 1}`,
-            option_text: text,
-            is_correct: idx === correctIndex
-          }))
-        };
-
-        questions.push(question);
-      }
-
-      return {
-        success: true,
-        questions: questions,
-        total_points: numQuestions * pointValues[difficulty]
-      };
-    },
-
     resetQuiz() {
       this.mockQuizGenerated = false;
       this.questions = [];
@@ -441,7 +350,6 @@ export default {
       // Generate personalized suggestions based on wrong answers
       this.generateSuggestions(wrongQuestions);
     },
-
     generateDefaultSuggestions() {
       // Default suggestions for mock quizzes
       this.suggestions = [
@@ -464,10 +372,6 @@ export default {
         specificSuggestions.push("Consider revisiting the course materials before proceeding to more advanced topics.");
       }
 
-      if (this.mockDifficulty === 'hard' && this.score / this.totalPossiblePoints < 0.5) {
-        specificSuggestions.push("Try generating a medium difficulty quiz first to build confidence.");
-      }
-
       if (specificSuggestions.length > 0) {
         this.suggestions = [...specificSuggestions, ...this.suggestions.slice(0, 2)];
       }
@@ -481,7 +385,6 @@ export default {
       doc.text(this.mockQuiz.title, 20, 20);
 
       doc.setFontSize(12);
-      doc.text(`Practice Material (${this.mockDifficulty} difficulty)`, 20, 30);
       doc.text(`Generated on: ${this.getCurrentDate()}`, 20, 38);
 
       // Add score
@@ -549,9 +452,9 @@ export default {
 
     formatMockType(type) {
       switch(type) {
-        case 'mock_quiz_1': return 'Mock Quiz 1';
-        case 'mock_quiz_2': return 'Mock Quiz 2';
-        case 'end_term': return 'End Term Practice';
+        case 'quiz1': return 'Mock Quiz 1';
+        case 'quiz2': return 'Mock Quiz 2';
+        case 'endterm': return 'End Term Practice';
         default: return 'Practice Quiz';
       }
     },
@@ -614,6 +517,134 @@ export default {
 .mock-quiz-container {
   background-color: #f0f8ff;
   border-left: 4px solid #0d6efd;
+}
+.quiz-buttons-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.quiz-button {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  min-height: 120px;
+  border: none;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  text-align: left;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.quiz-button:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.icon-container {
+  font-size: 2.5rem;
+  margin-right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.button-content {
+  flex: 1;
+}
+
+.button-content h4 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.button-content p {
+  margin: 5px 0 0;
+  opacity: 0.8;
+}
+
+.quiz1-button {
+  background: linear-gradient(135deg, #42b883, #347474);
+  color: white;
+}
+
+.quiz2-button {
+  background: linear-gradient(135deg, #4a69bd, #1e3799);
+  color: white;
+}
+
+.endterm-button {
+  background: linear-gradient(135deg, #eb4d4b, #b71540);
+  color: white;
+}
+
+.mock-quiz-container {
+  background-color: #f8f9fa;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  border-left: none;
+  padding: 30px !important;
+}
+
+/* Enhanced question styling */
+.question-container {
+  background-color: white;
+  border-left: 4px solid #42b883;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  border-radius: 8px;
+}
+
+.question-container:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Better score display */
+.score-modal {
+  background-color: white;
+  border-left: 4px solid #28a745;
+  border-radius: 8px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+.code-block {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.python.hljs {
+  color: #24292e;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+/* Python-specific syntax coloring */
+.hljs-keyword {
+  color: #d73a49; /* Red for keywords */
+}
+
+.hljs-built_in {
+  color: #005cc5; /* Blue for built-ins */
+}
+
+.hljs-string {
+  color: #032f62; /* Dark blue for strings */
+}
+
+.hljs-number {
+  color: #005cc5; /* Blue for numbers */
+}
+
+.hljs-comment {
+  color: #6a737d; /* Gray for comments */
+  font-style: italic;
 }
 
 /* Responsive adjustments */

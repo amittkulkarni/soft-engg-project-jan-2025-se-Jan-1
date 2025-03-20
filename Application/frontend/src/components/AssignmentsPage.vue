@@ -126,13 +126,49 @@
                   {{ Math.round(score/totalPossiblePoints*100) }}%
                 </div>
               </div>
+              <!-- Suggestions Loading Indicator -->
+              <div v-if="suggestionsLoading" class="text-center my-4">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Generating personalized suggestions...</span>
+                </div>
+                <p class="mt-2">Analyzing your performance and generating personalized suggestions...</p>
+              </div>
+              <!-- Enhanced Suggestions Section -->
+              <div v-else class="suggestions-container mt-4">
+                <h5 class="mb-3">Performance Assessment:</h5>
+                <p class="mb-3">{{ overallAssessment }}</p>
 
-              <h5 class="mt-4 mb-2">Suggestions to Improve:</h5>
-              <ul class="suggestions-list">
-                <li v-for="(suggestion, index) in suggestions" :key="'suggestion-' + index">
-                  {{ suggestion }}
-                </li>
-              </ul>
+                <!-- Topic-specific Suggestions -->
+                <div v-if="topicSuggestions.length > 0" class="mb-4">
+                  <h5 class="mb-3">Topics to Review:</h5>
+                  <div v-for="(topic, index) in topicSuggestions" :key="'topic-' + index" class="topic-card p-3 mb-3 rounded border">
+                    <h6 class="mb-2">{{ topic.topic }}</h6>
+                    <ul class="mb-2">
+                      <li v-for="(suggestion, i) in topic.suggestions" :key="'suggestion-' + i" class="mb-1">
+                        {{ suggestion }}
+                      </li>
+                    </ul>
+                    <div v-if="topic.resources && topic.resources.length > 0">
+                      <p class="mb-1"><strong>Recommended Resources:</strong></p>
+                      <ul>
+                        <li v-for="(resource, r) in topic.resources" :key="'resource-' + r">
+                          {{ resource }}
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- General Tips -->
+                <div v-if="generalTips.length > 0">
+                  <h5 class="mb-2">General Learning Tips:</h5>
+                  <ul class="general-tips-list">
+                    <li v-for="(tip, index) in generalTips" :key="'tip-' + index" class="mb-2">
+                      {{ tip }}
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -173,7 +209,11 @@ export default {
       pointsPerQuestion: [],
       score: 0,
       showScore: false,
-      suggestions: []
+      suggestions: [],
+      topicSuggestions: [],
+      overallAssessment: '',
+      generalTips: [],
+      suggestionsLoading: false,
     };
   },
   computed: {
@@ -312,24 +352,62 @@ export default {
         ];
       }
     },
+async generateSuggestions() {
+  try {
+    this.suggestionsLoading = true;
 
-    generateSuggestions(wrongQuestions) {
-      // Generate more specific suggestions based on wrong answers
-      // This is a simplified version - could be enhanced with more specific feedback
-      const specificSuggestions = [];
+    const answersData = this.userAnswers.map((answerId, index) => ({
+      question_id: this.questions[index].id,
+      selected_option_id: answerId
+    }));
 
-      if (wrongQuestions.length > 0) {
-        specificSuggestions.push(`Review concepts related to: ${wrongQuestions.slice(0, 2).join(', ')}${wrongQuestions.length > 2 ? ', and others.' : '.'}`);
+    // Call the topic recommendation API
+    const response = await axios.post('http://127.0.0.1:5000/topic_recommendation', {
+      answers: answersData
+    });
+
+    if (response.data.success) {
+      // Store the detailed suggestion data
+      const suggestionData = response.data.suggestions;
+      this.overallAssessment = suggestionData.overall_assessment;
+      this.topicSuggestions = suggestionData.topic_suggestions || [];
+      this.generalTips = suggestionData.general_tips || [];
+
+      // Also maintain the flat suggestions list for backward compatibility
+      this.suggestions = [];
+
+      // Add overall assessment as first suggestion
+      if (this.overallAssessment) {
+        this.suggestions.push(this.overallAssessment);
       }
 
-      if (this.score / this.totalPossiblePoints < 0.7) {
-        specificSuggestions.push("Consider revisiting the course materials before proceeding to more advanced topics.");
+      // Add specific topic suggestions
+      if (this.topicSuggestions && this.topicSuggestions.length > 0) {
+        this.topicSuggestions.forEach(topic => {
+          if (topic.suggestions && topic.suggestions.length > 0) {
+            this.suggestions.push(`Topic: ${topic.topic} - ${topic.suggestions[0]}`);
+          }
+        });
       }
 
-      if (specificSuggestions.length > 0) {
-        this.suggestions = [...specificSuggestions, ...this.suggestions.slice(0, 2)];
+      // Add general tips
+      if (this.generalTips && this.generalTips.length > 0) {
+        this.generalTips.forEach(tip => {
+          this.suggestions.push(tip);
+        });
       }
-    },
+    } else {
+      // Fallback to default suggestions if API fails
+      this.generateDefaultSuggestions();
+    }
+  } catch (error) {
+    console.error('Error fetching topic suggestions:', error);
+    // Fallback to default suggestions
+    this.generateDefaultSuggestions();
+  } finally {
+    this.suggestionsLoading = false;
+  }
+},
 
     downloadPDF() {
       const doc = new jsPDF();
@@ -481,5 +559,18 @@ export default {
     flex-direction: column;
     gap: 10px;
   }
+}
+
+.topic-card {
+  background-color: #f8f9fa;
+  transition: all 0.2s;
+}
+
+.topic-card:hover {
+  background-color: #f0f0f0;
+}
+
+.general-tips-list li {
+  margin-bottom: 10px;
 }
 </style>
