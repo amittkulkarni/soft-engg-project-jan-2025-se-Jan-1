@@ -1,8 +1,6 @@
 from conftest import db
 from models import ProgrammingAssignment
 
-
-
 # Test case for adding a new programming assignment (Happy Path)
 def test_add_programming_assignment(client):
     response = client.post('/programming_assignments', json={
@@ -89,4 +87,3 @@ def test_delete_non_existent_assignment(client):
     assert response.status_code == 404
     assert response.json['success'] == False
     assert "Programming assignment not found" in response.json['message']
-
