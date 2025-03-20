@@ -1,17 +1,24 @@
 from extension import db
-from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption
+from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption, ProgrammingAssignment, ChatHistory
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
+from sqlalchemy.sql import text
 from app import app  # Import Flask app instance
+import json
 
 def seed_users():
     """Seed users into the database."""
     users = [
         User(username="admin_user", email="admin@test.com",
              password=generate_password_hash("adminpass"), role="admin"),
+        User(username="student1", email="student1@test.com",
+             password=generate_password_hash("studentpass1"), role="student"),
+        User(username="student2", email="student2@test.com",
+             password=generate_password_hash("studentpass2"), role="student"),
     ]
     db.session.add_all(users)
     db.session.commit()
+    return users
 
 def seed_weeks():
     """Seed weeks into the database."""
@@ -44,8 +51,14 @@ def seed_lectures(weeks):
 def seed_assignments(weeks):
     """Seed assignments."""
     assignments = [
-        Assignment(week_id=weeks[0].id, title="Assignment 1", assignment_type="graded",
+        Assignment(week_id=weeks[0].id, title="Graded Assignment 1", assignment_type="graded",
                    due_date=datetime.now() + timedelta(days=7), total_points=25),
+        Assignment(week_id=weeks[1].id, title="Graded Assignment 2", assignment_type="graded",
+                   due_date=datetime.now() + timedelta(days=7), total_points=25),
+        Assignment(week_id=weeks[0].id, title="Programming Assignment 1", assignment_type="programming",
+                   due_date=datetime.now() + timedelta(days=7), total_points=25),
+        Assignment(week_id=weeks[1].id, title="Programming Assignment 2", assignment_type="programming",
+                   due_date=datetime.now() + timedelta(days=7), total_points=25)
     ]
     db.session.add_all(assignments)
     db.session.commit()
@@ -110,16 +123,80 @@ def seed_options(questions):
     db.session.add_all(options)
     db.session.commit()
 
+def seed_programming_assignments(assignments):
+    """Seed programming assignments linked to existing assignments."""
+    programming_assignments = [
+        ProgrammingAssignment(
+            assignment_id=assignments[2].id,
+            problem_statement="Write a Python function to check if a number is prime.",
+            input_format="A single integer N (1 <= N <= 10^6).",
+            output_format="Output 'YES' if N is prime, otherwise 'NO'.",
+            constraints="1 <= N <= 10^6",
+            sample_input="5",
+            sample_output="YES",
+            test_cases=json.dumps([
+                {"input": "2", "output": "YES"},
+                {"input": "4", "output": "NO"},
+                {"input": "17", "output": "YES"},
+                {"input": "100", "output": "NO"}
+            ])
+        ),
+        ProgrammingAssignment(
+            assignment_id=assignments[3].id,
+            problem_statement="Write a function to return the sum of an array.",
+            input_format="First line contains an integer N, followed by N space-separated integers.",
+            output_format="Output a single integer, the sum of the array.",
+            constraints="1 <= N <= 1000, -10^5 <= arr[i] <= 10^5",
+            sample_input="5\n1 2 3 4 5",
+            sample_output="15",
+            test_cases=json.dumps([
+                {"input": "3\n10 20 30", "output": "60"},
+                {"input": "4\n-1 -2 -3 -4", "output": "-10"},
+                {"input": "5\n0 0 0 0 0", "output": "0"}
+            ])
+        )
+    ]
+
+    db.session.add_all(programming_assignments)
+    db.session.commit()
+
+
+def seed_chat_history(users):
+    """Seed chat history for users by storing file paths in the database."""
+    
+    sample_chat_history = [
+        {"user_id": users[1].id, "file_path": f"chat_logs/user_{users[1].id}_chat.sql"},
+        {"user_id": users[2].id, "file_path": f"chat_logs/user_{users[2].id}_chat.sql"}
+    ]
+
+    try:
+        for chat in sample_chat_history:
+            sql_store_path = text(
+                "INSERT INTO chat_history (user_id, file_path) VALUES (:user_id, :file_path) "
+                "ON CONFLICT (user_id) DO NOTHING;"
+            )
+            db.session.execute(sql_store_path, chat)
+
+        db.session.commit()
+        print("Chat history seeded successfully!")
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Failed to seed chat history: {str(e)}")
+
+    
 def seed_data():
     """Main function to seed the database."""
     print("Seeding data...")
 
-    seed_users()
+    users = seed_users()
     weeks = seed_weeks()
     seed_lectures(weeks)
     assignments = seed_assignments(weeks)
     questions = seed_questions(assignments)
     seed_options(questions)
+    seed_programming_assignments(assignments)
+    seed_chat_history(users)
 
     print("Database seeded successfully!")
 

@@ -11,83 +11,119 @@
 
         <!-- Main Content -->
         <div class="col-9 p-4">
-          <!-- Question Section -->
           <div class="problem-statement mb-5">
-          <h4 class="mb-4">Predicting Office Space Price</h4>
+            <!-- Assignment Header -->
+            <div class="assignment-header mb-4">
+              <h3>{{ 'Programming Assignment ' + assignment.id }}</h3>
+              <div class="assignment-meta d-flex flex-wrap gap-3 mt-2">
+                <span class="badge bg-info">Programming Assignment</span>
+                <span v-if="assignment.due_date" class="text-muted">
+                  <i class="bi bi-calendar-event me-1"></i> Due: {{ formatDate(assignment.due_date) }}
+                </span>
+                <span class="text-muted">
+                  <i class="bi bi-code-slash me-1"></i> Week {{ assignment.week_number || '?' }}
+                </span>
+              </div>
+            </div>
+            <div class="problem-content bg-light p-4 rounded shadow-sm mb-4">
+              <h5 class="mb-3 pb-2 border-bottom">Problem Description</h5>
+              <p class="mb-3" v-html="assignment.problem_statement"></p>
 
-            <div class="problem-content bg-light p-4 rounded">
-              <h5 class="mb-3">The Problem</h5>
-              <p class="mb-3">
-                Charlie wants to buy office space and has conducted a survey of the area. He has quantified and normalized various office space features, and mapped them to values between 0 and 1. Each row in Charlie's data table contains these feature values followed by the price per square foot. However, some prices are missing. Charlie needs your help to predict the missing prices.
-              </p>
-              <p class="mb-3">
-                The first line contains two space separated integers, F and N. Over here, F is the number of observed features. N is the number of rows for which features as well as price per square-foot have been noted.
-                This is followed by a table with F+1 columns and N rows with each row in a new line and each column separated by a single space. The last column is the price per square foot.
-
-                The table is immediately followed by integer T followed by T rows containing F space-separated columns
-              </p>
-              <p class="mb-3">
-                The prices per square foot are approximately a polynomial function of the features, and you are tasked with using this relationship to predict the missing prices for some offices.
-
-                The prices per square foot, are approximately a polynomial function of the features in the observation table. This polynomial always has an order less than 4
-
-              </p>
-
-              <div class="mb-4">
-                <h6 class="font-weight-bold">Input Format</h6>
-                <pre class="bg-white p-3 rounded">
-First line: F N
-Next N lines: F+1 space-separated values
-Followed by: T
-Next T lines: F space-separated values</pre>
+              <div class="mb-4 problem-section">
+                <h6 class="font-weight-bold text-dark">
+                  <i class="bi bi-input-cursor me-1"></i> Input Format
+                </h6>
+                <pre class="bg-white p-3 rounded border">{{ assignment.input_format }}</pre>
               </div>
 
-              <div class="mb-4">
-                <h6 class="font-weight-bold">Constraints</h6>
-                <ul class="list-unstyled">
-                  <li>1 ≤ F ≤ 5</li>
-                  <li>5 ≤ N ≤ 100</li>
-                  <li>1 ≤ T ≤ 100</li>
-                </ul>
+              <div class="mb-4 problem-section" v-if="assignment.constraints">
+                <h6 class="font-weight-bold text-dark">
+                  <i class="bi bi-exclamation-triangle me-1"></i> Constraints
+                </h6>
+                <pre class="bg-white p-3 rounded border">{{ assignment.constraints }}</pre>
               </div>
 
-              <div class="mb-4">
-                <h6 class="font-weight-bold">Output Format</h6>
-                <pre class="bg-white p-3 rounded">T lines with predicted prices</pre>
+              <div class="mb-4 problem-section">
+                <h6 class="font-weight-bold text-dark">
+                  <i class="bi bi-output me-1"></i> Output Format
+                </h6>
+                <pre class="bg-white p-3 rounded border">{{ assignment.output_format }}</pre>
               </div>
-              <div class="row">
+
+              <div class="row g-4">
                 <div class="col-md-6">
-                  <h6 class="font-weight-bold">Sample Input</h6>
-                  <pre class="bg-white p-3 rounded">2 7
-0.44 0.68 511.14
-0.99 0.23 717.1
-...</pre>
+                  <h6 class="font-weight-bold text-dark">
+                    <i class="bi bi-input-cursor-text me-1"></i> Sample Input
+                  </h6>
+                  <pre class="bg-white p-3 rounded border">{{ assignment.sample_input }}</pre>
                 </div>
                 <div class="col-md-6">
-                  <h6 class="font-weight-bold">Sample Output</h6>
-                  <pre class="bg-white p-3 rounded">180.38
-907.07</pre>
+                  <h6 class="font-weight-bold text-dark">
+                    <i class="bi bi-output me-1"></i> Sample Output
+                  </h6>
+                  <pre class="bg-white p-3 rounded border">{{ assignment.sample_output }}</pre>
                 </div>
               </div>
             </div>
           </div>
+          <!-- Code Editor Section -->
+          <div class="editor-section mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="mb-0"><i class="bi bi-code-square me-2"></i>Your Solution</h5>
+              <div>
+                <button @click="code = '# Write your Python code here...'" class="btn btn-sm btn-outline-secondary me-2">
+                  <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                </button>
+              </div>
+            </div>
+            <div class="editor-container border rounded shadow-sm">
+              <AceEditor v-model="code" />
+            </div>
 
-          <!-- Ace Editor Component -->
-          <div class="editor-container mb-4">
-            <AceEditor
-              :value="code"
-            />
-          </div>
-
-          <!-- Buttons -->
-          <div class="d-flex justify-content-end gap-2 mt-3">
-            <button @click="submitCode" class="btn btn-success">Submit</button>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+              <button @click="submitCode" class="btn btn-primary">
+                <i class="bi bi-play-fill me-1"></i> Run & Submit
+              </button>
+            </div>
           </div>
 
           <!-- Test Case Results -->
-          <div class="test-case-results mt-4" v-if="showResults">
-            <h5 class="mb-3">Test Results <span class="badge badge-pill badge-light">{{ passedCount }}/{{ totalCases }}</span></h5>
+          <!-- Loading Indicator -->
+          <div v-if="isLoading" class="d-flex justify-content-center my-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
 
+          <!-- Error Message -->
+          <div v-if="errorMessage" class="alert alert-danger" role="alert">
+            {{ errorMessage }}
+            <button class="btn btn-sm btn-outline-danger float-end" @click="errorMessage = null">Dismiss</button>
+          </div>
+
+          <!-- Success Message -->
+          <div v-if="showSuccessMessage" class="alert alert-success alert-dismissible fade show" role="alert">
+            Code submitted successfully!
+            <button type="button" class="btn-close" @click="showSuccessMessage = false" aria-label="Close"></button>
+          </div>
+
+          <!-- Only show the content when not loading and no error -->
+          <div v-if="!isLoading && !errorMessage">
+            <!-- Your existing content -->
+            <!-- Test Case Results -->
+            <div v-if="showResults" class="test-results mt-4 mb-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Test Results</h5>
+                <div class="d-flex align-items-center">
+                  <div class="progress" style="width: 150px; height: 10px;">
+                    <div class="progress-bar" role="progressbar"
+                        :style="{width: (passedCount/totalCases*100) + '%'}"
+                        :class="getScoreClass(passedCount/totalCases)">
+                    </div>
+                  </div>
+                  <span class="ms-2">{{ passedCount }}/{{ totalCases }}</span>
+                </div>
+              </div>
             <div class="test-case-container">
               <div
                 v-for="(result, index) in testCaseResults"
@@ -126,21 +162,32 @@ Next T lines: F space-separated values</pre>
               </div>
             </div>
           </div>
+          </div>
 
           <!-- Console Output -->
-          <div class="mt-4 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Console</h5>
-            <button
-              v-if="consoleOutput.includes('Error')"
-              @click="explainError"
-              class="ai-button"
-            >
-              <img :src="StudentIcon" class="ai-icon me-2" alt="AI Assistant"/>
-              Explain Error
-            </button>
-          </div>
-          <div class="console-output p-3 bg-dark text-white rounded mt-2">
-            {{ consoleOutput }}
+          <div class="console-section mt-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="mb-0"><i class="bi bi-terminal me-2"></i>Console</h5>
+              <div>
+                <button v-if="consoleOutput" @click="consoleOutput = ''" class="btn btn-sm btn-outline-secondary me-2">
+                  <i class="bi bi-trash me-1"></i> Clear
+                </button>
+                <button
+                  v-if="consoleOutput.includes('Error')"
+                  @click="explainError"
+                  class="btn btn-sm btn-outline-info"
+                >
+                  <img :src="StudentIcon" class="ai-icon me-2" alt="AI Assistant" width="16" height="16"/>
+                  Explain Error
+                </button>
+              </div>
+            </div>
+            <div class="console-output p-3 bg-dark text-white rounded shadow-sm">
+              <div v-if="!consoleOutput" class="text-muted font-italic">
+                Run your code to see output here...
+              </div>
+              <pre v-else>{{ consoleOutput }}</pre>
+            </div>
           </div>
         </div>
       </div>
@@ -156,7 +203,7 @@ import AppNavbar from "@/components/AppNavbar.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
 import StudentIcon from "@/assets/student.png"
 import ChatWindow from "@/components/ChatWindow.vue";
-
+import api from "@/services/api"
 export default {
   name: "ProgrammingPage",
   components: {
@@ -167,50 +214,47 @@ export default {
   },
   data() {
     return {
+      assignmentId: null, // Will be set from route or props
       code: "# Write your Python code here...",
       consoleOutput: "",
-      testCaseResults: [
-        {
-          status: 'failed',
-          title: 'Input Validation',
-          description: 'Missing required price field in row 7'
-        },
-        {
-          status: 'failed',
-          title: 'Boundary Conditions',
-          description: 'Negative feature value not handled'
-        },
-        {
-          status: 'passed',
-          title: 'Polynomial Fit',
-          description: 'Degree 3 polynomial validated'
-        },
-        {
-          status: 'pending',
-          title: 'Performance Check',
-          description: 'Processing large dataset...'
-        },
-        {
-          status: 'failed',
-          title: 'Output Formatting',
-          description: 'Incorrect decimal precision in results'
-        }
-      ]
-        ,
+      assignment: {
+        problem_statement: "",
+        input_format: "",
+        output_format: "",
+        constraints: "",
+        sample_input: "",
+        sample_output: "",
+        test_cases: []
+      },
+      testCaseResults: [],
       StudentIcon,
       showResults: false,
-      showExplainButton: false,
-      complexError: `Traceback (most recent call last):
-  File "<string>", line 42, in <module>
-  File "/usr/lib/python3.11/site-packages/sklearn/__init__.py", line 123, in <module>
-    raise ImportError("dlopen(...) unable to load _arpack module: %s" % e)
-ImportError: dlopen(/usr/lib/python3.11/site-packages/scipy/sparse/linalg/_eigen/arpack/_arpack.cpython-311-darwin.so, 0x0002): symbol not found in flat namespace (_gfortran_concat_string)
-Fatal Python error: _Py_INCREF: can't increment refcount (value is 0x7f8b1d603d00)
-Python runtime state: initialized
-Current thread 0x0000000111d85e00 (most recent call first):
-<no Python frame>
-[1]    12345 abort      python main.py`
+      isLoading: false,
+      errorMessage: null,
+      showSuccessMessage: false
     };
+  },
+  created() {
+    // Get the assignment ID from the route params (this should be the Assignment table ID)
+    this.assignmentId = this.$route.params.id || 1; // Default to 1 if not provided
+
+    // Fetch the assignment data
+    this.fetchAssignmentData();
+  },
+  watch: {
+    // Watch for changes in the route parameter
+    '$route.params.id': function(newId) {
+      // Update the assignment ID
+      this.assignmentId = newId || 1;
+      // Reset component state
+      this.code = "# Write your Python code here...";
+      this.consoleOutput = "";
+      this.showResults = false;
+      this.errorMessage = null;
+      this.showSuccessMessage = false;
+      // Fetch the new assignment data
+      this.fetchAssignmentData();
+    }
   },
   computed: {
     passedCount() {
@@ -221,35 +265,162 @@ Current thread 0x0000000111d85e00 (most recent call first):
     }
   },
   methods: {
+    async fetchAssignmentData() {
+      try {
+        this.isLoading = true;
+        const response = await api.get(`/programming_assignments/${this.assignmentId}`);
+
+        if (response.data.success) {
+          // Store the assignment data
+          this.assignment = response.data.data;
+
+          // Initialize test case results based on the fetched test cases
+          this.testCaseResults = this.assignment.test_cases.map((testCase, index) => ({
+            status: 'pending',
+            title: `Test Case ${index + 1}`,
+            description: testCase.description || 'Waiting to be executed'
+          }));
+        } else {
+          this.errorMessage = response.data.message || 'Failed to load assignment data';
+        }
+      } catch (error) {
+        this.errorMessage = error.response?.data?.message || 'An error occurred while fetching assignment';
+        console.error('Error fetching assignment:', error);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    codeChanged(newValue) {
+      console.log("Code updated in parent:", newValue.slice(0, 50) + "..."); // Debug log
+      this.code = newValue;
+    },
+    /* Add this method to your component */
+    getScoreClass(scorePercentage) {
+      if (scorePercentage >= 0.9) return 'bg-success';
+      if (scorePercentage >= 0.7) return 'bg-info';
+      if (scorePercentage >= 0.5) return 'bg-warning';
+      return 'bg-danger';
+    },
+    // When the user submits their code
     async submitCode() {
-      // Simulate test case results
-      this.showResults = true;
-//      this.testCaseResults = this.testCaseResults.map(tc => ({
-//        ...tc,
-//        status: Math.random() > 0.7 ? 'passed' :
-//               Math.random() > 0.4 ? 'failed' : 'pending'
-//      }));
+       if (this.code.trim() === "# Write your Python code here..." || !this.code.trim()) {
+         this.consoleOutput = "Error: You haven't written any code yet. Please write a solution before submitting.";
+         this.errorMessage = "Please write your solution before submitting";
+         return;
+       }
 
-      // Generate complex error
-      this.consoleOutput = `\x1b[31mERROR\x1b[0m: ${this.complexError}`;
+      try {
+        this.isLoading = true;
+        this.showResults = false;
+        this.errorMessage = null;
+        this.showSuccessMessage = false;
+
+        // Update console to show execution is in progress
+        this.consoleOutput = "Executing your code...\n";
+
+        const response = await api.post(
+          `/programming_assignments/${this.assignment.id}/execute`,
+          { code: this.code }
+        );
+
+        if (response.data.success) {
+          // Process results
+          const results = response.data;
+
+          // Format console output
+          let output = `=== EXECUTION SUMMARY ===\n`;
+          output += `Score: ${results.score.toFixed(2)}%\n`;
+          output += `Passed: ${results.passed_count}/${results.total_cases}\n\n`;
+
+          // Add detailed test case results to console
+          results.results.forEach(result => {
+            output += `=== TEST CASE ${result.test_case_id} ===\n`;
+
+            if (result.status === 'error') {
+              output += `Status: ERROR\n`;
+              output += `Error: ${result.error_message}\n\n`;
+            } else {
+              output += `Status: ${result.status.toUpperCase()}\n`;
+              output += `Input:\n${result.input}\n\n`;
+              output += `Expected Output:\n${result.expected_output}\n\n`;
+              output += `Your Output:\n${result.actual_output}\n\n`;
+            }
+          });
+
+          // Update console
+          this.consoleOutput = output;
+
+          // Update the test case results for UI display
+          this.testCaseResults = results.results.map(result => ({
+            status: result.status,
+            title: `Test Case ${result.test_case_id}`,
+            description: result.status === 'passed'
+              ? 'Output matched expected result'
+              : result.status === 'error'
+                ? `Error: ${result.error_message}`
+                : 'Output did not match expected result'
+          }));
+
+          // Show both success message and results
+          this.showSuccessMessage = true;
+          this.showResults = true;
+        } else {
+          // Handle API error
+          this.errorMessage = response.data.message || 'An error occurred';
+          this.consoleOutput = `Execution Error: ${response.data.message || 'Unknown error'}\n`;
+          if (response.data.error) {
+            this.consoleOutput += `Details: ${response.data.error}\n`;
+          }
+        }
+      } catch (error) {
+        // Handle network or other errors
+        const errorMsg = error.response?.data?.message || error.message || 'An unknown error occurred';
+        this.errorMessage = errorMsg;
+        this.consoleOutput = `Execution Error: ${errorMsg}\n`;
+        if (error.response?.data?.error) {
+          this.consoleOutput += `Details: ${error.response.data.error}\n`;
+        }
+        console.error('Error executing code:', error);
+      } finally {
+        this.isLoading = false;
+      }
     },
+    async explainError() {
+      try {
+        // Show loading state in console
+        this.consoleOutput = "Analyzing your error...\n";
 
-    explainError() {
-      // Simulate AI error explanation
-      this.consoleOutput = `Simplified explanation:
+        // Make API request using axios
+        const response = await api.post('/explain_error', {
+          code_snippet: this.code
+        });
 
-      The code failed because of a missing dependency in the SciPy library.
-      The specific error occurs when trying to import the ARPACK module, which is
-      required for certain linear algebra operations. This typically happens when
-      there's a mismatch between library versions or incomplete installation.
-
-      Recommended fix:
-      1. Update SciPy and NumPy packages
-      2. Reinstall the scientific stack using:
-         pip install --upgrade numpy scipy
-      3. Verify installation with:
-         python -c "import scipy.sparse.linalg"`;
-    },
+        // Check if request was successful
+        if (response.data.success) {
+          // Format the explanation nicely
+          this.consoleOutput = `=== AI ERROR ANALYSIS ===\n\n${response.data.explanation}`;
+        } else {
+          // Handle API success=false response
+          this.consoleOutput = `Error Analysis Failed: ${response.data.message}`;
+          console.error("API Error:", response.data.message);
+        }
+      } catch (error) {
+        // Enhanced error handling
+        if (error.response) {
+          // The server responded with a status code outside of 2xx range
+          this.consoleOutput = `Error Analysis Failed: ${error.response.data.message || 'Server error'}`;
+          console.error("Server error:", error.response.status, error.response.data);
+        } else if (error.request) {
+          // The request was made but no response was received
+          this.consoleOutput = "Error Analysis Failed: Network error - no response received";
+          console.error("Network error:", error.request);
+        } else {
+          // Something happened in setting up the request
+          this.consoleOutput = `Error Analysis Failed: ${error.message}`;
+          console.error("Error:", error.message);
+        }
+      }
+    }
   }
 };
 </script>
@@ -437,4 +608,59 @@ pre {
   50% { stroke-dashoffset: 0; }
   100% { stroke-dashoffset: -113; }
 }
+.assignment-header {
+  border-bottom: 1px solid #eaeaea;
+  padding-bottom: 15px;
+}
+
+.problem-section {
+  transition: all 0.2s ease;
+}
+
+.problem-section:hover {
+  transform: translateY(-2px);
+}
+
+.editor-container {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.test-case-card {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 10px;
+  border-left: 4px solid #6c757d;
+}
+
+.test-case-card.passed {
+  border-left-color: #28a745;
+}
+
+.test-case-card.failed {
+  border-left-color: #dc3545;
+}
+
+.test-case-card.error {
+  border-left-color: #ffc107;
+}
+
+.test-case-card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.console-output {
+  min-height: 200px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  position: relative;
+  overflow-x: auto;
+}
 </style>
+

@@ -8,50 +8,164 @@
         <AppSidebar/>
 
         <!-- Main Content -->
-        <div class="col-9 p-4">
-          <div class="content-header d-flex align-items-center mb-4">
-            <h4 class="mb-0">{{ lectureTitle }}</h4>
+        <div class="col-lg-9 col-md-12 p-0 lecture-content">
+          <!-- Breadcrumb Navigation -->
+          <div class="breadcrumb-container px-4 py-2">
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><router-link to="/course">MLP</router-link></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ getWeekNumber() }}</li>
+              </ol>
+            </nav>
           </div>
 
-          <!-- Video Section -->
-          <div class="row">
-            <div class="col-12">
-              <div class="video-container mb-4">
-                <iframe
-                  width="100%"
-                  height="500"
-                  :src="`https://www.youtube.com/embed/${videoId}`"
-                  frameborder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowfullscreen
-                ></iframe>
+          <!-- Lecture Header -->
+          <div class="lecture-header px-4 py-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <h3 class="mb-0">{{ lectureTitle }}</h3>
+            </div>
+          </div>
+
+          <!-- Video Section with Enhanced UI -->
+          <div class="video-wrapper px-4 mb-4">
+            <div class="video-container">
+              <iframe
+                width="100%"
+                height="550"
+                :src="`https://www.youtube.com/embed/${videoId}`"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+              ></iframe>
+            </div>
+
+            <!-- Video Info Bar -->
+            <div class="video-info-bar d-flex justify-content-between align-items-center mt-2">
+              <div/>
+              <div>
+                <button class="btn btn-sm btn-link text-decoration-none" @click="toggleFullScreen">
+                  <i class="bi bi-fullscreen"></i> Fullscreen
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Content Tabs -->
+          <div class="content-tabs px-4 mb-4">
+            <ul class="nav nav-tabs" id="lectureTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary"
+                  type="button" role="tab" aria-controls="summary" aria-selected="true">
+                  Summary
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes"
+                  type="button" role="tab" aria-controls="notes" aria-selected="false">
+                  Notes
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="resources-tab" data-bs-toggle="tab" data-bs-target="#resources"
+                  type="button" role="tab" aria-controls="resources" aria-selected="false">
+                  Resources
+                </button>
+              </li>
+            </ul>
+
+            <div class="tab-content p-3 border border-top-0 rounded-bottom" id="lectureTabContent">
+              <!-- Summary Tab -->
+              <div class="tab-pane fade show active" id="summary" role="tabpanel" aria-labelledby="summary-tab">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="mb-0">Video Summary</h5>
+                  <button
+                    @click="summarizeVideo"
+                    class="ai-button summarize-btn"
+                    :disabled="isLoading"
+                  >
+                    <div class="d-flex align-items-center">
+                      <img :src="StudentIcon" class="ai-icon me-2" alt="AI Summarizer">
+                      <span>{{ isLoading ? 'Generating...' : 'Generate Summary' }}</span>
+                    </div>
+                    <div v-if="isLoading" class="spinner-border spinner-border-sm ms-2" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                  </button>
+                </div>
+
+                <div v-if="summary" class="summary-content">
+                  <div class="summary-actions mb-2 text-end">
+                    <button @click="copyToClipboard" class="btn btn-sm btn-outline-primary me-2">
+                      <i class="bi bi-clipboard"></i> Copy
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" @click="downloadSummary">
+                      <i class="bi bi-download"></i> Download
+                    </button>
+                  </div>
+                  <div class="summary-text p-3 bg-light rounded">
+                    <vue-markdown
+                      :source="summary"
+                      :options="{
+                        highlight: function (code, lang) {
+                        // This will handle the syntax highlighting based on language
+                        return require('highlight.js').highlightAuto(code, [lang]).value;
+                        }
+                      }"/>
+                  </div>
+                </div>
+
+                <div v-else-if="!isLoading" class="empty-summary text-center p-5">
+                  <div class="mb-3">
+                    <i class="bi bi-file-earmark-text empty-icon"></i>
+                  </div>
+                  <h6>No Summary Generated Yet</h6>
+                  <p class="text-muted">Click the "Generate Summary" button to create an AI-powered summary of this lecture.</p>
+                </div>
+
+                <div v-else class="loading-summary text-center p-5">
+                  <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <p>Generating your summary. This may take a moment...</p>
+                </div>
               </div>
 
-              <!-- Summarize Button and Summary Box -->
-              <div class="summary-section">
-                <!-- Summarize Button with AI Assistant Icon -->
-                <button
-                  @click="summarizeVideo"
-                  class="ai-button summarize-btn"
-                  :disabled="isLoading"
-                >
-                  <img :src="StudentIcon" class="ai-icon" alt="AI Summarizer">
-                  <span>{{ isLoading ? 'Summarizing...' : 'Summarize' }}</span>
-                </button>
-
-                <!-- Summary Box (shows only after clicking summarize) -->
-                <div v-if="summary" class="summary-box">
-                  <div class="summary-header">
-                    <h5>Video Summary</h5>
-                    <div class="d-flex gap-2">
-                      <button @click="copyToClipboard" class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-clipboard"></i> Copy
-                      </button>
-                      <button @click="summary = ''" class="btn-close"></button>
-                    </div>
+              <!-- Notes Tab -->
+              <div class="tab-pane fade" id="notes" role="tabpanel" aria-labelledby="notes-tab">
+                <div class="notes-container">
+                  <textarea
+                    class="form-control notes-area"
+                    rows="10"
+                    placeholder="Type your notes here..."
+                    v-model="userNotes"
+                  ></textarea>
+                  <div class="d-flex justify-content-start mt-2">
+                    <button class="btn btn-primary btn-sm" @click="saveNotes">
+                      <i class="bi bi-save"></i> Save Notes
+                    </button>
                   </div>
-                  <div class="summary-content">
-                    {{ summary }}
+                </div>
+              </div>
+
+              <!-- Resources Tab -->
+              <div class="tab-pane fade" id="resources" role="tabpanel" aria-labelledby="resources-tab">
+                <div class="resources-list">
+                  <div class="resource-item p-3 mb-2 border rounded d-flex align-items-center">
+                    <i class="bi bi-file-pdf resource-icon me-3"></i>
+                    <div>
+                      <h6 class="mb-1">Lecture Slides</h6>
+                      <small class="text-muted">PDF 2.4 MB</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary ms-auto">Download</button>
+                  </div>
+
+                  <div class="resource-item p-3 mb-2 border rounded d-flex align-items-center">
+                    <i class="bi bi-link-45deg resource-icon me-3"></i>
+                    <div>
+                      <h6 class="mb-1">Additional Reading</h6>
+                      <small class="text-muted">External Link</small>
+                    </div>
+                    <a href="#" class="btn btn-sm btn-outline-primary ms-auto">Open</a>
                   </div>
                 </div>
               </div>
@@ -69,53 +183,109 @@ import AppNavbar from '@/components/AppNavbar.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 import StudentIcon from '@/assets/student.png'
 import ChatWindow from "@/components/ChatWindow.vue";
-import axios from 'axios'
+import VueMarkdown from "vue-markdown-render";
+import 'highlight.js/styles/github.css';
+import api from "@/services/api.js"
+
 
 export default {
   name: 'LecturePage',
   components: {
     AppNavbar,
     AppSidebar,
-    ChatWindow
+    ChatWindow,
+    VueMarkdown
   },
   data() {
     return {
       summary: '',
       isLoading: false,
       StudentIcon,
+      userNotes: ''
     }
   },
   computed: {
     lectureTitle() {
-      return this.$route.query.title;
+      return this.$route.query.title || 'Untitled Lecture';
     },
     videoId() {
-      return this.$route.query.videoId;
+      return this.$route.query.videoId || '';
     }
+  },
+  mounted() {
+    // Load saved notes for this lecture if available
+    this.loadNotes();
   },
   watch: {
     // Watch for changes in videoId or lectureTitle
     videoId() {
       this.resetSummary();
+      this.loadNotes();
     },
     lectureTitle() {
       this.resetSummary();
+      this.loadNotes();
     }
   },
   methods: {
-    async summarizeVideo() {
-      this.isLoading = true
+    summarizeVideo() {
+      this.isLoading = true;
+      const lectureId = this.getLectureId();
+
+      if (lectureId) {
+        this.summarizeLecture(lectureId);
+      } else {
+        this.isLoading = false;
+        console.error('Could not extract lecture ID from title');
+        // Show error message to user
+        this.error = 'Could not determine lecture ID from title format';
+      }
+    },
+    async summarizeLecture(lectureId) {
+      // Set loading state
+      this.summary = '';
+      this.error = '';
+
       try {
-        const response = await axios.post('/api/get-video-summary', {
-          videoId: 'your-video-id'
-        })
-        this.summary = response.data.summary
+        // Make API request
+        const response = await api.post('/video_summarizer', {
+          lecture_id: lectureId
+        });
+
+        // Process successful response
+        if (response.data.success) {
+          // Store the summary in component data
+          this.summary = response.data.summary;
+
+          // Optional: Store metadata if needed
+          this.currentWeek = response.data.week;
+          this.currentLecture = response.data.lecture;
+
+          // Optional: Show success message
+          this.statusMessage = 'Summary generated successfully!';
+        } else {
+          // Handle API success=false case
+          this.error = response.data.message || 'Failed to generate summary';
+          console.error('Summary generation failed:', response.data.message);
+        }
       } catch (error) {
-        console.error('Error fetching summary:', error)
-        this.summary = `Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
-        `
+        // Detailed error handling
+        if (error.response) {
+          // Server returned error status
+          this.error = `Server error: ${error.response.data.message || error.response.status}`;
+          console.error('Server error:', error.response.data);
+        } else if (error.request) {
+          // No response received
+          this.error = 'Network error: Could not connect to the server';
+          console.error('Network error:', error.request);
+        } else {
+          // Request setup error
+          this.error = `Error: ${error.message}`;
+          console.error('Error:', error.message);
+        }
       } finally {
-        this.isLoading = false
+        // Clear loading state
+        this.isLoading = false;
       }
     },
     resetSummary() {
@@ -123,16 +293,62 @@ export default {
       this.summary = '';
       this.isLoading = false;
     },
-    redirectToChatbot() {
-      this.$router.push('/chatbot')
-    },
     async copyToClipboard() {
       try {
         await navigator.clipboard.writeText(this.summary);
-        // Optional: Add a toast or notification to show success
+        // You can add a toast notification here
         alert('Summary copied to clipboard!');
       } catch (err) {
         console.error('Failed to copy text: ', err);
+      }
+    },
+    downloadSummary() {
+      // Create a blob from the summary text
+      const blob = new Blob([this.summary], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+
+      // Create a temporary link and trigger download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${this.lectureTitle.replace(/\s+/g, '_')}_Summary.txt`;
+      document.body.appendChild(a);
+      a.click();
+
+      // Clean up
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+    saveNotes() {
+      // Save notes to localStorage
+      localStorage.setItem(`lecture_notes_${this.videoId}`, this.userNotes);
+      alert('Notes saved successfully!');
+    },
+    loadNotes() {
+      // Load notes from localStorage
+      const savedNotes = localStorage.getItem(`lecture_notes_${this.videoId}`);
+      this.userNotes = savedNotes || '';
+    },
+    getWeekNumber() {
+      // Extract week number from lecture title if available
+      const match = this.lectureTitle.match(/^(\d+)(?=\.)/);
+      return match ? `Week ${match[1]}` : 'Current Week';
+    },
+    getLectureId() {
+      // Extract lecture ID (number after the dot) from lecture title
+      const match = this.lectureTitle.match(/^(\d+)\.(\d+)/);
+      return match ? match[2] : null;
+    },
+    toggleFullScreen() {
+      const iframe = document.querySelector('iframe');
+      if (iframe) {
+        // This is a simplified approach - might not work in all browsers
+        if (iframe.requestFullscreen) {
+          iframe.requestFullscreen();
+        } else if (iframe.webkitRequestFullscreen) {
+          iframe.webkitRequestFullscreen();
+        } else if (iframe.msRequestFullscreen) {
+          iframe.msRequestFullscreen();
+        }
       }
     }
   }
@@ -140,47 +356,46 @@ export default {
 </script>
 
 <style scoped>
+/* Base Styles */
+.lecture-content {
+  background-color: white;
+  min-height: calc(100vh - 56px);
+  display: flex;
+  flex-direction: column;
+}
+
+.breadcrumb-container {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.lecture-header {
+  border-bottom: 1px solid #e9ecef;
+}
+
+/* Video Styles */
+.video-wrapper {
+  position: relative;
+}
+
 .video-container {
+  position: relative;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background-color: #000;
 }
 
-.summary-section {
-  margin-top: 20px;
+.video-container:hover{
+  opacity: 1;
 }
 
-.summary-box {
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 0;
-  margin-top: 15px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+.video-info-bar {
+  color: #6c757d;
 }
 
-.summary-header {
-  background-color: #f1f3f5;
-  padding: 15px 20px;
-  border-bottom: 1px solid #dee2e6;
-  border-radius: 8px 8px 0 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.summary-header h5 {
-  margin: 0;
-  color: #495057;
-}
-
-.summary-content {
-  padding: 20px;
-  line-height: 1.6;
-  color: #495057;
-}
-
-/* AI Button Styles */
+/* Summary Button & Content */
 .ai-button {
   display: flex;
   align-items: center;
@@ -188,36 +403,108 @@ export default {
   padding: 10px 20px;
   border: none;
   border-radius: 50px;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .summarize-btn {
-  background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ea 100%);
-  border: 1px solid #e0e0e0; /* Adding a thin border */
-  color: #606060;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #6c1b1b 0%, #8a3030 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(108, 27, 27, 0.2);
 }
 
-.summarize-btn:hover {
+.summarize-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 20px rgba(108, 27, 27, 0.3);
 }
+
+.summarize-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .ai-icon {
-  font-size: 20px;
-  display: flex;
-  align-items: center;
+  width: 24px;
+  height: 24px;
+}
+
+.summary-content {
+  animation: fadeIn 0.5s ease;
+}
+
+.summary-text {
+  line-height: 1.2;
+  white-space: pre-line;
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: #ced4da;
+}
+
+/* Notes Tab */
+.notes-area {
+  resize: vertical;
+  min-height: 200px;
+  border: 1px solid #ced4da;
+  padding: 15px;
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+
+.notes-area:focus {
+  border-color: #6c1b1b;
+  box-shadow: 0 0 0 0.25rem rgba(108, 27, 27, 0.25);
+}
+
+/* Resources Styles */
+.resource-icon {
+  font-size: 24px;
+  color: #6c1b1b;
+}
+
+.resource-item {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.resource-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Responsive adjustments */
+@media (max-width: 992px) {
+  .lecture-content {
+    padding: 0 15px;
+  }
+
+  .video-container iframe {
+    height: 400px;
+  }
+}
+
 @media (max-width: 768px) {
-  .ask-me-btn {
-    bottom: 20px;
-    right: 20px;
-    padding: 10px 20px;
-    font-size: 14px;
+  .lecture-actions {
+    display: none;
+  }
+
+  .video-container iframe {
+    height: 300px;
+  }
+
+}
+
+@media (max-width: 576px) {
+  .video-container iframe {
+    height: 240px;
   }
 }
 </style>

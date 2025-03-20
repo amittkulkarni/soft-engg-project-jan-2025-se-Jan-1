@@ -10,16 +10,24 @@ import pdfkit
 import platform
 import requests
 from flask_jwt_extended import create_access_token
-from werkzeug.security import generate_password_hash
+import subprocess
+import tempfile
+import requests
 
-
+from topic_suggestions import generate_topic_suggestions
+from notes_generator import generate_topic_notes
+from quiz_mock import generate_mcqs
+from week_summarizer import summarize_week_slides
+from topic_specfic_mock import generate_topic_mcqs
+from error_explainer import explain_error
+from lecture_summarizer import summarize_lecture
+from kia_chatbot import initialize_database, save_chat_turn_to_db, load_chat_history_from_db, get_answer, clear_user_history
 
 user_routes = Blueprint('user_routes', __name__)
 
 # ------------------------- User Authentication Routes -------------------------
 
 # Signup Route - Registers a new user
-# Environment variables
 # Environment variables
 GOOGLE_CLIENT_ID = "859846322076-3u1k9ter70q7b5jqaum8i7e5jc506mnh.apps.googleusercontent.com"  # Set your Google Client ID
 GOOGLE_CLIENT_SECRET = "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"
@@ -123,8 +131,8 @@ def google_login():
     except Exception as e:
         return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
 
-
 # Signup Route - Registers a new user
+
 @user_routes.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
@@ -132,8 +140,7 @@ def signup():
     email = data.get('email')
     password = data.get('password')
     role = data.get('role', 'student')  # Default to 'student' if not provided
-    google_id = data.get('google_id')
-    
+
     # Check if the username exists only if provided
     if username and User.query.filter_by(username=username).first():
         return jsonify({"message": "Username already exists"}), 400
@@ -141,17 +148,16 @@ def signup():
     # Check if the email is provided
     if not email:
         return jsonify({"message": "Email is required"}), 400
-    
+
     # Check if the email already exists
     if User.query.filter_by(email=email).first():
         return jsonify({"message": "Email already exists"}), 400
 
     # Password validation (required if not signing up via Google)
-    if not google_id and not password:
+    if not password:
         return jsonify({"message": "Password is required"}), 400
 
-    # If signing up via Google, password should be None
-    hashed_password = generate_password_hash(password, method='pbkdf2:sha256') if password else None
+    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
 
     # Create and save new user
     new_user = User(
@@ -159,7 +165,6 @@ def signup():
         email=email,
         password=hashed_password,
         role=role,
-        google_id=google_id
     )
 
     db.session.add(new_user)
@@ -173,26 +178,14 @@ def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
-    
-    # Email must be provided
-    if not email:
-        return jsonify({"message": "Email is required"}), 400
 
-     # Find user by email
+    # Validate required fields
+    if not all([email, password]):
+        return jsonify({"message": "Email and password are required"}), 400
+
+    # Find user by email
     user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({"message": "Invalid email or password"}), 401
-
-    # If user has Google ID, they should not log in with a password
-    if user.google_id:
-        return jsonify({"message": "Please use Google Sign-In"}), 403
-
-    # Password must be provided for normal login
-    if not password:
-        return jsonify({"message": "Password is required"}), 400
-
-    # Check if the password is correct
-    if not check_password_hash(user.password, password):
+    if not user or not check_password_hash(user.password, password):
         return jsonify({"message": "Invalid email or password"}), 401
 
     # Generate authentication token
@@ -1012,30 +1005,39 @@ def add_ProgrammingAssignment():
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
     
     
-# Retrieve a specific programming assignment by ID
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['GET'])
 def get_ProgrammingAssignment(assignment_id):
     try:
-        # Fetch the assignment from the database
-        assignment = ProgrammingAssignment.query.get(assignment_id)
+        # Explicitly set starting table to resolve join ambiguity
+        assignment = db.session.query(
+                ProgrammingAssignment, Week
+            ).select_from(ProgrammingAssignment)  \
+            .join(Assignment, ProgrammingAssignment.assignment_id == Assignment.id)  \
+            .join(Week, Assignment.week_id == Week.id)  \
+            .filter(ProgrammingAssignment.assignment_id == assignment_id).first()  # <-- Changed here
+
         if not assignment:
             return jsonify({"success": False, "message": "Programming assignment not found"}), 404
-        
-        # Return the assignment details as JSON
+
+        programming_assignment, week = assignment  # Extract details from the joined result
+
+        # Return the assignment details along with the week number
         return jsonify({
             "success": True,
             "data": {
-                "id": assignment.id,
-                "assignment_id": assignment.assignment_id,
-                "problem_statement": assignment.problem_statement,
-                "input_format": assignment.input_format,
-                "output_format": assignment.output_format,
-                "constraints": assignment.constraints,
-                "sample_input": assignment.sample_input,
-                "sample_output": assignment.sample_output,
-                "test_cases": assignment.get_test_cases()
+                "id": programming_assignment.id,
+                "assignment_id": programming_assignment.assignment_id,
+                "problem_statement": programming_assignment.problem_statement,
+                "input_format": programming_assignment.input_format,
+                "output_format": programming_assignment.output_format,
+                "constraints": programming_assignment.constraints,
+                "sample_input": programming_assignment.sample_input,
+                "sample_output": programming_assignment.sample_output,
+                "test_cases": programming_assignment.get_test_cases(),
+                "week_number": week.week_number
             }
         }), 200
+
     except Exception as e:
         return jsonify({"success": False, "message": "Error retrieving assignment", "error": str(e)}), 500
     
@@ -1087,7 +1089,147 @@ def delete_ProgrammingAssignment(assignment_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
-    
+
+@user_routes.route('/programming_assignments/<int:assignment_id>/execute', methods=['POST'])
+def execute_solution(assignment_id):
+    try:
+        # Parse the request data
+        data = request.get_json()
+        code = data.get("code")
+
+        if not code:
+            return jsonify({"success": False, "message": "No code submitted"}), 400
+
+        # Fetch the assignment to verify it exists
+        assignment = ProgrammingAssignment.query.get(assignment_id)
+        if not assignment:
+            return jsonify({"success": False, "message": "Programming assignment not found"}), 404
+
+        # Get test cases from the assignment
+        test_cases = assignment.get_test_cases()
+
+        # Execute the code against the test cases
+        results = []
+        passed_count = 0
+        total_cases = len(test_cases)
+
+        for i, test_case in enumerate(test_cases):
+            try:
+                # Get input for this test case
+                input_data = test_case["input"]
+
+                if "output" in test_case:
+                    expected_output = test_case["output"]
+                else:
+                    raise KeyError(f"Test case {i+1} is missing output field")
+
+                # Execute the code with this input
+                actual_output = execute_python_code(code, input_data)
+
+                # Compare output with expected
+                # is_correct = compare_ml_outputs(actual_output, expected_output)
+
+                if actual_output.strip() == expected_output.strip():
+                    status = "passed"
+                    passed_count += 1
+                else:
+                    status = "failed"
+
+                # Add result
+                results.append({
+                    "test_case_id": i + 1,
+                    "status": status,
+                    "input": input_data,
+                    "expected_output": expected_output,
+                    "actual_output": actual_output
+                })
+
+            except Exception as e:
+                # Handle execution errors
+                results.append({
+                    "test_case_id": i + 1,
+                    "status": "error",
+                    "error_message": str(e)
+                })
+
+        # Calculate score
+        score = (passed_count / total_cases) * 100 if total_cases > 0 else 0
+
+        # Return results
+        return jsonify({
+            "success": True,
+            "score": score,
+            "passed_count": passed_count,
+            "total_cases": total_cases,
+            "results": results,
+        }), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()  # Print stacktrace for debugging
+        return jsonify({"success": False, "message": f"Error executing code: {str(e)}", "error": str(e)}), 500
+
+# Helper function to execute Python code
+def execute_python_code(code, input_data):
+    """
+Execute python code with provided input and return the output
+    """
+
+    # Ensure input ends with newline
+    if not input_data.endswith('\n'):
+        input_data += '\n'
+
+    # Create temporary files for code
+    with tempfile.NamedTemporaryFile(suffix='.py', mode='w', delete=False) as f:
+        f.write(code)
+        code_file = f.name
+
+    try:
+        # Execute the code with the input
+        result = subprocess.run(
+            ['python', code_file],
+            input=input_data,
+            capture_output=True,
+            text=True,
+            timeout=10  # 10 second timeout
+        )
+
+        if result.returncode != 0:
+            # If execution failed, return the error
+            return f"Execution Error: {result.stderr}"
+
+        return result.stdout
+
+    finally:
+        # Clean up temporary files
+        os.unlink(code_file)
+
+# Function to compare Machine Learning outputs with tolerance
+# def compare_ml_outputs(actual_output, expected_output):
+#     """
+# Compare ML prediction outputs with a tolerance for floating-point differences
+#     """
+#     try:
+#         # Parse outputs (assuming they're newline-separated numeric values)
+#         actual_values = [float(line.strip()) for line in actual_output.strip().split('\n') if line.strip()]
+#         expected_values = [float(line.strip()) for line in expected_output.strip().split('\n') if line.strip()]
+#
+#         # Check if number of predictions matches
+#         if len(actual_values) != len(expected_values):
+#             return False
+#
+#         # Check if each prediction is within acceptable error margin (5%)
+#         for actual, expected in zip(actual_values, expected_values):
+#             error_margin = abs(expected) * 0.05  # 5% tolerance
+#             if abs(actual - expected) > error_margin:
+#                 return False
+#
+#         return True
+#
+#     except Exception:
+#         # If parsing fails, fall back to exact string comparison
+#         return actual_output.strip() == expected_output.strip()
+
     
 #-----------------------------------------Score Checking ----------------------------------------------------------------
 # Calculate score based on selected option IDs
@@ -1129,32 +1271,92 @@ def generate_topic_specific_questions():
         topic = data.get('topic')
         num_questions = data.get('num_questions', 5)
 
-        # Validate input
+        # Input Validations
         if not topic:
             return jsonify({'success': False, 'message': 'Topic is required'}), 400
 
-        # Placeholder response with mock questions
-        mock_response = {
-            'message': 'Questions generated successfully',
-            'success': True,
-            'questions': [
-                {
-                    'question': f'Sample question 1 about {topic}?',
-                    'options': ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
-                    'answer': 'Option 1'
-                },
-                {
-                    'question': f'Sample question 2 about {topic}?',
-                    'options': ['Option A', 'Option B', 'Option C', 'Option D'],
-                    'answer': 'Option B'
-                }
-            ][:num_questions]
-        }
+        if not isinstance(num_questions, int):
+            return jsonify({'success': False, 'message': 'Invalid data type for num_questions'}), 400
 
-        return jsonify(mock_response), 200
+        if num_questions < 1:
+            return jsonify({'success': False, 'message': 'Number of questions must be at least 1'}), 400
+
+        # Generate dynamic MCQs using the imported function
+        try:
+            mcq_set = generate_topic_mcqs(topic, num_questions)
+
+            # Debug the returned data structure type
+            print(f"MCQ Set type: {type(mcq_set)}")
+
+            # Handle dictionary return case
+            if isinstance(mcq_set, dict):
+                if "questions" in mcq_set:
+                    # Dictionary with questions key
+                    questions_list = mcq_set["questions"]
+                    response_data = {
+                        'message': 'Questions generated successfully',
+                        'success': True,
+                        'questions': [
+                            {
+                                'question': q["question"],
+                                'options': q["options"],
+                                'correct_answer': q["correct_answer"],
+                            } for q in questions_list
+                        ]
+                    }
+                else:
+                    # Flat dictionary of a single question
+                    response_data = {
+                        'message': 'Questions generated successfully',
+                        'success': True,
+                        'questions': [mcq_set]  # Just use the dict directly
+                    }
+            # Handle Pydantic model return case
+            elif hasattr(mcq_set, "questions"):
+                response_data = {
+                    'message': 'Questions generated successfully',
+                    'success': True,
+                    'questions': [
+                        {
+                            'question': q.question,
+                            'options': q.options,
+                            'correct_answer': q.correct_answer,
+                        } for q in mcq_set.questions
+                    ]
+                }
+            # Handle list return case
+            elif isinstance(mcq_set, list):
+                response_data = {
+                    'message': 'Questions generated successfully',
+                    'success': True,
+                    'questions': [
+                        {
+                            'question': q["question"] if isinstance(q, dict) else q.question,
+                            'options': q["options"] if isinstance(q, dict) else q.options,
+                            'correct_answer': q["correct_answer"] if isinstance(q, dict) else q.correct_answer,
+                        } for q in mcq_set
+                    ]
+                }
+            else:
+                raise TypeError(f"Unexpected return type from generate_topic_mcqs: {type(mcq_set)}")
+
+            return jsonify(response_data), 200
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()  # Print full stack trace for debugging
+            return jsonify({
+                'success': False,
+                'message': 'Failed to generate dynamic questions',
+                'error': str(e)
+            }), 500
 
     except Exception as e:
-        return jsonify({'success': False, 'message': 'Failed to generate questions', 'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'message': 'Failed to generate questions',
+            'error': str(e)
+        }), 500
 
 
 # Video Summarizer API 
@@ -1168,11 +1370,27 @@ def video_summarizer():
     if not lecture_id:
         return jsonify({'message': 'lecture_id is required', 'success': False}), 400
 
-    # Generate summary
-    summary = f'Summary of lecture {lecture_id}: This lecture provides a detailed explanation of the topic, covering key concepts and important points in a clear and concise manner.'
+    # Extract week and lecture number from lecture_id
+    try:
+        lecture = db.session.query(
+            Week.week_number,
+            Lecture.id.label('lecture_id'),   # Add Lecture.id
+            Lecture.title.label('lecture_title')
+        ).join(Week).filter(Lecture.id == lecture_id).first()
 
-    return jsonify({'message': 'Summary generated successfully', 'success': True, 'summary': summary}), 200
+        if not lecture:
+            return jsonify({'message': 'Lecture not found', 'success': False}), 404
 
+        print(lecture)
+        week = lecture.week_number
+        lecture_num =lecture.lecture_id
+    except ValueError:
+        return jsonify({'message': 'Invalid lecture_id format.', 'success': False}), 400
+
+    # Generate summary using lecture_summarizer logic
+    result = summarize_lecture(week, lecture_num)
+
+    return jsonify(result), 200 if result['success'] else 404
 
 
 # Kia Chatbot API
@@ -1180,72 +1398,130 @@ def video_summarizer():
 # Ensure chat_logs directory exists
 os.makedirs("chat_logs", exist_ok=True)
 
-# ---------------------------- Store Chat Interaction ----------------------------
+@user_routes.route('/kia_chat', methods=['POST'])
+def chat_with_kia():
+    """API to process user query and get response from Kia"""
+    data = request.get_json()
+    user_id = data.get('user_id')
+    query = data.get('query')
+
+    if not all([user_id, query]):
+        return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+
+    try:
+        # Use the get_answer function from your existing code
+        result = get_answer(user_id, query)
+
+        return jsonify(result), 200 if result['success'] else 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Failed to process query: {str(e)}',
+            'response': 'I seem to be having a little brain freeze! Let\'s chat again in a moment? 😅'
+        }), 500
+
+
+@user_routes.route('/reset_chat_history', methods=['POST'])
+def reset_chat_history():
+    """API to clear chat history for a user"""
+    data = request.get_json()
+    user_id = data.get('user_id')
+
+    if not user_id:
+        return jsonify({'success': False, 'message': 'User ID is required'}), 400
+
+    try:
+        # Use the clear_user_history function from your existing code
+        result = clear_user_history(user_id)
+        return jsonify(result), 200 if result['success'] else 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Failed to clear chat history: {str(e)}'
+        }), 500
+
 
 @user_routes.route('/chat_history', methods=['POST'])
 def save_chat_history():
-    """API to save user chat interactions as an SQL file and store file path in DB"""
+    """API to save user chat interactions in SQLite database"""
     data = request.get_json()
     user_id = data.get("user_id")
     query = data.get("query")
     response = data.get("response")
 
+    # Validation for required fields
     if not all([user_id, query, response]):
         return jsonify({"success": False, "message": "Missing required fields"}), 400
-    
-    # Check if the user exists
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"success": False, "message": "User ID not found"}), 404
-    
-    file_path = f"chat_logs/user_{user_id}_chat.sql"
-
-    # Generate SQL entry 
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
-    sql_entry = (
-        "INSERT INTO chat_logs (user_id, query, response, created_at) VALUES "
-        "({}, '{}', '{}', '{}');\n"
-    ).format(user_id, query.replace("'", "''"), response.replace("'", "''"), timestamp)
 
     try:
-        # Append to the SQL file
-        with open(file_path, "a", encoding="utf-8") as f:
-            f.write(sql_entry)
+        # Initialize database if not present
+        initialize_database()
 
-        # Store file path in the database if not already stored
-        sql_store_path = text(
-            "INSERT INTO chat_history (user_id, file_path) VALUES (:user_id, :file_path) "
-            "ON CONFLICT (user_id) DO NOTHING;"
-        )
+        # Save chat interaction in the database
+        save_chat_turn_to_db(user_id, query, response)
 
-        db.session.execute(sql_store_path, {"user_id": user_id, "file_path": file_path})
-        db.session.commit()
-
-        return jsonify({"success": True, "message": "Chat history saved successfully", "file_path": file_path}), 201
+        return jsonify({
+            "success": True,
+            "message": "Chat history saved successfully",
+            "user_id": user_id
+        }), 201
 
     except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": f"Failed to save chat history: {str(e)}"}), 500 
+        return jsonify({
+            "success": False,
+            "message": f"Failed to save chat history: {str(e)}"
+        }), 500
+
 
 
 # ---------------------------- Get Chat History ----------------------------
 @user_routes.route('/chat_history/<int:user_id>', methods=['GET'])
 def get_chat_history(user_id):
-    '''API to retrieve chat history file path for a user'''
-    # Fetch chat record for the user
-    chat_record = ChatHistory.query.filter_by(user_id=user_id).first()
+    """API to retrieve chat history for a given user"""
 
-    # Validate if chat history exists
-    if not chat_record:
-        return jsonify({'success': False, 'message': 'No chat history found'}), 404
+    try:
+        # Load chat history using the provided function
+        chat_history = load_chat_history_from_db(user_id)
 
-    return jsonify({'success': True, 'message': 'Chat history retrieved successfully', 'user_id': user_id, 'file_path': chat_record.file_path}), 200
+        # Check if chat history exists
+        if not chat_history.messages:
+            return jsonify({
+                'success': False,
+                'message': 'No chat history found for the given user ID',
+                'user_id': user_id
+            }), 404
+
+        # Format chat history
+        formatted_history = []
+        for i in range(0, len(chat_history.messages), 2):
+            query = chat_history.messages[i].content
+            response = chat_history.messages[i + 1].content if i + 1 < len(chat_history.messages) else "No response recorded"
+
+            formatted_history.append({
+                "query": query,
+                "response": response
+            })
+
+        return jsonify({
+            'success': True,
+            'message': 'Chat history retrieved successfully',
+            'user_id': user_id,
+            'chat_history': formatted_history
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Failed to retrieve chat history: {str(e)}',
+            'user_id': user_id
+        }), 500
 
     
 # Explain Error API
 @user_routes.route('/explain_error', methods=['POST'])
-def explain_error():
+def explain_error_route():
     '''API to explain errors in a provided code snippet'''
     data = request.get_json()
     code_snippet = data.get('code_snippet')
@@ -1254,15 +1530,20 @@ def explain_error():
     if not code_snippet:
         return jsonify({'message': 'Code snippet is required', 'success': False}), 400
 
-    # Return a mock explanation of the error (this could be dynamically generated)
-    return jsonify({
-        'success': True,
-        'message': 'Error explanation generated successfully',
-        'explanation': "SyntaxError: Unexpected indent. This error occurs when there is an unexpected indentation "
-                       "in the code. Python relies on indentation to define code blocks, and inconsistent indentation "
-                       "can lead to this error. To fix this, check the indentation of your code. Ensure you use consistent "
-                       "spaces or tabs and avoid mixing both."
-    }), 200
+    # Attempt to analyze the error using error_explainer logic
+    try:
+        explanation = explain_error(code_snippet)
+        return jsonify({
+            'success': True,
+            'message': 'Error explanation generated successfully',
+            'explanation': explanation
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': 'Failed to generate error explanation',
+            'error': str(e)
+        }), 500
 
 
 # Generate Week Summary
@@ -1275,19 +1556,17 @@ def generate_week_summary():
     # Validate if week_id is provided
     if not week_id:
         return jsonify({'message': 'week_id is required', 'success': False}), 400
-    
+
     # Check if the week exists in the database
     week = Week.query.get(week_id)
     if not week:
         return jsonify({'message': 'Week not found', 'success': False}), 404
-    
-    # Return the generated summary
-    return jsonify({
-        'message': 'Week summary generated successfully',
-        'success': True,
-        'week_id': week_id,
-        'summary': f'Summary for week {week_id} is generated.'
-    }), 200
+
+    # Generate summary using slides_summarizer logic
+    result = summarize_week_slides(week.week_number)
+
+    # Return result
+    return jsonify(result), 200 if result['success'] else 404
 
 
 # ---------------------------- Generate Mock Test ----------------------------
@@ -1295,21 +1574,31 @@ def generate_week_summary():
 def generate_mock():
     '''API to generate a mock test based on a specific topic'''
     data = request.get_json()
-    topic = data.get('topic')
+    quiz_type = data.get('quiz_type')
     num_questions = data.get('num_questions', 10)  # Default to 10 questions if not provided
 
-    # Validate if topic is provided
-    if not topic:
-        return jsonify({'message': 'topic is required', 'success': False}), 400
-    
-    # Return the mock test generation status
-    return jsonify({
-        'message': 'Mock test generated successfully',
-        'success': True,
-        'topic': topic,
-        'num_questions': num_questions,
-        'mock': f'Mock test for topic {topic} with {num_questions} questions is being generated.'
-    }), 200
+    # Validate required fields
+    if not quiz_type:
+        return jsonify({'message': 'quiz_type is required', 'success': False}), 400
+
+    # Generate MCQs using the provided logic
+    result = generate_mcqs(quiz_type, num_questions)
+
+    # Return the generated mock test or error response
+    if result['success']:
+        return jsonify({
+            'message': f'Mock test generated successfully for {quiz_type}',
+            'success': True,
+            'quiz_type': quiz_type,
+            'num_questions': num_questions,
+            'questions': result['questions']
+        }), 200
+    else:
+        return jsonify({
+            'message': result['message'],
+            'success': False,
+            'quiz_type': quiz_type
+        }), 404
 
 
 # ---------------------------- Generate Notes ----------------------------
@@ -1322,14 +1611,24 @@ def generate_notes():
     # Validate if topic is provided
     if not topic:
         return jsonify({'message': 'topic is required', 'success': False}), 400
-    
-    # Return the generated notes information
-    return jsonify({
-        'message': 'Notes generated successfully',
-        'success': True,
-        'topic': topic,
-        'notes': f'Notes for topic {topic} are generated.'
-    }), 200
+
+    # Generate notes using the provided logic
+    result = generate_topic_notes(topic)
+
+    # Return the generated notes or error response
+    if result['success']:
+        return jsonify({
+            'message': f'Notes generated successfully for topic "{topic}"',
+            'success': True,
+            'topic': topic,
+            'notes': result['notes']
+        }), 200
+    else:
+        return jsonify({
+            'message': result['message'],
+            'success': False,
+            'topic': topic
+        }), 404
 
 
 # ---------------------------- Helper Function: Map Questions to Topics ----------------------------
@@ -1356,15 +1655,15 @@ def map_question_to_topic(question_text):
 # ---------------------------- Topic Recommendation ----------------------------
 @user_routes.route('/topic_recommendation', methods=['POST'])
 def topic_recommendation():
-    '''API to recommend study topics based on incorrectly answered questions'''
+    """API to recommend study topics and learning resources based on incorrect answers"""
     data = request.get_json()
     submitted_answers = data.get('answers', [])  # List of {"question_id": X, "selected_option_id": Y}
 
     # Validate if answers list is provided
     if not submitted_answers:
-        return jsonify({'message': 'answers are required', 'success': False}), 400
+        return jsonify({'message': 'Answers are required', 'success': False}), 400
 
-    topic_recommendation = []
+    wrong_questions = []
 
     # Iterate through submitted answers to identify incorrect answers
     for answer in submitted_answers:
@@ -1372,21 +1671,33 @@ def topic_recommendation():
         selected_option_id = answer.get('selected_option_id')
 
         # Fetch the correct option for the question from the database
-        correct_option = QuestionOption.query.filter_by(question_id=question_id, is_correct=True).first()
+        correct_option = QuestionOption.query.filter_by(
+            question_id=question_id,
+            is_correct=True
+        ).first()
 
-        # If the selected option is incorrect, map the question to a topic
+        # If the selected option is incorrect, add the question to wrong_questions
         if correct_option and correct_option.id != selected_option_id:
             question = AssignmentQuestion.query.get(question_id)
-            topic = map_question_to_topic(question.question_text)
-            topic_recommendation.append(topic)
+            if question:
+                wrong_questions.append(question.question_text)
 
-    # Return the list of recommended topics
-    return jsonify({
-        'message': 'Topic recommendations generated successfully',
-        'success': True,
-        'topic_recommendation': topic_recommendation
-    }), 200
-    
+    # If no incorrect questions found
+    if not wrong_questions:
+        return jsonify({
+            'message': 'All answers are correct! Great job! 🎯',
+            'success': True,
+            'suggestions': {
+                'overall_assessment': "All questions were answered correctly. Excellent performance!",
+                'topic_suggestions': [],
+                'general_tips': ["Continue practicing to maintain your knowledge. 🚀"]
+            }
+        }), 200
+
+    # Generate personalized suggestions
+    suggestions = generate_topic_suggestions(wrong_questions)
+
+    return jsonify(suggestions), 200
     
 # ---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
 
@@ -1408,7 +1719,7 @@ def topic_recommendation():
 # # Ensure reports directory exists
 # BASE_DIR = os.path.abspath(os.path.dirname(__file__)) # Get current directory
 # REPORTS_DIR = os.path.join(BASE_DIR, "reports")
-# os.makedirs(REPORTS_DIR, exist_ok=True)  
+# os.makedirs(REPORTS_DIR, exist_ok=True)
 
 
 # # ---------------------------------- Download Report (PDF) ----------------------------------
@@ -1433,11 +1744,11 @@ def topic_recommendation():
 
 #     # Render the HTML template with the provided data
 #     html_content = render_template(
-#         "report.html", 
-#         username=username, 
-#         score=score, 
-#         total=total, 
-#         suggestions=suggestions, 
+#         "report.html",
+#         username=username,
+#         score=score,
+#         total=total,
+#         suggestions=suggestions,
 #         questions=questions
 #     )
     
@@ -1458,8 +1769,8 @@ def topic_recommendation():
 #     # Attempt to send the generated PDF file as a download
 #     try:
 #         return send_file(
-#             pdf_file, 
-#             as_attachment=True, 
+#             pdf_file,
+#             as_attachment=True,
 #             download_name=f"MockTest_{username}.pdf"
 #         )
 #     except Exception as e:
