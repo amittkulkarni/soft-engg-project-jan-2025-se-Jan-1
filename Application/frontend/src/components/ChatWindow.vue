@@ -39,15 +39,6 @@
             <button
               type="button"
               class="btn btn-sm btn-outline-light"
-              title="Minimize"
-              @click="minimizeChat"
-              v-if="!isMinimized"
-            >
-              <i class="bi bi-dash-lg"></i>
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-light"
               aria-label="Reset History"
               @click="resetHistory"
             >
@@ -185,7 +176,8 @@
 import StudentIcon from "@/assets/student.png";
 import VueMarkdown from "vue-markdown-render";
 import hljs from "highlight.js";
-import "highlight.js/styles/atom-one-dark.css"; // Use a theme for syntax highlighting
+import "highlight.js/styles/atom-one-dark.css";
+import api from "@/services/api.js"
 
 export default {
   components: {
@@ -194,42 +186,12 @@ export default {
   data() {
     return {
       showChat: false,
-      isMinimized: false,
       isTyping: false,
       newMessage: "",
       StudentIcon,
       hasNewMessages: false,
-       messages: [
-        {
-          sender: "kia",
-          text: `
-Linear regression is a supervised learning algorithm that predicts a continuous target variable based on one or more features by fitting a linear equation to the data.
-
-Here's a minimal implementation:
-
-\`\`\`python
-# Simple linear regression in just a few lines
-import numpy as np
-from sklearn.linear_model import LinearRegression
-
-# Create sample data
-X = np.array([[1], [2], [3]])
-y = np.array([2, 4, 6])
-
-# Create and train model
-model = LinearRegression()
-model.fit(X, y)
-
-# Print results
-print(f"Coefficient: {model.coef_[0]:.2f}")
-print(f"Intercept: {model.intercept_:.2f}")
-print(f"Prediction for X=6: {model.predict([[6]])[0]:.2f}")
-\`\`\`
-
-This code demonstrates how to predict a continuous value using the linear relationship between variables.
-          `,
-        },
-      ],
+      userId: localStorage.getItem('user_id') || 1,
+      messages: [],
       suggestedPrompts: [
         "What is Linear Regression?",
         "Explain decision trees",
@@ -247,6 +209,9 @@ This code demonstrates how to predict a continuous value using the linear relati
           }
         }
     };
+  },
+  created() {
+    this.loadChatHistory();
   },
   computed: {
     today() {
@@ -275,62 +240,143 @@ This code demonstrates how to predict a continuous value using the linear relati
         });
       }
     },
-    minimizeChat() {
-      this.isMinimized = true;
-    },
     resetHistory() {
       if (confirm("Are you sure you want to clear this conversation?")) {
-        this.messages = [{
-          sender: "kia",
-          text: "Chat history has been cleared. How can I help you?",
-          timestamp: new Date()
-        }];
+        // Show loading indicator
+        this.isTyping = true;
+
+        // Call the reset chat history API
+        api.post('/reset_chat_history', {
+          user_id: this.userId
+        })
+        .then(response => {
+          this.isTyping = false;
+
+          if (response.data.success) {
+            // Reset local messages with confirmation
+            this.messages = [{
+              sender: "kia",
+              text: "Chat history has been cleared. How can I help you?",
+              timestamp: new Date()
+            }];
+          } else {
+            // Handle API error
+            console.error('Failed to clear chat history:', response.data.message);
+            this.messages.push({
+              sender: "kia",
+              text: "I couldn't clear our chat history. Please try again later.",
+              timestamp: new Date()
+            });
+          }
+        })
+        .catch(error => {
+          this.isTyping = false;
+          console.error('API call failed:', error);
+
+          // Add error message
+          this.messages.push({
+            sender: "kia",
+            text: "I encountered an error while trying to clear our chat history. Please try again.",
+            timestamp: new Date()
+          });
+        });
       }
     },
     sendMessage() {
-      if (this.newMessage.trim() !== "") {
-        // Add user message
-        this.messages.push({
-          sender: "user",
-          text: this.newMessage,
-          timestamp: new Date()
-        });
+      if (this.newMessage.trim() === "") return;
 
-        const userQuestion = this.newMessage;
-        this.newMessage = "";
+      // Add user message to UI
+      const userMessage = {
+        sender: "user",
+        text: this.newMessage,
+        timestamp: new Date()
+      };
+      this.messages.push(userMessage);
 
-        // Scroll to bottom
-        this.$nextTick(() => {
-          this.scrollToBottom();
-        });
+      const userQuestion = this.newMessage;
+      this.newMessage = "";
 
-        // Show typing indicator
-        this.isTyping = true;
+      // Update UI to show typing indicator
+      this.isTyping = true;
 
-        // Simulate KIA's response with a realistic delay
-        setTimeout(() => {
-          this.isTyping = false;
+      // Send message to backend
+      api.post('/kia_chat', {
+        user_id: this.userId,
+        query: userQuestion
+      })
+      .then(response => {
+        this.isTyping = false;
 
-          // Generate response based on the question
-          let response = this.generateResponse(userQuestion);
-
-          this.messages.push({
+        if (response.data.success) {
+          // Add AI response to UI
+          const kiaMessage = {
             sender: "kia",
-            text: response,
+            text: response.data.response,
             timestamp: new Date()
-          });
+          };
+          this.messages.push(kiaMessage);
 
-          // If chat is not open, show notification
-          if (!this.showChat || this.isMinimized) {
+          // Save interaction to history
+          this.saveChatInteraction(userQuestion, response.data.response);
+
+          if (!this.showChat) {
             this.hasNewMessages = true;
           }
+        }
+      })
+      .catch(error => {
+        this.isTyping = false;
+        console.error('API call failed:', error);
+      })
+      .finally(() => {
+        this.scrollToBottom();
+      });
+    },
+    loadChatHistory() {
+      api.get(`/chat_history/${this.userId}`)
+        .then(response => {
+          if (response.data.success) {
+            // Transform API response format to component format
+            this.messages = [];
 
-          // Scroll to bottom after response
-          this.$nextTick(() => {
-            this.scrollToBottom();
-          });
-        }, 1500 + Math.random() * 1500); // Random delay between 1.5-3s for realism
-      }
+            response.data.chat_history.forEach(item => {
+              // Add user message
+              this.messages.push({
+                sender: "user",
+                text: item.query,
+                timestamp: new Date() // Timestamp not provided by API
+              });
+
+              // Add KIA response
+              this.messages.push({
+                sender: "kia",
+                text: item.response,
+                timestamp: new Date()
+              });
+            });
+          } else {
+            // Add welcome message if no history
+            this.messages = [{
+              sender: "kia",
+              text: "Welcome! How can I help you today?",
+              timestamp: new Date()
+            }];
+          }
+        })
+        .catch(error => {
+          console.error('Failed to load chat history:', error);
+        });
+    },
+    // Save chat interaction after receiving response
+    saveChatInteraction(query, response) {
+      api.post('/chat_history', {
+        user_id: this.userId,
+        query: query,
+        response: response
+      })
+      .catch(error => {
+        console.error('Failed to save chat history:', error);
+      });
     },
     scrollToBottom() {
       const chatBody = this.$refs.chatBody;
@@ -385,65 +431,8 @@ This code demonstrates how to predict a continuous value using the linear relati
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);
-    },
-    generateResponse(question) {
-      // This is a simple simulation - in a real app, you'd call your API
-      const lowercaseQuestion = question.toLowerCase();
-
-      if (lowercaseQuestion.includes('regression')) {
-        return `Linear regression is a supervised learning algorithm that predicts a continuous target variable based on one or more features by fitting a linear equation to the data.
-
-##### Here's a minimal implementation:
-
-\`\`\`python
-# Simple linear regression in just a few lines
-import numpy as np
-from sklearn.linear_model import LinearRegression
-
-# Create sample data
-X = np.array([[1], [2], [3]])
-y = np.array([2, 4, 6])
-
-# Create and train model
-model = LinearRegression()
-model.fit(X, y)
-
-# Print results
-print(f"Coefficient: {model.coef_[0]:.2f}")
-print(f"Intercept: {model.intercept_:.2f}")
-print(f"Prediction for X=6: {model.predict([[6]])[0]:.2f}")
-\`\`\`
-
-This code demonstrates how to predict a continuous value using the linear relationship between variables.`;
-      }
-      else if (lowercaseQuestion.includes('classification')) {
-        return "**Classification** is a supervised learning technique where the model predicts discrete categories or classes. Popular classification algorithms include Decision Trees, Random Forests, Support Vector Machines, and Neural Networks.";
-      }
-      else {
-        return "I'm not sure I understand. Could you provide more details or try rephrasing your question? I'm specialized in machine learning topics.";
-      }
     }
   },
-  created() {
-    // Load chat history from localStorage if available
-    const savedChat = localStorage.getItem('kia-chat-history');
-    if (savedChat) {
-      try {
-        this.messages = JSON.parse(savedChat);
-      } catch (e) {
-        console.error('Failed to load chat history', e);
-      }
-    }
-  },
-  watch: {
-    // Save chat history to localStorage
-    messages: {
-      handler(newMessages) {
-        localStorage.setItem('kia-chat-history', JSON.stringify(newMessages));
-      },
-      deep: true
-    }
-  }
 };
 </script>
 

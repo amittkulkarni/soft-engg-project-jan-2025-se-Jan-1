@@ -245,16 +245,16 @@ export default {
   methods: {
     fetchSuggestions() {
       const topics = [
-        "Regression",
-        "Auto-regressive Models",
-        "Linear Regression",
-        "Probabilistic Regression",
-        "Logistic Regression",
-        "Python Pandas",
-        "Data Visualization",
-        "Machine Learning Basics",
-        "Neural Networks",
-        "Deep Learning"
+        "Regression", "Linear Regression", "Logistic Regression",
+        "Decision Trees", "Random Forests", "Support Vector Machines",
+        "Neural Networks", "Deep Learning", "Convolutional Neural Networks",
+        "Recurrent Neural Networks", "Natural Language Processing",
+        "K-Means Clustering", "Hierarchical Clustering", "DBSCAN",
+        "Principal Component Analysis", "Feature Engineering",
+        "Gradient Descent", "Backpropagation", "Overfitting", "Regularization",
+        "Cross-Validation", "Precision and Recall", "ROC Curves", "AUC",
+        "Naive Bayes", "Ensemble Methods", "Boosting", "Bagging",
+        "Transfer Learning", "Reinforcement Learning"
       ];
       this.suggestions = topics.filter((topic) =>
         topic.toLowerCase().includes(this.searchQuery.toLowerCase())

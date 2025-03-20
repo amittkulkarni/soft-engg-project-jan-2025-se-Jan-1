@@ -32,7 +32,7 @@ DB_PATH = os.path.join("instance", "app.db")
 
 def get_api_key() -> str:
     """Get API key for Google Generative AI"""
-    api_key = os.environ.get("GOOGLE_API_KEY")
+    api_key = "AIzaSyAmZBJC_WzWLlaUdfiM3GMu9UkCjAWOJ0o"
     if not api_key:
         raise ValueError("Google API key is not set")
     return api_key

@@ -18,7 +18,7 @@ _summary_cache = {}
 
 def get_api_key() -> str:
     """Get API key from environment variable"""
-    api_key = os.environ.get("GOOGLE_API_KEY")
+    api_key = "AIzaSyAmZBJC_WzWLlaUdfiM3GMu9UkCjAWOJ0o"
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable is not set")
     return api_key

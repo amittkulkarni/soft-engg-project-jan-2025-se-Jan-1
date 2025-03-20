@@ -20,6 +20,8 @@ from quiz_mock import generate_mcqs
 from week_summarizer import summarize_week_slides
 from topic_specfic_mock import generate_topic_mcqs
 from error_explainer import explain_error
+from lecture_summarizer import summarize_lecture
+from kia_chatbot import initialize_database, save_chat_turn_to_db, load_chat_history_from_db, get_answer, clear_user_history
 
 user_routes = Blueprint('user_routes', __name__)
 
@@ -1368,11 +1370,27 @@ def video_summarizer():
     if not lecture_id:
         return jsonify({'message': 'lecture_id is required', 'success': False}), 400
 
-    # Generate summary
-    summary = f'Summary of lecture {lecture_id}: This lecture provides a detailed explanation of the topic, covering key concepts and important points in a clear and concise manner.'
+    # Extract week and lecture number from lecture_id
+    try:
+        lecture = db.session.query(
+            Week.week_number,
+            Lecture.id.label('lecture_id'),   # Add Lecture.id
+            Lecture.title.label('lecture_title')
+        ).join(Week).filter(Lecture.id == lecture_id).first()
 
-    return jsonify({'message': 'Summary generated successfully', 'success': True, 'summary': summary}), 200
+        if not lecture:
+            return jsonify({'message': 'Lecture not found', 'success': False}), 404
 
+        print(lecture)
+        week = lecture.week_number
+        lecture_num =lecture.lecture_id
+    except ValueError:
+        return jsonify({'message': 'Invalid lecture_id format.', 'success': False}), 400
+
+    # Generate summary using lecture_summarizer logic
+    result = summarize_lecture(week, lecture_num)
+
+    return jsonify(result), 200 if result['success'] else 404
 
 
 # Kia Chatbot API
@@ -1380,67 +1398,125 @@ def video_summarizer():
 # Ensure chat_logs directory exists
 os.makedirs("chat_logs", exist_ok=True)
 
-# ---------------------------- Store Chat Interaction ----------------------------
+@user_routes.route('/kia_chat', methods=['POST'])
+def chat_with_kia():
+    """API to process user query and get response from Kia"""
+    data = request.get_json()
+    user_id = data.get('user_id')
+    query = data.get('query')
+
+    if not all([user_id, query]):
+        return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+
+    try:
+        # Use the get_answer function from your existing code
+        result = get_answer(user_id, query)
+
+        return jsonify(result), 200 if result['success'] else 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Failed to process query: {str(e)}',
+            'response': 'I seem to be having a little brain freeze! Let\'s chat again in a moment? 😅'
+        }), 500
+
+
+@user_routes.route('/reset_chat_history', methods=['POST'])
+def reset_chat_history():
+    """API to clear chat history for a user"""
+    data = request.get_json()
+    user_id = data.get('user_id')
+
+    if not user_id:
+        return jsonify({'success': False, 'message': 'User ID is required'}), 400
+
+    try:
+        # Use the clear_user_history function from your existing code
+        result = clear_user_history(user_id)
+        return jsonify(result), 200 if result['success'] else 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Failed to clear chat history: {str(e)}'
+        }), 500
+
 
 @user_routes.route('/chat_history', methods=['POST'])
 def save_chat_history():
-    """API to save user chat interactions as an SQL file and store file path in DB"""
+    """API to save user chat interactions in SQLite database"""
     data = request.get_json()
     user_id = data.get("user_id")
     query = data.get("query")
     response = data.get("response")
 
+    # Validation for required fields
     if not all([user_id, query, response]):
         return jsonify({"success": False, "message": "Missing required fields"}), 400
-    
-    # Check if the user exists
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"success": False, "message": "User ID not found"}), 404
-    
-    file_path = f"chat_logs/user_{user_id}_chat.sql"
-
-    # Generate SQL entry 
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
-    sql_entry = (
-        "INSERT INTO chat_logs (user_id, query, response, created_at) VALUES "
-        "({}, '{}', '{}', '{}');\n"
-    ).format(user_id, query.replace("'", "''"), response.replace("'", "''"), timestamp)
 
     try:
-        # Append to the SQL file
-        with open(file_path, "a", encoding="utf-8") as f:
-            f.write(sql_entry)
+        # Initialize database if not present
+        initialize_database()
 
-        # Store file path in the database if not already stored
-        sql_store_path = text(
-            "INSERT INTO chat_history (user_id, file_path) VALUES (:user_id, :file_path) "
-            "ON CONFLICT (user_id) DO NOTHING;"
-        )
+        # Save chat interaction in the database
+        save_chat_turn_to_db(user_id, query, response)
 
-        db.session.execute(sql_store_path, {"user_id": user_id, "file_path": file_path})
-        db.session.commit()
-
-        return jsonify({"success": True, "message": "Chat history saved successfully", "file_path": file_path}), 201
+        return jsonify({
+            "success": True,
+            "message": "Chat history saved successfully",
+            "user_id": user_id
+        }), 201
 
     except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": f"Failed to save chat history: {str(e)}"}), 500 
+        return jsonify({
+            "success": False,
+            "message": f"Failed to save chat history: {str(e)}"
+        }), 500
+
 
 
 # ---------------------------- Get Chat History ----------------------------
 @user_routes.route('/chat_history/<int:user_id>', methods=['GET'])
 def get_chat_history(user_id):
-    '''API to retrieve chat history file path for a user'''
-    # Fetch chat record for the user
-    chat_record = ChatHistory.query.filter_by(user_id=user_id).first()
+    """API to retrieve chat history for a given user"""
 
-    # Validate if chat history exists
-    if not chat_record:
-        return jsonify({'success': False, 'message': 'No chat history found'}), 404
+    try:
+        # Load chat history using the provided function
+        chat_history = load_chat_history_from_db(user_id)
 
-    return jsonify({'success': True, 'message': 'Chat history retrieved successfully', 'user_id': user_id, 'file_path': chat_record.file_path}), 200
+        # Check if chat history exists
+        if not chat_history.messages:
+            return jsonify({
+                'success': False,
+                'message': 'No chat history found for the given user ID',
+                'user_id': user_id
+            }), 404
+
+        # Format chat history
+        formatted_history = []
+        for i in range(0, len(chat_history.messages), 2):
+            query = chat_history.messages[i].content
+            response = chat_history.messages[i + 1].content if i + 1 < len(chat_history.messages) else "No response recorded"
+
+            formatted_history.append({
+                "query": query,
+                "response": response
+            })
+
+        return jsonify({
+            'success': True,
+            'message': 'Chat history retrieved successfully',
+            'user_id': user_id,
+            'chat_history': formatted_history
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Failed to retrieve chat history: {str(e)}',
+            'user_id': user_id
+        }), 500
 
     
 # Explain Error API
