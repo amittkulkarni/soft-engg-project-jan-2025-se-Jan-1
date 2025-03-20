@@ -106,8 +106,7 @@
             <div v-for="(question, index) in questions" :key="question.id" class="question-container mb-4 p-4 rounded">
               <div class="d-flex justify-content-between">
                 <div class="question-text mb-3">
-                  <strong>{{ index + 1 }}. </strong>
-                  <markdown-renderer :content="question.text"></markdown-renderer>
+                  <span><strong>{{ index + 1 }}. </strong><markdown-renderer :content="question.text"></markdown-renderer></span>
                 </div>
                 <span class="badge bg-secondary p-2" style="height: 25px">{{ question.points }} pts</span>
               </div>

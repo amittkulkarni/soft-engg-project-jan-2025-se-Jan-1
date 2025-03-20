@@ -385,22 +385,42 @@ export default {
         this.isLoading = false;
       }
     },
-    explainError() {
-      // Simulate AI error explanation
-      this.consoleOutput = `Simplified explanation:
+    async explainError() {
+      try {
+        // Show loading state in console
+        this.consoleOutput = "Analyzing your error...\n";
 
-      The code failed because of a missing dependency in the SciPy library.
-      The specific error occurs when trying to import the ARPACK module, which is
-      required for certain linear algebra operations. This typically happens when
-      there's a mismatch between library versions or incomplete installation.
+        // Make API request using axios
+        const response = await api.post('/explain_error', {
+          code_snippet: this.code
+        });
 
-      Recommended fix:
-      1. Update SciPy and NumPy packages
-      2. Reinstall the scientific stack using:
-         pip install --upgrade numpy scipy
-      3. Verify installation with:
-         python -c "import scipy.sparse.linalg"`;
-    },
+        // Check if request was successful
+        if (response.data.success) {
+          // Format the explanation nicely
+          this.consoleOutput = `=== AI ERROR ANALYSIS ===\n\n${response.data.explanation}`;
+        } else {
+          // Handle API success=false response
+          this.consoleOutput = `Error Analysis Failed: ${response.data.message}`;
+          console.error("API Error:", response.data.message);
+        }
+      } catch (error) {
+        // Enhanced error handling
+        if (error.response) {
+          // The server responded with a status code outside of 2xx range
+          this.consoleOutput = `Error Analysis Failed: ${error.response.data.message || 'Server error'}`;
+          console.error("Server error:", error.response.status, error.response.data);
+        } else if (error.request) {
+          // The request was made but no response was received
+          this.consoleOutput = "Error Analysis Failed: Network error - no response received";
+          console.error("Network error:", error.request);
+        } else {
+          // Something happened in setting up the request
+          this.consoleOutput = `Error Analysis Failed: ${error.message}`;
+          console.error("Error:", error.message);
+        }
+      }
+    }
   }
 };
 </script>

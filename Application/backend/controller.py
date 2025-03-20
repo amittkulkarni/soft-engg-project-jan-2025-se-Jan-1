@@ -18,6 +18,8 @@ from topic_suggestions import generate_topic_suggestions
 from notes_generator import generate_topic_notes
 from quiz_mock import generate_mcqs
 from week_summarizer import summarize_week_slides
+from topic_specfic_mock import generate_topic_mcqs
+from error_explainer import explain_error
 
 user_routes = Blueprint('user_routes', __name__)
 
@@ -1170,20 +1172,15 @@ def execute_python_code(code, input_data):
     """
 Execute python code with provided input and return the output
     """
-    # Add debugging to help diagnose issues
-    print(f"Debug - Input data: '{input_data}'")
 
     # Ensure input ends with newline
     if not input_data.endswith('\n'):
         input_data += '\n'
-        print(f"Debug - Modified input: '{input_data}'")
 
     # Create temporary files for code
     with tempfile.NamedTemporaryFile(suffix='.py', mode='w', delete=False) as f:
         f.write(code)
         code_file = f.name
-        print(f"Debug - Code file: {code_file}")
-        print(f"Debug - Code content: \n{code}")
 
     try:
         # Execute the code with the input
@@ -1194,10 +1191,6 @@ Execute python code with provided input and return the output
             text=True,
             timeout=10  # 10 second timeout
         )
-
-        print(f"Debug - Return code: {result.returncode}")
-        print(f"Debug - Stdout: '{result.stdout}'")
-        print(f"Debug - Stderr: '{result.stderr}'")
 
         if result.returncode != 0:
             # If execution failed, return the error
@@ -1276,32 +1269,92 @@ def generate_topic_specific_questions():
         topic = data.get('topic')
         num_questions = data.get('num_questions', 5)
 
-        # Validate input
+        # Input Validations
         if not topic:
             return jsonify({'success': False, 'message': 'Topic is required'}), 400
 
-        # Placeholder response with mock questions
-        mock_response = {
-            'message': 'Questions generated successfully',
-            'success': True,
-            'questions': [
-                {
-                    'question': f'Sample question 1 about {topic}?',
-                    'options': ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
-                    'answer': 'Option 1'
-                },
-                {
-                    'question': f'Sample question 2 about {topic}?',
-                    'options': ['Option A', 'Option B', 'Option C', 'Option D'],
-                    'answer': 'Option B'
-                }
-            ][:num_questions]
-        }
+        if not isinstance(num_questions, int):
+            return jsonify({'success': False, 'message': 'Invalid data type for num_questions'}), 400
 
-        return jsonify(mock_response), 200
+        if num_questions < 1:
+            return jsonify({'success': False, 'message': 'Number of questions must be at least 1'}), 400
+
+        # Generate dynamic MCQs using the imported function
+        try:
+            mcq_set = generate_topic_mcqs(topic, num_questions)
+
+            # Debug the returned data structure type
+            print(f"MCQ Set type: {type(mcq_set)}")
+
+            # Handle dictionary return case
+            if isinstance(mcq_set, dict):
+                if "questions" in mcq_set:
+                    # Dictionary with questions key
+                    questions_list = mcq_set["questions"]
+                    response_data = {
+                        'message': 'Questions generated successfully',
+                        'success': True,
+                        'questions': [
+                            {
+                                'question': q["question"],
+                                'options': q["options"],
+                                'correct_answer': q["correct_answer"],
+                            } for q in questions_list
+                        ]
+                    }
+                else:
+                    # Flat dictionary of a single question
+                    response_data = {
+                        'message': 'Questions generated successfully',
+                        'success': True,
+                        'questions': [mcq_set]  # Just use the dict directly
+                    }
+            # Handle Pydantic model return case
+            elif hasattr(mcq_set, "questions"):
+                response_data = {
+                    'message': 'Questions generated successfully',
+                    'success': True,
+                    'questions': [
+                        {
+                            'question': q.question,
+                            'options': q.options,
+                            'correct_answer': q.correct_answer,
+                        } for q in mcq_set.questions
+                    ]
+                }
+            # Handle list return case
+            elif isinstance(mcq_set, list):
+                response_data = {
+                    'message': 'Questions generated successfully',
+                    'success': True,
+                    'questions': [
+                        {
+                            'question': q["question"] if isinstance(q, dict) else q.question,
+                            'options': q["options"] if isinstance(q, dict) else q.options,
+                            'correct_answer': q["correct_answer"] if isinstance(q, dict) else q.correct_answer,
+                        } for q in mcq_set
+                    ]
+                }
+            else:
+                raise TypeError(f"Unexpected return type from generate_topic_mcqs: {type(mcq_set)}")
+
+            return jsonify(response_data), 200
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()  # Print full stack trace for debugging
+            return jsonify({
+                'success': False,
+                'message': 'Failed to generate dynamic questions',
+                'error': str(e)
+            }), 500
 
     except Exception as e:
-        return jsonify({'success': False, 'message': 'Failed to generate questions', 'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'message': 'Failed to generate questions',
+            'error': str(e)
+        }), 500
 
 
 # Video Summarizer API 
@@ -1392,7 +1445,7 @@ def get_chat_history(user_id):
     
 # Explain Error API
 @user_routes.route('/explain_error', methods=['POST'])
-def explain_error():
+def explain_error_route():
     '''API to explain errors in a provided code snippet'''
     data = request.get_json()
     code_snippet = data.get('code_snippet')
@@ -1401,15 +1454,20 @@ def explain_error():
     if not code_snippet:
         return jsonify({'message': 'Code snippet is required', 'success': False}), 400
 
-    # Return a mock explanation of the error (this could be dynamically generated)
-    return jsonify({
-        'success': True,
-        'message': 'Error explanation generated successfully',
-        'explanation': "SyntaxError: Unexpected indent. This error occurs when there is an unexpected indentation "
-                       "in the code. Python relies on indentation to define code blocks, and inconsistent indentation "
-                       "can lead to this error. To fix this, check the indentation of your code. Ensure you use consistent "
-                       "spaces or tabs and avoid mixing both."
-    }), 200
+    # Attempt to analyze the error using error_explainer logic
+    try:
+        explanation = explain_error(code_snippet)
+        return jsonify({
+            'success': True,
+            'message': 'Error explanation generated successfully',
+            'explanation': explanation
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': 'Failed to generate error explanation',
+            'error': str(e)
+        }), 500
 
 
 # Generate Week Summary
