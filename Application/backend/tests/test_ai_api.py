@@ -254,3 +254,186 @@ def test_generate_week_summary_non_existent_week(client):
     assert response.status_code == 404
     assert response.json['success'] is False
     assert response.json['message'] == 'Week not found'
+
+
+#----------------------------------- Test Case for Code Execution API --------------------------------
+
+# Test case for successful code execution with all test cases passing
+def test_execute_solution_success(client):
+    response = client.post('/programming_assignments/1/execute',
+                           json={
+                               "code": '''
+                               def is_prime(N):
+                                   if N <= 1:
+                                   return 'NO'
+                                   for i in range(2, int(N**0.5) + 1):
+                                       if N % i == 0:
+                                           return 'NO'
+                                   return 'YES'
+                                N = int(input())
+                                print(is_prime(N))
+                           '''})
+
+    assert response.status_code == 200
+    assert response.json['success'] is True
+    assert response.json['score'] == 100
+    assert response.json['passed_count'] == 4
+    assert response.json['total_cases'] == 4
+
+# Test case when no code is submitted
+def test_execute_solution_no_code(client):
+    response = client.post('/programming_assignments/1/execute', json={"code": ""})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'No code submitted'
+
+# Test case for non-existent assignment
+def test_execute_solution_nonexistent_assignment(client):
+    response = client.post('/programming_assignments/999/execute',
+                           json={"code": "print('hello')"})
+
+    assert response.status_code == 404
+    assert response.json['success'] is False
+    assert response.json['message'] == 'Programming assignment not found'
+
+
+#----------------------------------- Test Case for Check Score API --------------------------------
+
+# Test case for successful score calculation with valid option IDs
+def test_check_score_success(client):
+    response = client.post('/assignments/check_score', json={"option_ids": [1, 2, 3]})
+
+    assert response.status_code == 200
+    assert response.json['success'] is True
+    assert response.json['total_score'] == 2
+    assert response.json['message'] == 'Score calculated successfully'
+
+# Test case for invalid input (empty list or non-list)
+def test_check_score_invalid_input(client):
+    # Test with empty list
+    response = client.post('/assignments/check_score', json={"option_ids": []})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'Invalid input. Provide a list of option IDs.'
+
+    # Test with non-list input
+    response = client.post('/assignments/check_score', json={"option_ids": "not_a_list"})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'Invalid input. Provide a list of option IDs.'
+
+# Test case for when no valid options are found in the database
+def test_check_score_no_valid_options(client):
+    response = client.post('/assignments/check_score', json={"option_ids": [999, 1000]})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'No valid option IDs found.'
+
+
+#----------------------------------- Test Case for Download PDF API --------------------------------
+
+# Test case for successful report generation and download
+def test_download_report_success(client):
+    # Test data with all required fields
+    test_data = {
+        "username": "testuser",
+        "score": 85,
+        "total": 100,
+        "suggestions": ["Study more", "Practice regularly"],
+        "questions": [{"question": "What is 2+2?", "answer": "4"}]
+    }
+
+    response = client.post('/download_report', json=test_data)
+
+    assert response.status_code == 200
+    # send_file was successfully called and returned our mock response
+
+# Test case for missing required fields
+def test_download_report_missing_fields(client):
+    # Test with missing username
+    response = client.post('/download_report', json={"score": 85, "total": 100})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == "Invalid input: 'username', 'score', and 'total' are required fields."
+
+    # Test with missing score
+    response = client.post('/download_report', json={"username": "testuser", "total": 100})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert "required fields" in response.json['message']
+
+
+#----------------------------------- Test Case for KIA Chat API --------------------------------
+
+# Test case for successful chat query processing
+def test_chat_with_kia_success(client):
+    # Test data with all required fields
+    test_data = {
+        "user_id": "1",
+        "query": "What is the meaning of life?"
+    }
+
+    response = client.post('/kia_chat', json=test_data)
+
+    assert response.status_code == 200
+    assert response.json['success'] is True
+    assert response.json['response'] == 'This is the answer to your question'
+
+# Test case for missing required fields
+def test_chat_with_kia_missing_fields(client):
+    # Test with missing user_id
+    response = client.post('/kia_chat', json={"query": "What is the meaning of life?"})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'Missing required fields'
+
+    # Test with missing query
+    response = client.post('/kia_chat', json={"user_id": "user123"})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'Missing required fields'
+
+    # Test with empty request
+    response = client.post('/kia_chat', json={})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'Missing required fields'
+
+
+#----------------------------------- Test Case for KIA Reset Chat API --------------------------------
+
+# Test case for successful chat history reset
+def test_reset_chat_history_success(client):
+    # Test data with user_id
+    test_data = {"user_id": "1"}
+
+    response = client.post('/reset_chat_history', json=test_data)
+
+    assert response.status_code == 200
+    assert response.json['success'] is True
+    assert response.json['message'] == 'Chat history cleared successfully'
+
+# Test case for missing user_id
+def test_reset_chat_history_missing_user_id(client):
+    # Test with empty request
+    response = client.post('/reset_chat_history', json={})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'User ID is required'
+
+    # Test with null user_id
+    response = client.post('/reset_chat_history', json={"user_id": None})
+
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'User ID is required'

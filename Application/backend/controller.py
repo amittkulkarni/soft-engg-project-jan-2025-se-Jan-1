@@ -1735,21 +1735,21 @@ def topic_recommendation():
 # def download_report():
 #     """Generates and downloads a report as a PDF file."""
 #     data = request.json
-    
+#
 #     # Extract data from the request
 #     username = data.get("username")  # Get the username from the request
 #     score = data.get("score")        # Get the score from the request
 #     total = data.get("total")        # Get the total score from the request
 #     suggestions = data.get("suggestions", [])  # Get suggestions list (default to empty if not provided)
 #     questions = data.get("questions", [])  # Get questions list (default to empty if not provided)
-
+#
 #     # Validate required fields
 #     if not username or score is None or total is None:
 #         return jsonify({
 #             "message": "Invalid input: 'username', 'score', and 'total' are required fields.",
 #             "success": False
 #         }), 400
-
+#
 #     # Render the HTML template with the provided data
 #     html_content = render_template(
 #         "report.html",
@@ -1759,10 +1759,10 @@ def topic_recommendation():
 #         suggestions=suggestions,
 #         questions=questions
 #     )
-    
+#
 #     # Define the file path for the generated PDF inside the "reports" folder
 #     pdf_file = os.path.join(REPORTS_DIR, f"MockTest_{username}.pdf")
-
+#
 #     # Attempt to generate the PDF from the rendered HTML content
 #     try:
 #         pdfkit.from_string(html_content, pdf_file, configuration=config)
@@ -1773,7 +1773,7 @@ def topic_recommendation():
 #             "success": False,
 #             "error": str(e)
 #         }), 500
-
+#
 #     # Attempt to send the generated PDF file as a download
 #     try:
 #         return send_file(
@@ -1788,7 +1788,7 @@ def topic_recommendation():
 #             "success": False,
 #             "error": str(e)
 #         }), 500
-
+#
 #     # Return a success response if the file is sent successfully
 #     return jsonify({
 #         "message": "PDF generated and downloaded successfully",
