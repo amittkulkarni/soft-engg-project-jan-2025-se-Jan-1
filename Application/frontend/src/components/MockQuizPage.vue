@@ -106,7 +106,8 @@
             <div v-for="(question, index) in questions" :key="question.id" class="question-container mb-4 p-4 rounded">
               <div class="d-flex justify-content-between">
                 <div class="question-text mb-3">
-                  <span><strong>{{ index + 1 }}. </strong><markdown-renderer :content="question.text"></markdown-renderer></span>
+                  <strong>{{ index + 1 }}. </strong>
+                  <markdown-renderer :content="question.text"></markdown-renderer>
                 </div>
                 <span class="badge bg-secondary p-2" style="height: 25px">{{ question.points }} pts</span>
               </div>
@@ -609,41 +610,6 @@ export default {
   border-left: 4px solid #28a745;
   border-radius: 8px;
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
-}
-.code-block {
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 6px;
-  padding: 1rem;
-  margin: 1rem 0;
-  overflow-x: auto;
-}
-
-.python.hljs {
-  color: #24292e;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-}
-
-/* Python-specific syntax coloring */
-.hljs-keyword {
-  color: #d73a49; /* Red for keywords */
-}
-
-.hljs-built_in {
-  color: #005cc5; /* Blue for built-ins */
-}
-
-.hljs-string {
-  color: #032f62; /* Dark blue for strings */
-}
-
-.hljs-number {
-  color: #005cc5; /* Blue for numbers */
-}
-
-.hljs-comment {
-  color: #6a737d; /* Gray for comments */
-  font-style: italic;
 }
 
 /* Responsive adjustments */

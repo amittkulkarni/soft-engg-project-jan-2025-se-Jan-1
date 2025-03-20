@@ -117,7 +117,9 @@ def cached_generate_mcqs(topic: str, num_questions: int):
     vectorstore = get_vectorstore()
     return _generate_mcqs_impl(llm, vectorstore, topic, num_questions)
 
+
 def generate_topic_mcqs(topic: str, num_questions: int = 5) -> MCQSet:
+
     """
 Public interface to generate MCQs.
 Delegates to cached version if appropriate.
