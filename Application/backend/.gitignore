@@ -1,5 +1,6 @@
 # Ignore virtual environment folders
 myenv/
 .env
+projenv/
 # Ignore compiled Python files
 __pycache__/

@@ -30,7 +30,8 @@ class MCQSet(BaseModel):
 
 def get_api_key() -> str:
     """Get API key for Google Generative AI"""
-    api_key =  "AIzaSyAmZBJC_WzWLlaUdfiM3GMu9UkCjAWOJ0o"
+    #api_key =  os.environ.get("GOOGLE_API_KEY")
+    api_key = "AIzaSyCV5i-u0oROux-Wt0TMqiRivVD6H0rGbjc"
     if not api_key:
         raise ValueError("Google API key is not set")
     return api_key

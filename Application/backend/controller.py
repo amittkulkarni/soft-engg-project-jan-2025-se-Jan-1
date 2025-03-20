@@ -8,20 +8,21 @@ from token_validation import generate_token
 from datetime import datetime
 import pdfkit
 import platform
-
+import requests
 from flask_jwt_extended import create_access_token
 import subprocess
 import tempfile
 import requests
 
-from topic_suggestions import generate_topic_suggestions
-from notes_generator import generate_topic_notes
 from quiz_mock import generate_mcqs
 from week_summarizer import summarize_week_slides
 from topic_specfic_mock import generate_topic_mcqs
 from error_explainer import explain_error
 from lecture_summarizer import summarize_lecture
 from kia_chatbot import initialize_database, save_chat_turn_to_db, load_chat_history_from_db, get_answer, clear_user_history
+from notes_generator import generate_topic_notes
+from kia_chatbot import save_chat_turn_to_db,initialize_database,load_chat_history_from_db
+from topic_suggestions import generate_topic_suggestions
 
 user_routes = Blueprint('user_routes', __name__)
 
@@ -132,44 +133,44 @@ def google_login():
         return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
 
 # Signup Route - Registers a new user
- 
-@user_routes.route('/signup', methods=['POST']) 
+
+@user_routes.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
     username = data.get('username')
     email = data.get('email')
     password = data.get('password')
     role = data.get('role', 'student')  # Default to 'student' if not provided
- 
+
     # Check if the username exists only if provided
     if username and User.query.filter_by(username=username).first():
         return jsonify({"message": "Username already exists"}), 400
- 
+
     # Check if the email is provided
     if not email:
         return jsonify({"message": "Email is required"}), 400
- 
+
     # Check if the email already exists
     if User.query.filter_by(email=email).first():
         return jsonify({"message": "Email already exists"}), 400
 
-    # Password validation (required if not signing up via Google) 
+    # Password validation (required if not signing up via Google)
     if not password:
         return jsonify({"message": "Password is required"}), 400
- 
+
     hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
- 
-    # Create and save new user 
+
+    # Create and save new user
     new_user = User(
         username=username,
         email=email,
         password=hashed_password,
         role=role,
     )
-  
+
     db.session.add(new_user)
     db.session.commit()
- 
+
     return jsonify({"message": "User registered successfully"}), 201
 
 # Login Route - Authenticates a user and returns an access token
@@ -1039,8 +1040,8 @@ def get_ProgrammingAssignment(assignment_id):
         }), 200
 
     except Exception as e:
-        return jsonify({"success": False, "message": "Error retrieving assignment", "error": str(e)}), 500        
-    
+        return jsonify({"success": False, "message": "Error retrieving assignment", "error": str(e)}), 500
+
     
 # Update an existing programming assignment
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['PUT'])
@@ -1274,6 +1275,12 @@ def generate_topic_specific_questions():
         # Input Validations
         if not topic:
             return jsonify({'success': False, 'message': 'Topic is required'}), 400
+
+        if not isinstance(num_questions, int):
+            return jsonify({'success': False, 'message': 'Invalid data type for num_questions'}), 400
+
+        if num_questions < 1:
+            return jsonify({'success': False, 'message': 'Number of questions must be at least 1'}), 400
 
         if not isinstance(num_questions, int):
             return jsonify({'success': False, 'message': 'Invalid data type for num_questions'}), 400
@@ -1568,7 +1575,6 @@ def generate_week_summary():
     # Return result
     return jsonify(result), 200 if result['success'] else 404
 
-
 # ---------------------------- Generate Mock Test ----------------------------
 @user_routes.route('/generate_mock', methods=['POST'])
 def generate_mock():
@@ -1629,6 +1635,7 @@ def generate_notes():
             'success': False,
             'topic': topic
         }), 404
+
 
 
 # ---------------------------- Helper Function: Map Questions to Topics ----------------------------
@@ -1698,6 +1705,7 @@ def topic_recommendation():
     suggestions = generate_topic_suggestions(wrong_questions)
 
     return jsonify(suggestions), 200
+
     
 # ---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
 
