@@ -437,3 +437,95 @@ def test_reset_chat_history_missing_user_id(client):
     assert response.status_code == 400
     assert response.json['success'] is False
     assert response.json['message'] == 'User ID is required'
+
+
+#----------------------------------- Test Case for KIA Chat History for User API --------------------------------
+
+    # Test case for successful retrieval of chat history
+def test_get_chat_history_success(client):
+    # Make the request
+    response = client.get('/chat_history/3')
+
+    # Assertions
+    assert response.status_code == 200
+    assert response.json['success'] is True
+    assert response.json['user_id'] == 3
+    assert response.json['message'] == 'Chat history retrieved successfully'
+
+# Test case for when no chat history exists
+def test_get_chat_history_empty(client):
+    # Make the request
+    response = client.get('/chat_history/5')
+
+    # Assertions
+    assert response.status_code == 404
+    assert response.json['success'] is False
+    assert response.json['user_id'] == 5
+    assert response.json['message'] == 'No chat history found for the given user ID'
+
+
+#----------------------------------- Test Case for Topic Recommendation API --------------------------------
+
+# Test case for successful recommendation generation based on incorrect answers
+def test_topic_recommendation_success(client):
+    # Mock data for incorrect answers
+    submitted_answers = [
+        {"question_id": 1, "selected_option_id": 2},
+        {"question_id": 2, "selected_option_id": 5}
+    ]
+
+    # Mock the generate_topic_suggestions function
+    mock_suggestions = {
+        'success': True,
+        'message': 'Topic suggestions generated successfully',
+        'suggestions': {
+            'overall_assessment': 'You need to improve on basic programming concepts',
+            'topic_suggestions': ['Python basics', 'Variables and data types'],
+            'general_tips': ['Practice coding regularly']
+        }
+    }
+
+    # Make the request
+    response = client.post('/topic_recommendation',
+                           json={"answers": submitted_answers})
+
+    # Assertions
+    assert response.status_code == 200
+    assert response.json == mock_suggestions
+
+# Test case for when all answers are correct
+def test_topic_recommendation_all_correct(client):
+    # Mock data for correct answers
+    submitted_answers = [
+        {"question_id": 1, "selected_option_id": 3},
+        {"question_id": 2, "selected_option_id": 6}
+    ]
+
+    # Make the request
+    response = client.post('/topic_recommendation',
+                           json={"answers": submitted_answers})
+
+    # Assertions
+    assert response.status_code == 200
+    assert response.json['success'] is True
+    assert "All answers are correct! Great job!" in response.json['message']
+    assert response.json['suggestions']['overall_assessment'] == "All questions were answered correctly. Excellent performance!"
+    assert len(response.json['suggestions']['topic_suggestions']) == 0
+
+# Test case for missing answers
+def test_topic_recommendation_missing_answers(client):
+    # Request with empty answers array
+    response = client.post('/topic_recommendation', json={"answers": []})
+
+    # Assertions
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'Answers are required'
+
+    # Request with missing answers field
+    response = client.post('/topic_recommendation', json={})
+
+    # Assertions
+    assert response.status_code == 400
+    assert response.json['success'] is False
+    assert response.json['message'] == 'Answers are required'
