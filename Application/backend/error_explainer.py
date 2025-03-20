@@ -10,12 +10,7 @@ _llm = None
 
 def get_api_key() -> str:
     """Get API key from environment variable"""
-<<<<<<< HEAD
     api_key = "AIzaSyAmZBJC_WzWLlaUdfiM3GMu9UkCjAWOJ0o"
-=======
-    #api_key = os.environ.get("GOOGLE_API_KEY")
-    api_key = "AIzaSyCV5i-u0oROux-Wt0TMqiRivVD6H0rGbjc"
->>>>>>> b8736b5e13c4bc0d1ebe08f35c530d382a48fb64
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable not set")
     return api_key
