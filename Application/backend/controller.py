@@ -1,15 +1,13 @@
 from flask import Blueprint, request, jsonify, render_template, send_file
+from flask_jwt_extended import jwt_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption,ProgrammingAssignment,ChatHistory
 from extension import db 
-from sqlalchemy.sql import text
 import os
-from token_validation import generate_token
+from token_validation import generate_token, get_current_user
 from datetime import datetime
 import pdfkit
 import platform
-import requests
-from flask_jwt_extended import create_access_token
 import subprocess
 import tempfile
 import requests
@@ -21,7 +19,6 @@ from error_explainer import explain_error
 from lecture_summarizer import summarize_lecture
 from kia_chatbot import initialize_database, save_chat_turn_to_db, load_chat_history_from_db, get_answer, clear_user_history
 from notes_generator import generate_topic_notes
-from kia_chatbot import save_chat_turn_to_db,initialize_database,load_chat_history_from_db
 from topic_suggestions import generate_topic_suggestions
 
 user_routes = Blueprint('user_routes', __name__)
@@ -68,7 +65,7 @@ def google_signup():
         # Check if user already exists - handle as login case
         user = User.query.filter_by(google_id=google_id).first()
         if user:
-            token = create_access_token(identity=user.id)
+            token = generate_token(user.id)
             return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
 
         # Check if email is already in use
@@ -88,7 +85,7 @@ def google_signup():
         db.session.commit()
 
         # Generate JWT token
-        token = create_access_token(identity=new_user.id)
+        token = generate_token(new_user.id)
         return jsonify({"Success": True, "access_token": token, "message": "User registered successfully"}), 201
 
     except Exception as e:
@@ -126,7 +123,7 @@ def google_login():
             return jsonify({"Success": False, "message": "User not registered"}), 404
 
         # Generate JWT token
-        token = create_access_token(identity=user.id)
+        token = generate_token(user.id)
         return jsonify({"Success": True, "access_token": token, "message": "Login successful"}), 200
 
     except Exception as e:
@@ -1664,32 +1661,10 @@ def map_question_to_topic(question_text):
 def topic_recommendation():
     """API to recommend study topics and learning resources based on incorrect answers"""
     data = request.get_json()
-    submitted_answers = data.get('answers', [])  # List of {"question_id": X, "selected_option_id": Y}
 
-    # Validate if answers list is provided
-    if not submitted_answers:
-        return jsonify({'message': 'Answers are required', 'success': False}), 400
+    wrong_questions = data.get('wrong_questions', [])
 
-    wrong_questions = []
-
-    # Iterate through submitted answers to identify incorrect answers
-    for answer in submitted_answers:
-        question_id = answer.get('question_id')
-        selected_option_id = answer.get('selected_option_id')
-
-        # Fetch the correct option for the question from the database
-        correct_option = QuestionOption.query.filter_by(
-            question_id=question_id,
-            is_correct=True
-        ).first()
-
-        # If the selected option is incorrect, add the question to wrong_questions
-        if correct_option and correct_option.id != selected_option_id:
-            question = AssignmentQuestion.query.get(question_id)
-            if question:
-                wrong_questions.append(question.question_text)
-
-    # If no incorrect questions found
+    # Validate if wrong_questions list is provided
     if not wrong_questions:
         return jsonify({
             'message': 'All answers are correct! Great job! 🎯',
@@ -1701,97 +1676,121 @@ def topic_recommendation():
             }
         }), 200
 
-    # Generate personalized suggestions
-    suggestions = generate_topic_suggestions(wrong_questions)
-
-    return jsonify(suggestions), 200
+    try:
+        suggestions = generate_topic_suggestions(wrong_questions)
+        return jsonify(suggestions), 200
+    except Exception as e:
+        print(f"Error generating topic suggestions: {str(e)}")
+        return jsonify({
+            'message': f'Error generating suggestions: {str(e)}',
+            'success': False,
+            'suggestions': {
+                'overall_assessment': "We encountered an issue analyzing your answers.",
+                'topic_suggestions': [],
+                'general_tips': ["Review the course materials for the topics you missed."]
+            }
+        }), 200
 
     
-# ---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
+#---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
 
-# # Automatically detect OS and set the wkhtmltopdf path
-# if platform.system() == "Windows":
-#     WKHTMLTOPDF_PATH = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
-# elif platform.system() == "Darwin":  # macOS
-#     WKHTMLTOPDF_PATH = "/usr/local/bin/wkhtmltopdf"
-# else:  # Linux
-#     WKHTMLTOPDF_PATH = "/usr/bin/wkhtmltopdf"
+# Automatically detect OS and set the wkhtmltopdf path
+if platform.system() == "Windows":
+    WKHTMLTOPDF_PATH = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+elif platform.system() == "Darwin":  # macOS
+    WKHTMLTOPDF_PATH = "/usr/local/bin/wkhtmltopdf"
+else:  # Linux
+    WKHTMLTOPDF_PATH = "/usr/bin/wkhtmltopdf"
 
-# # Ensure wkhtmltopdf exists
-# if not os.path.exists(WKHTMLTOPDF_PATH):
-#     raise FileNotFoundError(f"wkhtmltopdf not found at {WKHTMLTOPDF_PATH}")
+# Ensure wkhtmltopdf exists
+if not os.path.exists(WKHTMLTOPDF_PATH):
+    raise FileNotFoundError(f"wkhtmltopdf not found at {WKHTMLTOPDF_PATH}")
 
-# # Explicitly configure pdfkit
-# config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
+# Explicitly configure pdfkit
+config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
 
-# # Ensure reports directory exists
-# BASE_DIR = os.path.abspath(os.path.dirname(__file__)) # Get current directory
-# REPORTS_DIR = os.path.join(BASE_DIR, "reports")
-# os.makedirs(REPORTS_DIR, exist_ok=True)
+# Ensure reports directory exists
+BASE_DIR = os.path.abspath(os.path.dirname(__file__)) # Get current directory
+REPORTS_DIR = os.path.join(BASE_DIR, "reports")
+os.makedirs(REPORTS_DIR, exist_ok=True)
 
 
-# # ---------------------------------- Download Report (PDF) ----------------------------------
-# @user_routes.route('/download_report', methods=['POST'])
-# def download_report():
-#     """Generates and downloads a report as a PDF file."""
-#     data = request.json
-    
-#     # Extract data from the request
-#     username = data.get("username")  # Get the username from the request
-#     score = data.get("score")        # Get the score from the request
-#     total = data.get("total")        # Get the total score from the request
-#     suggestions = data.get("suggestions", [])  # Get suggestions list (default to empty if not provided)
-#     questions = data.get("questions", [])  # Get questions list (default to empty if not provided)
+# ---------------------------------- Download Report (PDF) ----------------------------------
+@user_routes.route('/download_report', methods=['POST'])
+# @jwt_required()
+def download_report():
+    """Generates and downloads a report as a PDF file."""
+    data = request.json
+    # user_id = get_current_user()
+    # user = User.query.get(user_id)
 
-#     # Validate required fields
-#     if not username or score is None or total is None:
-#         return jsonify({
-#             "message": "Invalid input: 'username', 'score', and 'total' are required fields.",
-#             "success": False
-#         }), 400
+    # username = user.username
+    username = "Saima Zainab Shroff"
+    score = data.get("score")        # Get the score from the request
+    total = data.get("total")        # Get the total score from the request
+    # Extract suggestions from potentially different formats
+    suggestions = data.get("suggestions", [])
+    if isinstance(suggestions, dict):
+        # Extract from dictionary format if needed
+        temp_suggestions = []
+        if "overall_assessment" in suggestions:
+            temp_suggestions.append(suggestions["overall_assessment"])
+        if "topic_suggestions" in suggestions:
+            for topic in suggestions["topic_suggestions"]:
+                temp_suggestions.extend([f"{topic['topic']}: {s}" for s in topic["suggestions"]])
+        if "general_tips" in suggestions:
+            temp_suggestions.extend(suggestions["general_tips"])
+        suggestions = temp_suggestions
 
-#     # Render the HTML template with the provided data
-#     html_content = render_template(
-#         "report.html",
-#         username=username,
-#         score=score,
-#         total=total,
-#         suggestions=suggestions,
-#         questions=questions
-#     )
-    
-#     # Define the file path for the generated PDF inside the "reports" folder
-#     pdf_file = os.path.join(REPORTS_DIR, f"MockTest_{username}.pdf")
+    questions = data.get("questions", [])  # Get questions list (default to empty if not provided)
 
-#     # Attempt to generate the PDF from the rendered HTML content
-#     try:
-#         pdfkit.from_string(html_content, pdf_file, configuration=config)
-#     except Exception as e:
-#         # Return a failure response with an error message if PDF generation fails
-#         return jsonify({
-#             "message": "PDF generation failed",
-#             "success": False,
-#             "error": str(e)
-#         }), 500
+    # Validate required fields
+    if not username or score is None or total is None:
+        return jsonify({
+            "message": "Invalid input: 'username', 'score', and 'total' are required fields.",
+            "success": False
+        }), 400
 
-#     # Attempt to send the generated PDF file as a download
-#     try:
-#         return send_file(
-#             pdf_file,
-#             as_attachment=True,
-#             download_name=f"MockTest_{username}.pdf"
-#         )
-#     except Exception as e:
-#         # Return a failure response if file sending fails
-#         return jsonify({
-#             "message": "File sending failed",
-#             "success": False,
-#             "error": str(e)
-#         }), 500
+    # Render the HTML template with the provided data
+    html_content = render_template(
+        "report.html",
+        username=username,
+        score=score,
+        total=total,
+        suggestions=suggestions,
+        questions=questions
+    )
 
-#     # Return a success response if the file is sent successfully
-#     return jsonify({
-#         "message": "PDF generated and downloaded successfully",
-#         "success": True,
-#         "file_path": pdf_file
-#     }), 200
+    # Define the file path for the generated PDF inside the "reports" folder
+    pdf_file = os.path.join(REPORTS_DIR, f"MockTest_{username}.pdf")
+
+    # Attempt to generate the PDF from the rendered HTML content
+    try:
+        pdfkit.from_string(html_content, pdf_file, configuration=config)
+    except Exception as e:
+        # Return a failure response with an error message if PDF generation fails
+        return jsonify({
+            "message": "PDF generation failed",
+            "success": False,
+            "error": str(e)
+        }), 500
+
+    # Attempt to send the generated PDF file as a download
+    try:
+        response = send_file(
+            pdf_file,
+            as_attachment=True,
+            download_name=f"MockTest_{username}.pdf"
+        )
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+
+        return response
+    except Exception as e:
+        # Return a failure response if file sending fails
+        return jsonify({
+            "message": "File sending failed",
+            "success": False,
+            "error": str(e)
+        }), 500

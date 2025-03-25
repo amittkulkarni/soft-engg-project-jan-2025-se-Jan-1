@@ -3,7 +3,6 @@ import axios from 'axios';
 // Create axios instance with base URL
 const api = axios.create({
     baseURL: process.env.VUE_APP_API_URL || 'http://localhost:5000',
-    timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'

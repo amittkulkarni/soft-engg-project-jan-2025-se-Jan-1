@@ -10,7 +10,7 @@
             <div class="avatar-container mb-3">
               <img :src="StudentIcon" class="avatar-img" alt="KIA Avatar" />
             </div>
-            <h1 class="welcome-heading">Hello, Amit!</h1>
+            <h1 class="welcome-heading">Hello, User!</h1>
             <div class="subtitle-container">
               <p class="lead mb-1">I am KIA, your virtual companion at SEEK.</p>
               <p class="text-muted">Select an option below or chat with me anytime.</p>
@@ -325,11 +325,6 @@ export default {
 </script>
 
 <style scoped>
-.dashboard-layout {
-  display: flex;
-  height: 100vh;
-}
-
 .main-content {
   flex: 1;
   display: flex;
@@ -337,8 +332,11 @@ export default {
 }
 
 .content-wrapper {
-  padding: 2rem;
+  padding: 2.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
   overflow-y: auto;
+  width: 100%;
 }
 
 .cards-container {
@@ -352,7 +350,6 @@ export default {
   margin: 0 auto;
 }
 
-/* Update your existing .markdown-output-container styles */
 .markdown-output-container {
   width: 100%; /* Makes it full width of parent */
   max-width: 1200px; /* Match this to your other divs' max-width */
@@ -540,13 +537,6 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
-}
-
-.content-wrapper {
-  padding: 2.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
 }
 
 /* Welcome Section */

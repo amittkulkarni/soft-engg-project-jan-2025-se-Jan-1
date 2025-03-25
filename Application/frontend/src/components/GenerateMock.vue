@@ -92,11 +92,14 @@
 
               <!-- Questions List -->
               <div v-for="(question, index) in questions" :key="index" class="question-container mb-4 p-4 rounded">
-                <div class="d-flex justify-content-between">
-                  <div class="question-text mb-3">
-                  <span><strong>{{ index + 1 }}. </strong><markdown-renderer :content="question.text"></markdown-renderer></span>
+                <div class="d-flex justify-content-start">
+                  <div class="question-number">
+                  <strong>{{ index + 1 }}. </strong>
                   </div>
-                  <span class="badge bg-secondary p-2" style="max-height: 25px">1 pt</span>
+                  <div class="question-text mb-3">
+                    <markdown-renderer :content="question.text"></markdown-renderer>
+                  </div>
+                  <!--<span class="badge bg-secondary p-2" style="height: 25px">2 pts</span>-->
                 </div>
 
                 <div class="options-container">
@@ -151,8 +154,14 @@
                 <button
                   v-if="showScore"
                   @click="downloadPDF"
-                  class="btn btn-outline-secondary">
-                  <i class="bi bi-download me-1"></i> Download Report
+                  class="btn btn-primary mt-3"
+                  :disabled="downloadingReport">
+                  <span v-if="downloadingReport">
+                    <i class="bi bi-hourglass-split me-1"></i> Generating...
+                  </span>
+                  <span v-else>
+                    <i class="bi bi-download me-1"></i> Download Report
+                  </span>
                 </button>
               </div>
 
@@ -169,22 +178,45 @@
 
                 <!-- AI Suggestions -->
                 <div class="suggestions-container mt-4">
-                  <h5 class="mb-3">Performance Assessment:</h5>
-                  <p class="mb-3">Based on your answers, here are some personalized suggestions to improve your understanding:</p>
+                  <!-- Loading indicator -->
+                  <div v-if="suggestionsLoading" class="text-center my-4">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Generating personalized suggestions...</span>
+                    </div>
+                    <p class="mt-2">Analyzing your performance and generating personalized suggestions...</p>
+                  </div>
 
-                  <!-- Topic-specific Suggestions -->
-                  <div class="topic-card p-3 mb-3 rounded border">
-                    <h6 class="mb-2">{{ selectedTopic }}</h6>
-                    <ul class="mb-2">
-                      <li v-for="(suggestion, index) in aiSuggestions" :key="'suggestion-' + index" class="mb-2">
-                        {{ suggestion }}
-                      </li>
-                    </ul>
-                    <div>
-                      <p class="mb-1"><strong>Recommended Resources:</strong></p>
-                      <ul>
-                        <li>Interactive tutorial: Understanding {{ selectedTopic }} fundamentals</li>
-                        <li>Practice exercises: Applied {{ selectedTopic }} problems</li>
+                  <div v-else>
+                    <h5 class="mb-3">Performance Assessment:</h5>
+                    <p class="mb-3">{{ overallAssessment }}</p>
+
+                    <!-- Topic-specific Suggestions -->
+                    <div v-if="topicSuggestions.length > 0" class="mb-4">
+                      <div v-for="(topic, index) in topicSuggestions" :key="'topic-' + index" class="topic-card p-3 mb-3 rounded border">
+                        <h6 class="mb-2">{{ topic.topic }}</h6>
+                        <ul class="mb-2">
+                          <li v-for="(suggestion, i) in topic.suggestions" :key="'suggestion-' + i" class="mb-2">
+                            {{ suggestion }}
+                          </li>
+                        </ul>
+                        <div v-if="topic.resources && topic.resources.length > 0">
+                          <p class="mb-1"><strong>Recommended Resources:</strong></p>
+                          <ul>
+                            <li v-for="(resource, r) in topic.resources" :key="'resource-' + r">
+                              {{ resource }}
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- General Tips -->
+                    <div v-if="generalTips.length > 0">
+                      <h5 class="mb-2">General Learning Tips:</h5>
+                      <ul class="general-tips-list">
+                        <li v-for="(tip, index) in generalTips" :key="'tip-' + index" class="mb-2">
+                          {{ tip }}
+                        </li>
                       </ul>
                     </div>
                   </div>
@@ -204,8 +236,7 @@ import AppNavbar from "@/components/AppNavbar.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
 import ChatWindow from "@/components/ChatWindow.vue";
 import MarkdownRenderer from "@/components/MarkdownRenderer.vue";
-import { jsPDF } from "jspdf";
-import axios from "axios";
+import api from "@/services/api.js";
 export default {
   name: "GenerateMock",
   components: {
@@ -224,11 +255,11 @@ export default {
       score: 0,
       showScore: false,
       loading: false,
-      aiSuggestions: [
-        "Review data manipulation techniques in Pandas library",
-        "Practice more with DataFrame operations and methods",
-        "Strengthen your understanding of CSV file handling in Python",
-      ]
+      topicSuggestions: [],
+      overallAssessment: "",
+      generalTips: [],
+      suggestionsLoading: false,
+      downloadingReport: false
     };
   },
   computed: {
@@ -240,7 +271,7 @@ export default {
     },
     isAllAnswered() {
       return this.answeredCount === this.questions.length && this.questions.length > 0;
-    }
+    },
   },
   methods: {
     fetchSuggestions() {
@@ -278,7 +309,7 @@ export default {
       };
 
       // Make the API call using Axios
-      axios.post('http://127.0.0.1:5000/generate_topic_specific_questions', requestData)
+      api.post('http://127.0.0.1:5000/generate_topic_specific_questions', requestData)
         .then(response => {
           // Axios automatically parses JSON and puts data in response.data
           const data = response.data;
@@ -315,73 +346,110 @@ export default {
           this.loading = false;
         });
     },
-    checkScore() {
+    async checkScore() {
       this.score = this.questions.reduce((total, question, index) => {
         return total + (this.userAnswers[index] === question.correct_answer ? 1 : 0);
       }, 0);
       this.showScore = true;
+      await this.getTopicRecommendations();
     },
-    downloadPDF() {
-      const doc = new jsPDF();
+    async getTopicRecommendations() {
+      try {
+        this.suggestionsLoading = true;
 
-      // Add title and header
-      doc.setFontSize(20);
-      doc.setTextColor(108, 27, 27);
-      doc.text(`${this.selectedTopic} - Practice Questions`, 20, 20);
+        // Prepare the answers data for the API
+        const answersData = this.questions.map((question, index) => {
+          // Create a synthetic ID for options based on index if needed
+          const optionId = this.userAnswers[index] ?
+            this.questions[index].options.indexOf(this.userAnswers[index]) :
+            null;
 
-      doc.setFontSize(14);
-      doc.setTextColor(0, 0, 0);
-      doc.text(`Score: ${this.score}/${this.questions.length} (${Math.round(this.score/this.questions.length*100)}%)`, 20, 30);
+          return {
+            question_id: index, // Using index as question_id for generated questions
+            selected_option_id: optionId
+          };
+        });
 
-      // Add date
-      const today = new Date();
-      doc.setFontSize(12);
-      doc.text(`Generated on: ${today.toLocaleDateString()}`, 20, 40);
+        // Call the topic recommendation API
+        const response = await api.post('topic_recommendation', {
+          answers: answersData
+        });
 
-      // Add performance assessment
-      doc.setFontSize(16);
-      doc.text("Performance Assessment:", 20, 55);
-
-      // Add suggestions
-      let yPosition = 65;
-      this.aiSuggestions.forEach((suggestion, index) => {
-        doc.setFontSize(12);
-        doc.text(`${index + 1}. ${suggestion}`, 25, yPosition);
-        yPosition += 10;
-      });
-
-      // Add questions and answers
-      yPosition += 10;
-      doc.setFontSize(16);
-      doc.text("Questions and Answers:", 20, yPosition);
-      yPosition += 10;
-
-      this.questions.forEach((question, index) => {
-        // Check if we need a new page
-        if (yPosition > 270) {
-          doc.addPage();
-          yPosition = 20;
+        if (response.data.success) {
+          // Store the detailed suggestion data
+          const suggestionData = response.data.suggestions;
+          this.overallAssessment = suggestionData.overall_assessment;
+          this.topicSuggestions = suggestionData.topic_suggestions || [];
+          this.generalTips = suggestionData.general_tips || [];
         }
+      } catch (error) {
+        console.error('Error fetching topic recommendations:', error);
+        // Set fallback data if API fails
+        this.overallAssessment = "Based on your answers, here are some personalized suggestions:";
+        this.topicSuggestions = [{
+          topic: this.selectedTopic,
+          suggestions: [
+            "Review key concepts in " + this.selectedTopic,
+            "Practice more with example problems",
+            "Focus on understanding the underlying principles"
+          ]
+        }];
+        this.generalTips = [
+          "Regular practice is key to mastery",
+          "Try explaining concepts to others to deepen understanding"
+        ];
+      } finally {
+        this.suggestionsLoading = false;
+      }
+    },
+    async downloadPDF() {
+      this.downloadingReport = true;
+      try {
+        // Prepare data for API call
+        const reportData = {
+          score: this.score,
+          total: this.questions.length, // Use a valid total value
+          suggestions: [
+            this.overallAssessment,
+            ...this.topicSuggestions.flatMap(topic =>
+              topic.suggestions.map(suggestion => `${topic.topic}: ${suggestion}`)
+            ),
+            ...this.generalTips
+          ],
+          questions: this.questions.map((question, index) => ({
+            text: question.text,
+            user_answer: this.userAnswers[index] || 'Not answered',
+            correct_answer: question.correct_answer,
+            is_correct: this.userAnswers[index] === question.correct_answer
+          }))
+        };
 
-        doc.setFontSize(12);
-        doc.text(`${index + 1}. ${question.text}`, 20, yPosition);
-        yPosition += 10;
+        // Call the API with proper headers
+        const response = await api.post('download_report', reportData, {
+          responseType: 'blob'
+        });
 
-        doc.text(`Your answer: ${this.userAnswers[index] || 'Not answered'}`, 25, yPosition);
-        yPosition += 8;
+        const filename = `${this.selectedTopic || 'Quiz'}_Report.pdf`;
 
-        if (this.userAnswers[index] !== question.correct_answer) {
-          doc.setTextColor(0, 150, 0);
-          doc.text(`Correct answer: ${question.correct_answer}`, 25, yPosition);
-          doc.setTextColor(0, 0, 0);
-        } else {
-          doc.text("✓ Correct", 25, yPosition);
-        }
+        // Create download link
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
 
-        yPosition += 15;
-      });
-
-      doc.save(`${this.selectedTopic}_Practice_Questions.pdf`);
+        // Clean up
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(link);
+        }, 100);
+      } catch (error) {
+        console.error('Error downloading report:', error);
+        alert('Failed to download report. Please try again later.');
+      } finally {
+        this.downloadingReport = false;
+      }
     },
     getScoreClass(scorePercentage) {
       if (scorePercentage >= 0.9) return 'bg-success';
@@ -477,7 +545,13 @@ export default {
   box-shadow: 0 5px 15px rgba(0,0,0,0.08);
 }
 
+.question-number {
+  display: inline-block;
+  margin: 10px;
+}
+
 .question-text {
+  display: inline-block;
   font-size: 1.1rem;
 }
 

@@ -105,9 +105,13 @@
             <!-- Questions Section -->
             <div v-for="(question, index) in questions" :key="question.id" class="question-container mb-4 p-4 rounded">
               <div class="d-flex justify-content-between">
+                <div>
+                <div class="question-number">
+                <strong>{{ index + 1 }}. </strong>
+                </div>
                 <div class="question-text mb-3">
-                  <strong>{{ index + 1 }}. </strong>
                   <markdown-renderer :content="question.text"></markdown-renderer>
+                </div>
                 </div>
                 <span class="badge bg-secondary p-2" style="height: 25px">{{ question.points }} pts</span>
               </div>
@@ -163,9 +167,15 @@
 
               <button
                 v-if="showScore"
-                @click="downloadPDF"
-                class="btn btn-outline-secondary">
-                <i class="bi bi-download me-1"></i> Download Report
+                @click="downloadReport"
+                class="btn btn-primary"
+                :disabled="downloadingReport">
+                <span v-if="downloadingReport">
+                  <i class="bi bi-hourglass-split me-1"></i> Generating...
+                </span>
+                <span v-else>
+                  <i class="bi bi-download me-1"></i> Download Report
+                </span>
               </button>
 
               <button
@@ -186,12 +196,50 @@
                 </div>
               </div>
 
-              <h5 class="mt-4 mb-2">Suggestions to Improve:</h5>
-              <ul class="suggestions-list">
-                <li v-for="(suggestion, index) in suggestions" :key="'suggestion-' + index">
-                  {{ suggestion }}
-                </li>
-              </ul>
+              <!-- Suggestions Loading Indicator -->
+              <div v-if="suggestionsLoading" class="text-center my-4">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Generating personalized suggestions...</span>
+                </div>
+                <p class="mt-2">Analyzing your performance and generating personalized suggestions...</p>
+              </div>
+
+              <!-- Enhanced Suggestions Section -->
+              <div v-else class="suggestions-container mt-4">
+                <h5 class="mb-3">Performance Assessment:</h5>
+                <p class="mb-3">{{ overallAssessment }}</p>
+
+                <!-- Topic-specific Suggestions -->
+                <div v-if="topicSuggestions.length > 0" class="mb-4">
+                  <h5 class="mb-3">Topics to Review:</h5>
+                  <div v-for="(topic, index) in topicSuggestions" :key="'topic-' + index" class="topic-card p-3 mb-3 rounded border">
+                    <h6 class="mb-2">{{ topic.topic }}</h6>
+                    <ul class="mb-2">
+                      <li v-for="(suggestion, i) in topic.suggestions" :key="'suggestion-' + i" class="mb-1">
+                        {{ suggestion }}
+                      </li>
+                    </ul>
+                    <div v-if="topic.resources && topic.resources.length > 0">
+                      <p class="mb-1"><strong>Recommended Resources:</strong></p>
+                      <ul>
+                        <li v-for="(resource, r) in topic.resources" :key="'resource-' + r">
+                          {{ resource }}
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- General Tips -->
+                <div v-if="generalTips.length > 0">
+                  <h5 class="mb-2">General Learning Tips:</h5>
+                  <ul class="general-tips-list">
+                    <li v-for="(tip, index) in generalTips" :key="'tip-' + index" class="mb-2">
+                      {{ tip }}
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -206,8 +254,7 @@ import AppSidebar from "@/components/AppSidebar.vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import ChatWindow from "@/components/ChatWindow.vue";
 import MarkdownRenderer from "@/components/MarkdownRenderer.vue";
-import { jsPDF } from "jspdf";
-import axios from 'axios';
+import api from "@/services/api.js"
 
 export default {
   name: "MockQuizPage",
@@ -236,6 +283,11 @@ export default {
       score: 0,
       showScore: false,
       suggestions: [],
+      topicSuggestions: [],
+      overallAssessment: '',
+      generalTips: [],
+      suggestionsLoading: false,
+      downloadingReport: false
     };
   },
   computed: {
@@ -264,7 +316,7 @@ export default {
         this.error = null;
 
         // Call the API endpoint
-        const response = await axios.post('http://127.0.0.1:5000/generate_mock', {
+        const response = await api.post('http://127.0.0.1:5000/generate_mock', {
           quiz_type: quizType,
           num_questions: 10 // Fixed number of questions
         });
@@ -284,11 +336,14 @@ export default {
             text: q.question,
             type: 'multiple_choice',
             points: 5,
-            options: Object.entries(q.options).map(([key, optText]) => ({
-              id: `opt-${index}-${key}`,
-              text: `${key}. ${optText}`, // Include the option letter (A, B, C, D) in the display text
-              isCorrect: key === q.answer // Compare the key (A, B, C, D) with the answer
-            }))
+            options: q.options.map((optText, optIndex) => {
+              const optionLabel = String.fromCharCode(65 + optIndex); // 65 is ASCII for 'A'
+              return {
+                id: `opt-${index}-${optionLabel}`,
+                text: `${optText}`,
+                isCorrect: optText === q.correct_answer
+              };
+            })
           }));
 
           // Initialize answers and extract correct answers
@@ -360,86 +415,104 @@ export default {
       ];
     },
 
-    generateSuggestions(wrongQuestions) {
-      // Generate more specific suggestions based on wrong answers
-      const specificSuggestions = [];
+    async generateSuggestions() {
+      try {
+        this.suggestionsLoading = true;
 
-      if (wrongQuestions.length > 0) {
-        specificSuggestions.push(`Review concepts related to: ${wrongQuestions.slice(0, 2).join(', ')}${wrongQuestions.length > 2 ? ', and others.' : '.'}`);
-      }
+        const wrongQuestions = this.questions
+          .filter((q, index) => this.userAnswers[index] !== this.correctAnswers[index])
+          .map(q => q.text);
+        console.log(wrongQuestions)
+        // Call the topic recommendation API
+        const response = await api.post('topic_recommendation', {
+          wrong_questions: wrongQuestions
+        });
+        console.log(response)
+        if (response.data.success) {
+          // Store the detailed suggestion data
+          const suggestionData = response.data.suggestions;
+          this.overallAssessment = suggestionData.overall_assessment;
+          this.topicSuggestions = suggestionData.topic_suggestions || [];
+          this.generalTips = suggestionData.general_tips || [];
 
-      if (this.score / this.totalPossiblePoints < 0.7) {
-        specificSuggestions.push("Consider revisiting the course materials before proceeding to more advanced topics.");
-      }
+          // Also maintain the flat suggestions list for backward compatibility
+          this.suggestions = [];
 
-      if (specificSuggestions.length > 0) {
-        this.suggestions = [...specificSuggestions, ...this.suggestions.slice(0, 2)];
+          // Add overall assessment as first suggestion
+          if (this.overallAssessment) {
+            this.suggestions.push(this.overallAssessment);
+          }
+
+          // Add specific topic suggestions
+          if (this.topicSuggestions && this.topicSuggestions.length > 0) {
+            this.topicSuggestions.forEach(topic => {
+              if (topic.suggestions && topic.suggestions.length > 0) {
+                this.suggestions.push(`Topic: ${topic.topic} - ${topic.suggestions[0]}`);
+              }
+            });
+          }
+
+          // Add general tips
+          if (this.generalTips && this.generalTips.length > 0) {
+            this.generalTips.forEach(tip => {
+              this.suggestions.push(tip);
+            });
+          }
+        } else {
+          // Fallback to default suggestions if API fails
+          this.generateDefaultSuggestions();
+        }
+      } catch (error) {
+        console.error('Error fetching topic suggestions:', error);
+        // Fallback to default suggestions
+        this.generateDefaultSuggestions();
+      } finally {
+        this.suggestionsLoading = false;
       }
     },
+  async downloadReport() {
+    this.downloadingReport = true;
+    try {
+      // Prepare data to send to the API
+      const reportData = {
+        username: 'Saima Zainab Shroff', // Placeholder username
+        score: this.score,
+        total: this.questions.length * 5,
+        suggestions: this.suggestions,
+        questions: this.questions.map((question, index) => ({
+          text: question.text,
+          user_answer: this.userAnswers[index] || 'Not answered',
+          correct_answer: question.options.find(opt => opt.isCorrect).text,
+          is_correct: this.userAnswers[index] === question.correct_answer
+        }))
+      };
 
-    downloadPDF() {
-      const doc = new jsPDF();
-
-      // Add title and basic info
-      doc.setFontSize(16);
-      doc.text(this.mockQuiz.title, 20, 20);
-
-      doc.setFontSize(12);
-      doc.text(`Generated on: ${this.getCurrentDate()}`, 20, 38);
-
-      // Add score
-      doc.setFontSize(14);
-      doc.text(`Your Score: ${this.score}/${this.totalPossiblePoints} (${Math.round(this.score/this.totalPossiblePoints*100)}%)`, 20, 50);
-
-      // Add suggestions
-      doc.setFontSize(14);
-      doc.text("Suggestions to Improve:", 20, 65);
-
-      let yPosition = 75;
-      this.suggestions.forEach(suggestion => {
-        doc.setFontSize(12);
-        doc.text(`• ${suggestion}`, 25, yPosition);
-        yPosition += 10;
+      // Make API call with responseType blob for file download
+      const response = await api.post('download_report', reportData, {
+        responseType: 'blob' // Important for file downloads
       });
 
-      // Add question details
-      yPosition += 10;
-      doc.setFontSize(14);
-      doc.text("Question Details:", 20, yPosition);
-      yPosition += 10;
+      // Create a download link and trigger it
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Quiz_Report.pdf');
+      document.body.appendChild(link);
+      link.click();
 
-      this.questions.forEach((question, index) => {
-        // Check if we need a new page
-        if (yPosition > 270) {
-          doc.addPage();
-          yPosition = 20;
-        }
+      // Clean up
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(link);
+      }, 100);
 
-        doc.setFontSize(12);
-        // Truncate long questions to fit on PDF
-        const questionText = question.text.length > 65
-          ? question.text.substring(0, 65) + '...'
-          : question.text;
-        doc.text(`${index + 1}. ${questionText}`, 25, yPosition);
-        yPosition += 8;
-
-        const correctOption = question.options.find(opt => opt.id === this.correctAnswers[index]);
-        const userOption = question.options.find(opt => opt.id === this.userAnswers[index]);
-
-        const isCorrect = this.userAnswers[index] === this.correctAnswers[index];
-        doc.text(`Your answer: ${userOption ? userOption.text : 'None'} ${isCorrect ? '✓' : '✗'}`, 30, yPosition);
-        yPosition += 8;
-
-        if (!isCorrect) {
-          doc.text(`Correct answer: ${correctOption ? correctOption.text : 'N/A'}`, 30, yPosition);
-          yPosition += 8;
-        }
-
-        yPosition += 5;
-      });
-
-      doc.save(`${this.mockQuiz.title}_Report.pdf`);
-    },
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      alert('Failed to download report. Please try again.');
+    } finally {
+      this.downloadingReport = false;
+    }
+  },
 
     getCurrentDate() {
       const now = new Date();
@@ -492,7 +565,13 @@ export default {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+.question-number {
+  display: inline-block;
+  margin: 10px;
+}
+
 .question-text {
+  display: inline-block;
   font-size: 1.1rem;
 }
 
@@ -610,6 +689,19 @@ export default {
   border-left: 4px solid #28a745;
   border-radius: 8px;
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.topic-card {
+  background-color: #f8f9fa;
+  transition: all 0.2s;
+}
+
+.topic-card:hover {
+  background-color: #f0f0f0;
+}
+
+.general-tips-list li {
+  margin-bottom: 10px;
 }
 
 /* Responsive adjustments */

@@ -56,7 +56,7 @@
             <div v-for="(question, index) in questions" :key="question.id" class="question-container mb-4 p-4 rounded">
               <div class="d-flex justify-content-between">
                 <p class="question-text mb-3"><strong>{{ index + 1 }}. {{ question.text }}</strong></p>
-                <span class="badge bg-secondary">{{ question.points }} pts</span>
+                <span class="badge bg-secondary" style="height: 25px">{{ question.points }} pts</span>
               </div>
 
               <div class="options-container">
@@ -111,8 +111,14 @@
               <button
                 v-if="showScore"
                 @click="downloadPDF"
-                class="btn btn-outline-secondary">
-                <i class="bi bi-download me-1"></i> Download Report
+                class="btn btn-primary mt-3"
+                :disabled="downloadingReport">
+                <span v-if="downloadingReport">
+                  <i class="bi bi-hourglass-split me-1"></i> Generating...
+                </span>
+                <span v-else>
+                  <i class="bi bi-download me-1"></i> Download Report
+                </span>
               </button>
             </div>
 
@@ -179,11 +185,10 @@
 </template>
 
 <script>
-import axios from 'axios';
+import api from "@/services/api.js"
 import AppSidebar from "@/components/AppSidebar.vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import ChatWindow from "@/components/ChatWindow.vue";
-import { jsPDF } from "jspdf";
 
 export default {
   name: "AssignmentsPage",
@@ -214,6 +219,7 @@ export default {
       overallAssessment: '',
       generalTips: [],
       suggestionsLoading: false,
+      downloadingReport: false
     };
   },
   computed: {
@@ -265,7 +271,7 @@ export default {
         const assignmentId = this.$route.params.id;
 
         // Fetch assignment data from API
-        const response = await axios.get(`http://127.0.0.1:5000/assignments/${assignmentId}`);
+        const response = await api.get(`http://127.0.0.1:5000/assignments/${assignmentId}`);
 
         if (response.data.success) {
           const assignmentData = response.data.assignment;
@@ -362,7 +368,7 @@ async generateSuggestions() {
     }));
 
     // Call the topic recommendation API
-    const response = await axios.post('http://127.0.0.1:5000/topic_recommendation', {
+    const response = await api.post('http://127.0.0.1:5000/topic_recommendation', {
       answers: answersData
     });
 
@@ -408,72 +414,62 @@ async generateSuggestions() {
     this.suggestionsLoading = false;
   }
 },
+async downloadPDF() {
+  this.downloadingReport = true;
+  try {
+    // Prepare data for API call
+    const reportData = {
+      score: this.score,
+      total: this.totalPossiblePoints,
+      suggestions: [
+        // Format all suggestion types into a single array
+        this.overallAssessment,
+        ...this.topicSuggestions.flatMap(topic =>
+          topic.suggestions.map(suggestion => `${topic.topic}: ${suggestion}`)
+        ),
+        ...this.generalTips
+      ],
+      questions: this.questions.map((question, index) => {
+        const userAnswer = this.userAnswers[index];
+        const correctAnswerId = this.correctAnswers[index];
 
-    downloadPDF() {
-      const doc = new jsPDF();
+        return {
+          id: question.id,
+          text: question.text,
+          user_answer: question.options.find(opt => opt.id === userAnswer)?.text || 'Not answered',
+          correct_answer: question.options.find(opt => opt.id === correctAnswerId)?.text || 'N/A',
+          is_correct: userAnswer === correctAnswerId
+        };
+      })
+    };
 
-      // Add title and basic info
-      doc.setFontSize(16);
-      doc.text(this.assignment.title, 20, 20);
+    // Call the API endpoint with proper response type for file download
+    const response = await api.post('http://127.0.0.1:5000/download_report', reportData, {
+      responseType: 'blob' // Important: tells axios to treat the response as binary data
+    });
 
-      doc.setFontSize(12);
-      doc.text(`Assignment Type: ${this.formatType(this.assignment.assignment_type)}`, 20, 30);
-      doc.text(`Due Date: ${this.formatDate(this.assignment.due_date)}`, 20, 38);
+    // Create a download link for the PDF
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${this.assignment.title}_Report.pdf`);
+    document.body.appendChild(link);
+    link.click();
 
-      // Add score
-      doc.setFontSize(14);
-      doc.text(`Your Score: ${this.score}/${this.totalPossiblePoints} (${Math.round(this.score/this.totalPossiblePoints*100)}%)`, 20, 50);
+    // Clean up
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+    }, 100);
 
-      // Add suggestions
-      doc.setFontSize(14);
-      doc.text("Suggestions to Improve:", 20, 65);
-
-      let yPosition = 75;
-      this.suggestions.forEach(suggestion => {
-        doc.setFontSize(12);
-        doc.text(`• ${suggestion}`, 25, yPosition);
-        yPosition += 10;
-      });
-
-      // Add question details
-      yPosition += 10;
-      doc.setFontSize(14);
-      doc.text("Question Details:", 20, yPosition);
-      yPosition += 10;
-
-      this.questions.forEach((question, index) => {
-        // Check if we need a new page
-        if (yPosition > 270) {
-          doc.addPage();
-          yPosition = 20;
-        }
-
-        doc.setFontSize(12);
-        // Truncate long questions to fit on PDF
-        const questionText = question.text.length > 65
-          ? question.text.substring(0, 65) + '...'
-          : question.text;
-        doc.text(`${index + 1}. ${questionText}`, 25, yPosition);
-        yPosition += 8;
-
-        const correctOption = question.options.find(opt => opt.id === this.correctAnswers[index]);
-        const userOption = question.options.find(opt => opt.id === this.userAnswers[index]);
-
-        const isCorrect = this.userAnswers[index] === this.correctAnswers[index];
-        doc.text(`Your answer: ${userOption ? userOption.text : 'None'} ${isCorrect ? '✓' : '✗'}`, 30, yPosition);
-        yPosition += 8;
-
-        if (!isCorrect) {
-          doc.text(`Correct answer: ${correctOption ? correctOption.text : 'N/A'}`, 30, yPosition);
-          yPosition += 8;
-        }
-
-        yPosition += 5;
-      });
-
-      doc.save(`${this.assignment.title}_Report.pdf`);
-    },
-
+  } catch (error) {
+    console.error('Error downloading report:', error);
+    // Show error message to user
+    alert('Failed to download report. Please try again later.');
+  } finally {
+    this.downloadingReport = false;
+  }
+},
     formatDate(dateString) {
       if (!dateString) return 'N/A';
       const date = new Date(dateString);

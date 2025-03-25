@@ -19,22 +19,26 @@ _vector_store = None
 _llm = None
 _mcq_cache = {}
 
+
 # Define the schema for MCQ output
 class MCQQuestion(BaseModel):
     question: str = Field(description="The question text")
     options: List[str] = Field(description="List of 4 options")
     correct_answer: str = Field(description="The correct answer")
 
+
 class MCQSet(BaseModel):
     questions: List[MCQQuestion] = Field(description="List of MCQ questions")
 
+
 def get_api_key() -> str:
     """Get API key for Google Generative AI"""
-    #api_key =  os.environ.get("GOOGLE_API_KEY")
+    # api_key =  os.environ.get("GOOGLE_API_KEY")
     api_key = "AIzaSyCV5i-u0oROux-Wt0TMqiRivVD6H0rGbjc"
     if not api_key:
         raise ValueError("Google API key is not set")
     return api_key
+
 
 def get_embeddings():
     """Singleton for embeddings"""
@@ -44,6 +48,7 @@ def get_embeddings():
             model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
     return _embeddings
+
 
 def get_vector_store(persist_directory: str = "vector_store"):
     """Singleton for vector store"""
@@ -56,6 +61,7 @@ def get_vector_store(persist_directory: str = "vector_store"):
         )
     return _vector_store
 
+
 def get_llm():
     """Singleton for language model"""
     global _llm
@@ -66,6 +72,7 @@ def get_llm():
             temperature=0.7
         )
     return _llm
+
 
 def get_weeks_range(quiz_type: str) -> str:
     """Determine weeks range based on quiz type"""
@@ -94,37 +101,37 @@ CONTENT REQUIREMENTS:
 - Questions should test application of concepts rather than simple memorization
 
 CODE INTEGRATION:
-- At least 30% of questions should include Python code snippets
+- At least 30% of questions should include Python code snippets in the QUESTION text only
 - Use relevant ML libraries: scikit-learn, NumPy, pandas, TensorFlow, PyTorch
-- Format all code with proper syntax highlighting: ``````
+- Format all code with triple backticks and language identifier
+- When including code in JSON, you MUST escape newlines with \\n and backticks with \\`
 - Ensure code snippets are realistic, error-free, and follow best practices
 
 QUESTION STRUCTURE:
 - Each question must have exactly 4 options (A, B, C, D)
 - Ensure only ONE option is correct, with no ambiguity or partially correct answers
 - Make incorrect options plausible but clearly wrong to a knowledgeable student
-- Options won't have code snippets, only questions will have code snippets
-- Options shouldn't have any number of backticks whatsoever
+- CRITICALLY IMPORTANT: Options MUST NEVER contain any code snippets or backtick characters
+- Instead of code in options, use descriptive text about what the code would do or return
 - Avoid very similar options that differ only in minor details
 - Each question should test a distinct concept or skill
 
-CONTEXT UTILIZATION:
-- Carefully analyze the provided context material
-- Create questions that directly relate to concepts and techniques mentioned in the context
-- Maintain appropriate difficulty for the course level
-
-OUTPUT FORMAT:
-The output must be valid JSON matching this schema:
-            {{{{
-            "questions": [
-            {{{{
-                "question": "Full question text including any code snippets",
-                "options": ["Option A", "Option B", "Option C", "Option D"],
-                "correct_answer": "The exact text of the correct option (must match one option exactly)"
-            }}}},
-// Additional questions...
-]
+EXAMPLE OF PROPER FORMAT:
+{{{{
+"question": "What will be the output of the following code?\\n\\n``````",
+"options": ["2.5", "2", "The mean of all elements", "Error, as NumPy arrays don't have a mean() method"],
+"correct_answer": "2.5"
+}}}},
+{{{{
+"question": "Which of the following describes what the function below does?\\n\\n``````",
+"options": ["It centers the data to zero mean and unit variance", "It normalizes the data to a range between 0 and 1", "It applies one-hot encoding to categorical features", "It reduces the dimensionality of the data"],
+"correct_answer": "It centers the data to zero mean and unit variance"
 }}}}
+
+FINAL CHECK BEFORE SUBMISSION:
+- Verify that no options contain code snippets or backticks
+- Ensure code in questions is properly escaped with \\n and \\`
+- Confirm each question has exactly one correct answer that matches an option exactly
 
 Context for question generation: {{context}}
             Number of questions to generate: {{num_questions}}"""
@@ -219,6 +226,7 @@ Dictionary containing generated MCQs and metadata
             "quiz_type": quiz_type,
             "questions": []
         }
+
 
 def clear_cache():
     """Clear all MCQ caches"""

@@ -23,7 +23,6 @@ _suggestions_cache = {}
 class TopicSuggestion(BaseModel):
     topic: str = Field(description="The ML topic that needs improvement")
     suggestions: List[str] = Field(description="List of learning suggestions for this topic")
-    resources: List[str] = Field(description="Recommended resources to study this topic")
 
 class SuggestionSet(BaseModel):
     overall_assessment: str = Field(description="General assessment of the student's performance")
@@ -81,7 +80,6 @@ suggestions to help the student improve.
 Guidelines:
 - Identify 2-4 key ML topics that the student needs to improve based on the wrong questions
 - For each topic, provide 2-3 specific learning suggestions
-- For each topic, recommend 1-2 resources (textbooks, websites, or practice exercises)
 - Include general learning tips that apply across all topics
 - Provide an overall assessment of the student's understanding and learning path
 - Keep suggestions practical, specific, and actionable
@@ -95,8 +93,7 @@ Return your response in the following JSON format:
 "topic_suggestions": [
 {{
 "topic": "Topic name",
-"suggestions": ["Suggestion 1", "Suggestion 2"],
-"resources": ["Resource 1", "Resource 2"]
+"suggestions": ["Suggestion 1", "Suggestion 2"]
 }}
 ],
 "general_tips": ["General tip 1", "General tip 2"]

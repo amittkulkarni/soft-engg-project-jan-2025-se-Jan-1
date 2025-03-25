@@ -156,14 +156,14 @@
                       <h6 class="mb-1">Lecture Slides</h6>
                       <small class="text-muted">PDF 2.4 MB</small>
                     </div>
-                    <button class="btn btn-sm btn-outline-primary ms-auto">Download</button>
+                    <a href='https://drive.google.com/drive/folders/1KHTCerz-AiCm6criGXI8_hfU4tmgPwf5' class="btn btn-sm btn-outline-primary ms-auto">Download</a>
                   </div>
 
                   <div class="resource-item p-3 mb-2 border rounded d-flex align-items-center">
                     <i class="bi bi-link-45deg resource-icon me-3"></i>
                     <div>
                       <h6 class="mb-1">Additional Reading</h6>
-                      <small class="text-muted">External Link</small>
+                      <a href="https://drive.google.com/drive/folders/1wjY0KFuMDG2XwLUySf0R5uvxMaDzaa0v?usp=sharing" class="text-muted">External Link</a>
                     </div>
                     <a href="#" class="btn btn-sm btn-outline-primary ms-auto">Open</a>
                   </div>
