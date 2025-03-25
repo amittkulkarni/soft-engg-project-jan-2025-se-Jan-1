@@ -598,13 +598,15 @@ export default {
   border-left: 4px solid #0d6efd;
 }
 .quiz-buttons-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
   gap: 20px;
   margin-top: 30px;
 }
 
 .quiz-button {
+  flex: 1;
   display: flex;
   align-items: center;
   padding: 20px;
@@ -614,6 +616,14 @@ export default {
   transition: all 0.3s ease;
   text-align: left;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-width: 0; /* Prevents flex items from overflowing */
+}
+
+/* Only allow wrapping on truly small screens (mobile) */
+@media (max-width: 768px) {
+  .quiz-buttons-container {
+    flex-direction: column;
+  }
 }
 
 .quiz-button:hover {
