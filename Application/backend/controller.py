@@ -1368,31 +1368,14 @@ def generate_topic_specific_questions():
 def video_summarizer():
     # Parse request data
     data = request.get_json()
-    lecture_id = data.get('lecture_id')
+    week_id = data.get('week_id')
 
     # Validate input
-    if not lecture_id:
-        return jsonify({'message': 'lecture_id is required', 'success': False}), 400
-
-    # Extract week and lecture number from lecture_id
-    try:
-        lecture = db.session.query(
-            Week.week_number,
-            Lecture.id.label('lecture_id'),   # Add Lecture.id
-            Lecture.title.label('lecture_title')
-        ).join(Week).filter(Lecture.id == lecture_id).first()
-
-        if not lecture:
-            return jsonify({'message': 'Lecture not found', 'success': False}), 404
-
-        print(lecture)
-        week = lecture.week_number
-        lecture_num =lecture.lecture_id
-    except ValueError:
-        return jsonify({'message': 'Invalid lecture_id format.', 'success': False}), 400
+    if not week_id:
+        return jsonify({'message': 'week_id is required', 'success': False}), 400
 
     # Generate summary using lecture_summarizer logic
-    result = summarize_lecture(week, lecture_num)
+    result = summarize_lecture(week_id, 1)
 
     return jsonify(result), 200 if result['success'] else 404
 
@@ -1632,28 +1615,6 @@ def generate_notes():
             'success': False,
             'topic': topic
         }), 404
-
-
-
-# ---------------------------- Helper Function: Map Questions to Topics ----------------------------
-def map_question_to_topic(question_text):
-    '''Maps questions to relevant topics based on keywords'''
-    # Define a dictionary mapping topics to relevant keywords
-    topic_keywords = {
-        "Data Visualization Libraries": ["matplotlib", "seaborn", "data visualization"],
-        "Histogram & Distribution Plots": ["histogram", "distribution", "continuous variable"],
-        "Scatter Plot & Relationships": ["scatter plot", "relationship", "two continuous variables"],
-        "Categorical Data Visualization": ["bar chart", "pie chart", "categorical data"],
-        "Advantages of Seaborn": ["seaborn", "themes", "aesthetics", "syntax", "pandas dataframes"]
-    }
-
-    # Check if any keyword matches the question text
-    for topic, keywords in topic_keywords.items():
-        if any(keyword in question_text.lower() for keyword in keywords):
-            return topic
-
-    # Default to a general topic if no match is found
-    return "General Data Visualization Concepts"
 
 
 # ---------------------------- Topic Recommendation ----------------------------

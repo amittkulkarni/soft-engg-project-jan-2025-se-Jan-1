@@ -63,6 +63,7 @@
 
 <script>
 import { GoogleLogin } from 'vue3-google-login'
+import api from "@/services/api.js"
 export default {
     name: "RegisterPage",
     components: { GoogleLogin },
@@ -73,11 +74,41 @@ export default {
             password: "",
         };
     },
+    mounted() {
+        // Check if coming from another page within the app
+        if (document.referrer.includes(window.location.origin)) {
+          window.location.reload();
+        }
+    },
     methods: {
-        register() {
-            alert("Registration successful!");
-            this.$router.push("/course");
-        },
+    async register() {
+        try {
+            // Send POST request to signup endpoint
+            const response = await api.post('http://localhost:5000/signup', {
+                username: this.name,
+                email: this.email,
+                password: this.password,
+                role: 'student'
+            });
+            await this.$router.push("/course");
+            alert(response.data.message);
+        } catch(error) {
+                // Handle errors
+                if (error.response) {
+                    // The request was made and the server responded with an error status
+                    alert(error.response.data.message || "Registration failed");
+                    console.error("Registration error:", error.response.data);
+                } else if (error.request) {
+                    // The request was made but no response was received
+                    alert("No response from server. Please try again later.");
+                    console.error("No response received:", error.request);
+                } else {
+                    // Something happened in setting up the request
+                    alert("Error setting up request: " + error.message);
+                    console.error("Request setup error:", error.message);
+                }
+            }
+    },
         handleGoogleCallback(response) {
             const access_token = response.access_token;
 

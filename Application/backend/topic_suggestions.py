@@ -1,5 +1,4 @@
 import warnings
-from functools import lru_cache
 from typing import Dict, List, Any
 import os
 
@@ -17,7 +16,6 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 _embeddings = None
 _vector_store = None
 _llm = None
-_suggestions_cache = {}
 
 # Define the schema for suggestions output
 class TopicSuggestion(BaseModel):
@@ -68,42 +66,48 @@ def get_llm():
         )
     return _llm
 
-@lru_cache(maxsize=20)
 def get_suggestions_prompt() -> ChatPromptTemplate:
     return ChatPromptTemplate.from_messages([
         (
             "system",
-            """You are an expert Machine Learning education advisor. Given a list of questions that a student
-answered incorrectly, analyze them to identify the underlying topics, and provide targeted learning
-suggestions to help the student improve.
+            """You are an expert Machine Learning education advisor. Your task is to analyze the specific questions that a student answered incorrectly and provide tailored learning suggestions.
 
-Guidelines:
-- Identify 2-4 key ML topics that the student needs to improve based on the wrong questions
-- For each topic, provide 2-3 specific learning suggestions
-- Include general learning tips that apply across all topics
-- Provide an overall assessment of the student's understanding and learning path
-- Keep suggestions practical, specific, and actionable
-- Focus on conceptual understanding rather than just memorization
+The following questions were answered incorrectly by the student:
+{{wrong_questions}}
 
-The wrong questions are: {{wrong_questions}}
+Reference context from ML materials:
+{{context}}
+
+## Analysis Instructions:
+1. Carefully examine each question's content, code snippets, and the concepts being tested
+2. Identify specific ML topics and concepts that appear in these questions (e.g., RNNs, regularization, feature scaling)
+3. For each question, determine what knowledge gap likely caused the mistake
+
+## Response Guidelines:
+- Your assessment must directly relate to the specific questions provided
+- Include 2-4 key ML topics that appear in the incorrect questions
+- For each topic, provide 2-3 specific learning suggestions that address the concepts in the questions
+- Include code-related suggestions when the questions contain code snippets
+- Provide an overall assessment that summarizes the specific areas of weakness shown in these questions
 
 Return your response in the following JSON format:
-{{
-"overall_assessment": "A brief assessment of the student's performance and knowledge gaps",
+{{{{
+"overall_assessment": "A specific assessment based on the provided questions, mentioning key concepts that appeared in them",
 "topic_suggestions": [
-{{
-"topic": "Topic name",
-"suggestions": ["Suggestion 1", "Suggestion 2"]
-}}
+{{{{
+"topic": "Topic name that appears in the questions",
+"suggestions": ["Specific suggestion related to question content", "Another specific suggestion"]
+}}}}
 ],
-"general_tips": ["General tip 1", "General tip 2"]
-}}
+"general_tips": ["Tip specifically related to the questions provided", "Another specific tip"]
+}}}}
 
-            You MUST return valid JSON. Do not include any explanations outside the JSON structure."""
+You MUST return valid JSON. Do not include any explanations outside the JSON structure.
+            Your suggestions must specifically address the concepts, code, and parameters mentioned in the incorrect questions."""
         ),
         (
             "human",
-            "Generate personalized learning suggestions based on these wrong answers."
+            "Here are the incorrect questions. Please analyze them and provide targeted learning suggestions."
         )
     ])
 
@@ -121,11 +125,6 @@ persist_directory: Directory for the vector store
 Returns:
 Dictionary containing suggestions and metadata
     """
-    # Check cache first - using joined questions as key
-    cache_key = "_".join(sorted([q[:50] for q in wrong_questions]))  # Limit length for cache key
-    if cache_key in _suggestions_cache:
-        return _suggestions_cache[cache_key]
-
     try:
         # Handle empty input
         if not wrong_questions:
@@ -191,8 +190,6 @@ Dictionary containing suggestions and metadata
             "suggestions": suggestions
         }
 
-        # Cache the result
-        _suggestions_cache[cache_key] = result
         return result
 
     except Exception as e:
@@ -208,9 +205,3 @@ Dictionary containing suggestions and metadata
                 ]
             }
         }
-
-def clear_cache():
-    """Clear all suggestions caches"""
-    global _suggestions_cache
-    _suggestions_cache = {}
-    get_suggestions_prompt.cache_clear()

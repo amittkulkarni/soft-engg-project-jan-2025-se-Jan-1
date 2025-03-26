@@ -103,14 +103,7 @@
                     </button>
                   </div>
                   <div class="summary-text p-3 bg-light rounded">
-                    <vue-markdown
-                      :source="summary"
-                      :options="{
-                        highlight: function (code, lang) {
-                        // This will handle the syntax highlighting based on language
-                        return require('highlight.js').highlightAuto(code, [lang]).value;
-                        }
-                      }"/>
+                    <markdown-renderer :content="summary"/>
                   </div>
                 </div>
 
@@ -163,9 +156,9 @@
                     <i class="bi bi-link-45deg resource-icon me-3"></i>
                     <div>
                       <h6 class="mb-1">Additional Reading</h6>
-                      <a href="https://drive.google.com/drive/folders/1wjY0KFuMDG2XwLUySf0R5uvxMaDzaa0v?usp=sharing" class="text-muted">External Link</a>
+                      <p class="text-muted">External Link</p>
                     </div>
-                    <a href="#" class="btn btn-sm btn-outline-primary ms-auto">Open</a>
+                    <a href="https://drive.google.com/drive/folders/1wjY0KFuMDG2XwLUySf0R5uvxMaDzaa0v?usp=sharing" class="btn btn-sm btn-outline-primary ms-auto">Open</a>
                   </div>
                 </div>
               </div>
@@ -183,8 +176,7 @@ import AppNavbar from '@/components/AppNavbar.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 import StudentIcon from '@/assets/student.png'
 import ChatWindow from "@/components/ChatWindow.vue";
-import VueMarkdown from "vue-markdown-render";
-import 'highlight.js/styles/github.css';
+import MarkdownRenderer from "@/components/MarkdownRenderer.vue";
 import api from "@/services/api.js"
 
 
@@ -194,7 +186,7 @@ export default {
     AppNavbar,
     AppSidebar,
     ChatWindow,
-    VueMarkdown
+    MarkdownRenderer
   },
   data() {
     return {
@@ -230,18 +222,17 @@ export default {
   methods: {
     summarizeVideo() {
       this.isLoading = true;
-      const lectureId = this.getLectureId();
+      const weekId = this.getWeekId();
 
-      if (lectureId) {
-        this.summarizeLecture(lectureId);
+      if (weekId) {
+        this.summarizeLecture(weekId);
       } else {
         this.isLoading = false;
         console.error('Could not extract lecture ID from title');
-        // Show error message to user
         this.error = 'Could not determine lecture ID from title format';
       }
     },
-    async summarizeLecture(lectureId) {
+    async summarizeLecture(weekId) {
       // Set loading state
       this.summary = '';
       this.error = '';
@@ -249,7 +240,7 @@ export default {
       try {
         // Make API request
         const response = await api.post('/video_summarizer', {
-          lecture_id: lectureId
+          week_id: weekId
         });
 
         // Process successful response
@@ -333,10 +324,10 @@ export default {
       const match = this.lectureTitle.match(/^(\d+)(?=\.)/);
       return match ? `Week ${match[1]}` : 'Current Week';
     },
-    getLectureId() {
-      // Extract lecture ID (number after the dot) from lecture title
-      const match = this.lectureTitle.match(/^(\d+)\.(\d+)/);
-      return match ? match[2] : null;
+    getWeekId() {
+      // Extract week number from lecture title if available
+      const match = this.lectureTitle.match(/^(\d+)(?=\.)/);
+      return match[1];
     },
     toggleFullScreen() {
       const iframe = document.querySelector('iframe');

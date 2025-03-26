@@ -95,15 +95,46 @@ def generate_lecture_summary(text: str) -> str:
     """Generate a summary of the lecture text using Google Gemini"""
     llm = get_llm()
 
+    # Use regular string with f-string for the text parameter
     prompt = (
-        "You are a YouTube Video Lecture Summarizer. "
-        "Summarize the following video lecture in 250-300 words. "
-        "Your summary should be engaging and reflect a typical video lecture summary, highlighting the key points and main ideas in a natural, conversational tone. "
-        "Do not mention that the summary is derived from a PDF document. Don't say 'This document...'"
-        "Return your answer in Markdown format using headings, paragraphs, bullet points, and numbered lists, tables if necessary:"
-        "After the heading, start your response with 'In this Lecture...', 'This Lecture...'"
-        "Start the concluding paragraph with 'Prof. Ashish'.\n"
-        f"{text}"
+        "You are a YouTube Video Lecture Summarizer specializing in academic content. "
+        "Create a concise, well-structured summary (250-300 words) of the following lecture. "
+
+        "## Formatting Guidelines:\n"
+        "- Use hierarchical headings starting with level 2 (##) for the lecture title and level 3 (###) for subsections\n"
+        "- Include appropriate whitespace between sections for readability but not too many\n"
+        "- Add mathematical formulas using LaTeX notation (\\( \\) for inline, \\[ \\] for display)\n"
+        "- Present code examples in language-specific code blocks using proper syntax:\n"
+        "```\n"
+        "def example_function():\n"
+        "    return \"This is sample code\"\n"
+        "```\n"
+        "- Use tables for comparing concepts, like this:\n"
+        "| Algorithm | Time Complexity | Space Complexity |\n"
+        "| --------- | --------------- | ---------------- |\n"
+        "| Quicksort | O(n log n)      | O(log n)         |\n"
+        "- Use bullet points for key concepts and numbered lists for sequential steps\n"
+        "- Highlight important definitions or theorems in blockquotes (> theorem statement)\n"
+
+        "## Content Structure:\n"
+        "1. Begin with a level 2 heading that captures the lecture title/topic\n"
+        "2. Start the first paragraph with 'In this lecture...' or 'This lecture...'\n"
+        "3. Organize the main body with level 3 headings for distinct subtopics\n"
+        "4. Include any important definitions, theorems, or algorithms in highlighted blocks\n"
+        "5. Conclude with a paragraph starting with 'Prof. Ashish'\n"
+
+        "## Example Format Structure:\n"
+        "## [Lecture Title]: [Subtopic]\n\n"
+        "In this lecture, Professor Ashish introduces the fundamental concepts of [topic]...\n\n"
+        "### Key Concept 1\n"
+        "The main points about this concept include...\n\n"
+        "> **Definition:** A formal definition of an important term goes here.\n\n"
+
+        "Ensure your summary is engaging and conversational while maintaining academic precision. "
+        "Never mention that this content came from a PDF document. "
+        "When presenting technical concepts, balance clarity with technical accuracy.\n\n"
+
+        f"Please summarize the following lecture:\n\n{text}"
     )
 
     try:

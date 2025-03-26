@@ -5,7 +5,7 @@ import json
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=True)
+    username = db.Column(db.String(80), nullable=True)
     email = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(72), nullable=True)
     role = db.Column(db.Enum('student', 'admin', name='user_roles'), nullable=False)

@@ -323,27 +323,47 @@ export default {
           { code: this.code }
         );
 
+        // Inside the submitCode method where you format the console output
         if (response.data.success) {
           // Process results
           const results = response.data;
+          let output = "";
 
-          // Format console output
-          let output = `=== EXECUTION SUMMARY ===\n`;
+          // Check if there are any errors and extract them
+          const errors = results.results
+            .filter(result => result.status === 'error')
+            .map(result => result.error_message);
+
+          // Display unique errors at the top
+          if (errors.length > 0) {
+            output += `=== ERROR SUMMARY ===\n`;
+            // Use Set to remove duplicate error messages
+            const uniqueErrors = [...new Set(errors)];
+            uniqueErrors.forEach(error => {
+              output += `Error: ${error}\n`;
+            });
+            output += `\n`;
+          }
+
+          // Then show execution summary
+          output += `=== EXECUTION SUMMARY ===\n`;
           output += `Score: ${results.score.toFixed(2)}%\n`;
           output += `Passed: ${results.passed_count}/${results.total_cases}\n\n`;
 
-          // Add detailed test case results to console
+          // Add detailed test case results to console without repeating errors
           results.results.forEach(result => {
             output += `=== TEST CASE ${result.test_case_id} ===\n`;
+            output += `Status: ${result.status.toUpperCase()}\n`;
 
-            if (result.status === 'error') {
-              output += `Status: ERROR\n`;
-              output += `Error: ${result.error_message}\n\n`;
-            } else {
-              output += `Status: ${result.status.toUpperCase()}\n`;
-              output += `Input:\n${result.input}\n\n`;
+            // Only show input and output details, not the error again
+            output += `Input:\n${result.input}\n\n`;
+
+            if (result.status !== 'error') {
               output += `Expected Output:\n${result.expected_output}\n\n`;
               output += `Your Output:\n${result.actual_output}\n\n`;
+            } else {
+              // Just reference that there was an error
+              output += `See error details at the top of the console output\n\n`;
             }
           });
 
@@ -426,11 +446,6 @@ export default {
 </script>
 
 <style scoped>
-/* Styling for the editor container */
-.editor-container {
-  border: 1px solid #ddd;
-  border-radius: 5px;
-}
 
 /* Console output styling */
 .console-output {
@@ -455,19 +470,10 @@ export default {
 }
 
 pre {
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
   font-family: monospace;
   white-space: pre-wrap;
   max-height: 300px;
   overflow-y: auto;
-}
-
-.sample-box {
-  background-color: #f8f9fa;
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
 }
 
 .problem-content h5 {
@@ -483,19 +489,6 @@ pre {
 
 [class*="bg-success"] {
   border-left: 4px solid #28a745;
-}
-
-.ai-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 50px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
 }
 
 .test-case-container {

@@ -177,7 +177,7 @@ export default {
         // Add lectures
         section.items.push(...week.lectures.map(lec => ({
           icon: bookIcon,
-          text: `${week.week_number}.${lec.id} ${lec.title}`,
+          text: `${week.week_number}.1 ${lec.title}`,
           link: '/lecture',
           videoId: lec.video_id,
           itemType: 'lecture'

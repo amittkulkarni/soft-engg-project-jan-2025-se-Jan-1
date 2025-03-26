@@ -31,17 +31,16 @@ def seed_lectures(weeks):
     """Seed lectures for each week."""
     lecture_data = [
         ("Data Visualisation", "kIyxumBVo6o"),
+        ("Introduction: Looking at the big picture", "c3fKU3H4VDM"),
         ("Data Preprocessing", "_PcVkfVsjuo"),
-        ("Linear Regression", "SFYn4UnZaSQ"),
+        ("Linear regression", "SFYn4UnZaSQ"),
         ("Polynomial Regression", "dMHECW-BkIM"),
-        ("Classification Functions in Scikit Learn", "dhYydFzxfes"),
+        ("Classification Functions in Scikit learn", "dhYydFzxfes"),
         ("Naive Bayes Classifier", "uM-MNko46Zo"),
-        ("K-Nearest Neighbors", "gKiFTMLgZy4"),
+        ("Demonstration: Softmax Regression with MNIST", "_zWJhbFQBQI"),
         ("Decision Trees", "5OZc2zWS2cY"),
-        ("Bagging and Random Forest", "EZ5szvjQgWw"),
-        ("K-means Clustering on Digit Dataset", "-tPSKI9nUf0"),
-        ("Neural Networks: Multilayer Perceptron", "wphku4k1e90"),
-        ("SVM", "5erlKOqL8Xk"),
+        ("Voting, Bagging and Random Forest", "EZ5szvjQgWw"),
+        ("K-means clustering on digit dataset", "tPSKI9nUf0"),
     ]
     lectures = [Lecture(week_id=weeks[i].id, title=title, video_id=vid)
                 for i, (title, vid) in enumerate(lecture_data)]

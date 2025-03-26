@@ -78,6 +78,12 @@ export default {
             isLoading: false
         };
     },
+    mounted() {
+        // Check if coming from another page within the app
+        if (document.referrer.includes(window.location.origin)) {
+          window.location.reload();
+        }
+    },
     methods: {
         async login() {
             this.isLoading = true;
