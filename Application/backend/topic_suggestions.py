@@ -1,23 +1,20 @@
-import warnings
-from typing import Dict, List, Any
 import os
-
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
-from pydantic import BaseModel, Field
+import logging
+from typing import Dict, List, Any
+# Import LangChain components
+from langchain_core.prompts import PromptTemplate
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.output_parsers import PydanticOutputParser
+from pydantic import BaseModel, Field
 
-# Suppress deprecation warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
+# Configure logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# Global singletons for components
-_embeddings = None
-_vector_store = None
-_llm = None
-
-# Define the schema for suggestions output
+# Model definitions
 class TopicSuggestion(BaseModel):
     topic: str = Field(description="The ML topic that needs improvement")
     suggestions: List[str] = Field(description="List of learning suggestions for this topic")
@@ -27,16 +24,20 @@ class SuggestionSet(BaseModel):
     topic_suggestions: List[TopicSuggestion] = Field(description="List of topic-specific suggestions")
     general_tips: List[str] = Field(description="General learning tips applicable to all topics")
 
+# Global component initialization
+_embeddings = None
+_vector_store = None
+_llm = None
+
 def get_api_key() -> str:
     """Get API key for Google Generative AI"""
-    #api_key = os.environ.get("GOOGLE_API_KEY")
-    api_key = "AIzaSyCV5i-u0oROux-Wt0TMqiRivVD6H0rGbjc"
+    api_key = os.environ.get("GOOGLE_API_KEY", "AIzaSyCV5i-u0oROux-Wt0TMqiRivVD6H0rGbjc")
     if not api_key:
         raise ValueError("Google API key is not set")
     return api_key
 
 def get_embeddings():
-    """Singleton for embeddings"""
+    """Get embeddings singleton"""
     global _embeddings
     if _embeddings is None:
         _embeddings = HuggingFaceEmbeddings(
@@ -45,7 +46,7 @@ def get_embeddings():
     return _embeddings
 
 def get_vector_store(persist_directory: str = "vector_store"):
-    """Singleton for vector store"""
+    """Get vector store singleton"""
     global _vector_store
     if _vector_store is None:
         _vector_store = Chroma(
@@ -56,75 +57,51 @@ def get_vector_store(persist_directory: str = "vector_store"):
     return _vector_store
 
 def get_llm():
-    """Singleton for language model"""
+    """Get LLM singleton"""
     global _llm
     if _llm is None:
         _llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash",
             google_api_key=get_api_key(),
-            temperature=0.7
+            temperature=0.2,
+            max_output_tokens=2048
         )
     return _llm
 
-def get_suggestions_prompt() -> ChatPromptTemplate:
-    return ChatPromptTemplate.from_messages([
-        (
-            "system",
-            """You are an expert Machine Learning education advisor. Your task is to analyze the specific questions that a student answered incorrectly and provide tailored learning suggestions.
+def create_prompt():
+    """Create the prompt template for suggestions"""
+    template = """You are an expert Machine Learning education advisor analyzing questions
+a student answered incorrectly to provide personalized learning suggestions.
 
-The following questions were answered incorrectly by the student:
-{{wrong_questions}}
+QUESTIONS THE STUDENT MISSED:
+{formatted_questions}
 
-Reference context from ML materials:
-{{context}}
+REFERENCE MATERIALS:
+{context}
 
-## Analysis Instructions:
-1. Carefully examine each question's content, code snippets, and the concepts being tested
-2. Identify specific ML topics and concepts that appear in these questions (e.g., RNNs, regularization, feature scaling)
-3. For each question, determine what knowledge gap likely caused the mistake
+YOUR TASK:
+1. Analyze each question to identify specific ML concepts being tested
+2. Determine knowledge gaps based on the question content and code samples
+3. Create a personalized learning plan that addresses these specific gaps
 
-## Response Guidelines:
-- Your assessment must directly relate to the specific questions provided
-- Include 2-4 key ML topics that appear in the incorrect questions
-- For each topic, provide 2-3 specific learning suggestions that address the concepts in the questions
-- Include code-related suggestions when the questions contain code snippets
-- Provide an overall assessment that summarizes the specific areas of weakness shown in these questions
+FORMAT YOUR RESPONSE AS VALID JSON:
+{format_instructions}
 
-Return your response in the following JSON format:
-{{{{
-"overall_assessment": "A specific assessment based on the provided questions, mentioning key concepts that appeared in them",
-"topic_suggestions": [
-{{{{
-"topic": "Topic name that appears in the questions",
-"suggestions": ["Specific suggestion related to question content", "Another specific suggestion"]
-}}}}
-],
-"general_tips": ["Tip specifically related to the questions provided", "Another specific tip"]
-}}}}
+IMPORTANT: Focus ONLY on the concepts in these specific questions. Do not make generic recommendations."""
 
-You MUST return valid JSON. Do not include any explanations outside the JSON structure.
-            Your suggestions must specifically address the concepts, code, and parameters mentioned in the incorrect questions."""
-        ),
-        (
-            "human",
-            "Here are the incorrect questions. Please analyze them and provide targeted learning suggestions."
-        )
-    ])
+    parser = PydanticOutputParser(pydantic_object=SuggestionSet)
+    prompt = PromptTemplate(
+        template=template,
+        input_variables=["formatted_questions", "context"],
+        partial_variables={"format_instructions": parser.get_format_instructions()}
+    )
 
-def generate_topic_suggestions(
-        wrong_questions: List[str],
-        persist_directory: str = "vector_store"
-) -> Dict[str, Any]:
-    """
-Generate personalized learning suggestions based on questions answered incorrectly.
+    return prompt, parser
 
-Args:
-wrong_questions: List of question texts that were answered incorrectly
-persist_directory: Directory for the vector store
+def generate_topic_suggestions(wrong_questions: List[str]) -> Dict[str, Any]:
+    """Generate personalized topic suggestions based on incorrect answers"""
+    logger.info(f"Generating suggestions for {len(wrong_questions)} questions")
 
-Returns:
-Dictionary containing suggestions and metadata
-    """
     try:
         # Handle empty input
         if not wrong_questions:
@@ -138,44 +115,51 @@ Dictionary containing suggestions and metadata
                 }
             }
 
-        # Get components
+        # Format questions with explicit numbering
+        formatted_questions = ""
+        for i, question in enumerate(wrong_questions):
+            formatted_questions += f"QUESTION {i+1}:\n{question}\n\n"
+
+        logger.info(f"Formatted {len(wrong_questions)} questions")
+
+        # Get relevant context from vector store
+        vector_store = get_vector_store()
+        all_contexts = []
+
+        for question in wrong_questions:
+            results = vector_store.similarity_search(question, k=3)
+            context = "\n".join([doc.page_content for doc in results])
+            all_contexts.append(context)
+
+        combined_context = "\n\n---\n\n".join(all_contexts)
+        logger.info(f"Retrieved context ({len(combined_context)} chars)")
+
+        # Create prompt and parser
+        prompt_template, output_parser = create_prompt()
+
+        # Get LLM
         llm = get_llm()
-        vectorstore = get_vector_store(persist_directory)
 
-        # Combine all wrong questions into a single search query
-        search_query = " ".join(wrong_questions)
-
-        # Retrieve context from the vector store
-        search_results = vectorstore.similarity_search(
-            search_query,
-            k=min(len(wrong_questions) * 2, 30)  # Proportional retrieval with upper limit
+        # Generate suggestions
+        formatted_prompt = prompt_template.format(
+            formatted_questions=formatted_questions,
+            context=combined_context[:5000]  # Limit context size
         )
 
-        # Extract context from search results
-        context = "\n".join([doc.page_content for doc in search_results])
+        logger.info("Sending request to LLM")
+        response = llm.invoke(formatted_prompt)
+        logger.info(f"Received response from LLM: {response.content[:100]}...")
 
-        # Create the chain for suggestions generation
-        suggestions_prompt = get_suggestions_prompt()
-        output_parser = JsonOutputParser(pydantic_object=SuggestionSet)
-        chain = suggestions_prompt | llm | output_parser
-
-        # Generate the suggestions
-        response = chain.invoke({
-            "wrong_questions": wrong_questions,
-            "context": context
-        })
-
-        # Safely parse the response
-        if hasattr(response, "topic_suggestions"):
-            suggestions = response
-        elif hasattr(response, "dict"):
-            suggestions = response.dict()
-        elif isinstance(response, dict):
-            suggestions = response
-        else:
-            # Fall back to a default structure
+        # Parse response
+        try:
+            parsed_response = output_parser.parse(response.content)
+            suggestions = parsed_response.dict()
+            logger.info("Successfully parsed LLM response")
+        except Exception as e:
+            logger.error(f"Failed to parse LLM response: {e}")
+            # Fallback to a simple structure
             suggestions = {
-                "overall_assessment": "Unable to generate detailed assessment.",
+                "overall_assessment": "Analysis generated but couldn't be properly formatted.",
                 "topic_suggestions": [],
                 "general_tips": [
                     "Review the course materials for the topics you missed.",
@@ -183,16 +167,15 @@ Dictionary containing suggestions and metadata
                 ]
             }
 
-        # Format the result
-        result = {
+        # Return successful response
+        return {
             "success": True,
             "message": "Successfully generated learning suggestions",
             "suggestions": suggestions
         }
 
-        return result
-
     except Exception as e:
+        logger.error(f"Error generating suggestions: {str(e)}", exc_info=True)
         return {
             "success": False,
             "message": f"Failed to generate suggestions: {str(e)}",

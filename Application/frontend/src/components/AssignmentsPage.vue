@@ -111,7 +111,7 @@
               <button
                 v-if="showScore"
                 @click="downloadPDF"
-                class="btn btn-primary mt-3"
+                class="btn btn-primary"
                 :disabled="downloadingReport">
                 <span v-if="downloadingReport">
                   <i class="bi bi-hourglass-split me-1"></i> Generating...
@@ -338,7 +338,7 @@ export default {
       this.score = earnedScore;
       this.showScore = true;
 
-      // Generate personalized suggestions based on wrong answers
+      // Generate personalized suggestions based on wrong questions
       this.generateSuggestions(wrongQuestions);
     },
 
@@ -358,62 +358,57 @@ export default {
         ];
       }
     },
-async generateSuggestions() {
-  try {
-    this.suggestionsLoading = true;
+    async generateSuggestions(wrongQuestions) {
+      try {
+        this.suggestionsLoading = true;
 
-    const answersData = this.userAnswers.map((answerId, index) => ({
-      question_id: this.questions[index].id,
-      selected_option_id: answerId
-    }));
+        // Call the topic recommendation API with the wrong_questions array
+        const response = await api.post('http://127.0.0.1:5000/topic_recommendation', {
+          wrong_questions: wrongQuestions
+        });
 
-    // Call the topic recommendation API
-    const response = await api.post('http://127.0.0.1:5000/topic_recommendation', {
-      answers: answersData
-    });
+        if (response.data.success) {
+          // Store the detailed suggestion data
+          const suggestionData = response.data.suggestions;
+          this.overallAssessment = suggestionData.overall_assessment;
+          this.topicSuggestions = suggestionData.topic_suggestions || [];
+          this.generalTips = suggestionData.general_tips || [];
 
-    if (response.data.success) {
-      // Store the detailed suggestion data
-      const suggestionData = response.data.suggestions;
-      this.overallAssessment = suggestionData.overall_assessment;
-      this.topicSuggestions = suggestionData.topic_suggestions || [];
-      this.generalTips = suggestionData.general_tips || [];
+          // Also maintain the flat suggestions list for backward compatibility
+          this.suggestions = [];
 
-      // Also maintain the flat suggestions list for backward compatibility
-      this.suggestions = [];
-
-      // Add overall assessment as first suggestion
-      if (this.overallAssessment) {
-        this.suggestions.push(this.overallAssessment);
-      }
-
-      // Add specific topic suggestions
-      if (this.topicSuggestions && this.topicSuggestions.length > 0) {
-        this.topicSuggestions.forEach(topic => {
-          if (topic.suggestions && topic.suggestions.length > 0) {
-            this.suggestions.push(`Topic: ${topic.topic} - ${topic.suggestions[0]}`);
+          // Add overall assessment as first suggestion
+          if (this.overallAssessment) {
+            this.suggestions.push(this.overallAssessment);
           }
-        });
-      }
 
-      // Add general tips
-      if (this.generalTips && this.generalTips.length > 0) {
-        this.generalTips.forEach(tip => {
-          this.suggestions.push(tip);
-        });
+          // Add specific topic suggestions
+          if (this.topicSuggestions && this.topicSuggestions.length > 0) {
+            this.topicSuggestions.forEach(topic => {
+              if (topic.suggestions && topic.suggestions.length > 0) {
+                this.suggestions.push(`Topic: ${topic.topic} - ${topic.suggestions[0]}`);
+              }
+            });
+          }
+
+          // Add general tips
+          if (this.generalTips && this.generalTips.length > 0) {
+            this.generalTips.forEach(tip => {
+              this.suggestions.push(tip);
+            });
+          }
+        } else {
+          // Fallback to default suggestions if API fails
+          this.generateDefaultSuggestions();
+        }
+      } catch (error) {
+        console.error('Error fetching topic suggestions:', error);
+        // Fallback to default suggestions
+        this.generateDefaultSuggestions();
+      } finally {
+        this.suggestionsLoading = false;
       }
-    } else {
-      // Fallback to default suggestions if API fails
-      this.generateDefaultSuggestions();
-    }
-  } catch (error) {
-    console.error('Error fetching topic suggestions:', error);
-    // Fallback to default suggestions
-    this.generateDefaultSuggestions();
-  } finally {
-    this.suggestionsLoading = false;
-  }
-},
+    },
 async downloadPDF() {
   this.downloadingReport = true;
   try {

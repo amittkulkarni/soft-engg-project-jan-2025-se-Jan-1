@@ -1,16 +1,16 @@
 from flask import Blueprint, request, jsonify, render_template, send_file
-from flask_jwt_extended import jwt_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption,ProgrammingAssignment,ChatHistory
 from extension import db 
 import os
-from token_validation import generate_token, get_current_user
+from token_validation import generate_token
 from datetime import datetime
 import pdfkit
 import platform
 import subprocess
 import tempfile
 import requests
+import logging
 
 from quiz_mock import generate_mcqs
 from week_summarizer import summarize_week_slides
@@ -29,6 +29,12 @@ user_routes = Blueprint('user_routes', __name__)
 # Environment variables
 GOOGLE_CLIENT_ID = "859846322076-3u1k9ter70q7b5jqaum8i7e5jc506mnh.apps.googleusercontent.com"  # Set your Google Client ID
 GOOGLE_CLIENT_SECRET = "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"
+
+
+# Configure logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 @user_routes.route('/google_signup', methods=['POST'])
 def google_signup():
@@ -1620,10 +1626,12 @@ def generate_notes():
 # ---------------------------- Topic Recommendation ----------------------------
 @user_routes.route('/topic_recommendation', methods=['POST'])
 def topic_recommendation():
-    """API to recommend study topics and learning resources based on incorrect answers"""
+    """API endpoint to recommend study topics based on incorrect answers"""
     data = request.get_json()
+    logger.info(f"Received topic recommendation request: {data.keys()}")
 
     wrong_questions = data.get('wrong_questions', [])
+    logger.info(f"Extracted {len(wrong_questions)} wrong questions")
 
     # Validate if wrong_questions list is provided
     if not wrong_questions:
@@ -1638,10 +1646,11 @@ def topic_recommendation():
         }), 200
 
     try:
+        # Generate suggestions
         suggestions = generate_topic_suggestions(wrong_questions)
         return jsonify(suggestions), 200
     except Exception as e:
-        print(f"Error generating topic suggestions: {str(e)}")
+        logger.error(f"Error in topic_recommendation endpoint: {str(e)}", exc_info=True)
         return jsonify({
             'message': f'Error generating suggestions: {str(e)}',
             'success': False,
@@ -1651,7 +1660,6 @@ def topic_recommendation():
                 'general_tips': ["Review the course materials for the topics you missed."]
             }
         }), 200
-
     
 #---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
 
