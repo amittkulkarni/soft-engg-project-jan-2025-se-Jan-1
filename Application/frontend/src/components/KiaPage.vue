@@ -158,8 +158,7 @@ import AppSidebar from "@/components/AppSidebar.vue";
 import ChatWindow from "@/components/ChatWindow.vue";
 import StudentIcon from "@/assets/student.png";
 import MarkdownRenderer from "@/components/MarkdownRenderer.vue";
-import { jsPDF } from "jspdf";
-import axios from 'axios';
+import api from "@/services/api.js"
 
 export default {
   name: "KiaPage",
@@ -242,15 +241,51 @@ export default {
           console.error('Failed to copy content: ', err);
         });
     },
-    downloadPDF() {
-      const doc = new jsPDF();
-      const content = this.activeContent === "generate-notes" ? this.generatedNotes : this.generatedSummary;
-      doc.text(content, 10, 10);
-      const fileName = this.activeContent === "generate-notes"
+async downloadPDF() {
+  try {
+    this.isGenerating = true; // Show loading indicator
+
+    // Prepare the request data
+    const requestData = {
+      content: this.currentContent, // Your markdown content
+      title: this.activeContent === "generate-notes"
+        ? this.selectedTopic
+        : this.selectedWeek,
+      filename: this.activeContent === "generate-notes"
         ? `Notes_${this.searchQuery || "Topic"}.pdf`
-        : `Week_${this.selectedWeek.replace("Week ", "")}_Summary.pdf`;
-      doc.save(fileName);
-    },
+        : `Week_${this.selectedWeek.replace("Week ", "")}_Summary.pdf`
+    };
+
+    // Call the backend endpoint with responseType 'blob' to receive binary data
+    const response = await api.post(
+      '/download_markdown_pdf',
+      requestData,
+      { responseType: 'blob' }
+    );
+
+    // Create a blob URL from the PDF data
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+
+    // Create a temporary link and trigger the download
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', requestData.filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Clean up the blob URL
+    window.URL.revokeObjectURL(url);
+
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    this.apiError = true;
+    this.apiErrorMessage = 'Failed to generate PDF. Please try again later.';
+  } finally {
+    this.isGenerating = false; // Hide loading indicator
+  }
+},
     async generateNotes() {
       // Only proceed if a topic is selected
       if (!this.selectedTopic) {
@@ -263,7 +298,7 @@ export default {
 
       try {
         // Call the backend API
-        const response = await axios.post('http://127.0.0.1:5000/generate_notes', {
+        const response = await api.post('/generate_notes', {
           topic: this.selectedTopic
         });
 
@@ -296,7 +331,7 @@ export default {
         const weekNumber = parseInt(this.selectedWeek.replace("Week ", ""));
 
         // Call the backend API
-        const response = await axios.post('http://127.0.0.1:5000/generate_week_summary', {
+        const response = await api.post('/generate_week_summary', {
           week_id: weekNumber
         });
 

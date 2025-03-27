@@ -357,22 +357,20 @@ export default {
       try {
         this.suggestionsLoading = true;
 
-        // Prepare the answers data for the API
-        const answersData = this.questions.map((question, index) => {
-          // Create a synthetic ID for options based on index if needed
-          const optionId = this.userAnswers[index] ?
-            this.questions[index].options.indexOf(this.userAnswers[index]) :
-            null;
+        // Collect only the incorrectly answered questions
+        const wrongQuestions = [];
 
-          return {
-            question_id: index, // Using index as question_id for generated questions
-            selected_option_id: optionId
-          };
+        this.questions.forEach((question, index) => {
+          // Check if user answer is incorrect by comparing with correct answer
+          if (this.userAnswers[index] !== question.correct_answer) {
+            // Add the question text to wrongQuestions array
+            wrongQuestions.push(question.text);
+          }
         });
 
-        // Call the topic recommendation API
-        const response = await api.post('topic_recommendation', {
-          answers: answersData
+        // Call the topic recommendation API with wrong questions only
+        const response = await api.post('http://127.0.0.1:5000/topic_recommendation', {
+          wrong_questions: wrongQuestions
         });
 
         if (response.data.success) {

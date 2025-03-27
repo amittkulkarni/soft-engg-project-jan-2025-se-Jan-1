@@ -1727,7 +1727,8 @@ def download_report():
         score=score,
         total=total,
         suggestions=suggestions,
-        questions=questions
+        questions=questions,
+        current_time=datetime.now()
     )
 
     # Define the file path for the generated PDF inside the "reports" folder
@@ -1763,3 +1764,118 @@ def download_report():
             "success": False,
             "error": str(e)
         }), 500
+
+
+@user_routes.route('/download_markdown_pdf', methods=['POST'])
+def download_markdown_pdf():
+    """Converts markdown content (with LaTeX) to PDF and returns it for download"""
+    data = request.json
+    markdown_content = data.get('content')
+    title = data.get('title', 'Notes')
+    filename = data.get('filename', f'{title.replace(" ", "_")}.pdf')
+
+    if not markdown_content:
+        return jsonify({
+            "message": "No content provided",
+            "success": False
+        }), 400
+
+    try:
+        # Step 1: Convert markdown to HTML
+        import markdown
+        from markdown.extensions.codehilite import CodeHiliteExtension
+        from markdown.extensions.tables import TableExtension
+
+        # Include extensions for code highlighting and tables
+        html_content = markdown.markdown(
+            markdown_content,
+            extensions=[
+                'fenced_code',
+                CodeHiliteExtension(linenums=False, css_class='highlight'),
+                TableExtension(),
+                'nl2br'  # Convert newlines to <br>
+            ]
+        )
+
+        html_template = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+            <title>{title}</title>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({{
+tex2jax: {{
+inlineMath: [['\\\\(','\\\\)']],
+displayMath: [['\\\\[','\\\\]']]
+}},
+"HTML-CSS": {{
+scale: 100,
+availableFonts: ["TeX"],
+preferredFont: "TeX",
+webFont: "TeX",
+imageFont: null
+}}
+}});
+window.MathJax.Hub.Queue(function() {{
+window.status = "mathjax_loaded";
+}});
+</script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS_HTML"></script>
+<style>
+body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }}
+code {{ background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }}
+pre {{ background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }}
+table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
+th, td {{ border: 1px solid #ddd; padding: 8px; }}
+th {{ background-color: #f2f2f2; }}
+h1, h2, h3 {{ color: #333; }}
+.math {{ font-size: 110%; }}
+</style>
+</head>
+<body>
+            <h1>{title}</h1>
+<div id="content">
+            {html_content}
+</div>
+</body>
+</html>
+            """
+
+        # Step 3: Generate PDF with pdfkit (using your existing config)
+        pdf_file = os.path.join(REPORTS_DIR, filename)
+
+        # Fixed options dictionary - this was likely causing the 'unhashable type: dict' error
+        options = {
+            'enable-javascript': True,
+            'javascript-delay': 25000,  # 25 seconds delay
+            'no-stop-slow-scripts': True,
+            'disable-smart-shrinking': True,
+            'enable-local-file-access': True,  # Required for wkhtmltopdf 0.12.6+
+            'quiet': '',
+            'load-error-handling': 'ignore',
+            'window-status': 'mathjax_loaded'  # Wait for MathJax to signal completion
+        }
+
+        pdfkit.from_string(html_template, pdf_file, options=options, configuration=config)
+
+        # Step 4: Return the generated PDF for download
+        response = send_file(
+            pdf_file,
+            as_attachment=True,
+            download_name=filename
+        )
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+
+        return response
+
+    except Exception as e:
+        print(f"PDF generation error: {str(e)}")
+        return jsonify({
+            "message": "Failed to generate PDF",
+            "success": False,
+            "error": str(e)
+        }), 500
+

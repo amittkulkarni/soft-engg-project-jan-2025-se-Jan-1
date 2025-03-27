@@ -98,8 +98,9 @@
                     <button @click="copyToClipboard" class="btn btn-sm btn-outline-primary me-2">
                       <i class="bi bi-clipboard"></i> Copy
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" @click="downloadSummary">
-                      <i class="bi bi-download"></i> Download
+                    <button class="btn btn-sm btn-outline-secondary" @click="downloadSummary" :disabled="isDownloading">
+                      <i class="bi" :class="isDownloading ? 'bi-hourglass-split' : 'bi-download'"></i>
+                      {{ isDownloading ? 'Preparing PDF...' : 'Download' }}
                     </button>
                   </div>
                   <div class="summary-text p-3 bg-light rounded">
@@ -192,6 +193,7 @@ export default {
     return {
       summary: '',
       isLoading: false,
+      isDownloading: false,
       StudentIcon,
       userNotes: ''
     }
@@ -293,22 +295,40 @@ export default {
         console.error('Failed to copy text: ', err);
       }
     },
-    downloadSummary() {
-      // Create a blob from the summary text
-      const blob = new Blob([this.summary], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
+async downloadSummary() {
+  try {
+    // Show loading state (optional)
+    this.isDownloading = true;
 
-      // Create a temporary link and trigger download
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${this.lectureTitle.replace(/\s+/g, '_')}_Summary.txt`;
-      document.body.appendChild(a);
-      a.click();
+    // Call the backend endpoint
+    const response = await api.post('/download_markdown_pdf', {
+      content: this.summary,
+      title: this.lectureTitle,
+      filename: `${this.lectureTitle.replace(/\s+/g, '_')}_Summary.pdf`
+    }, {
+      responseType: 'blob' // Important for handling binary data
+    });
 
-      // Clean up
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    },
+    // Create a blob URL from the response
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+
+    // Create a temporary link and trigger download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${this.lectureTitle.replace(/\s+/g, '_')}_Summary.pdf`;
+    document.body.appendChild(a);
+    a.click();
+
+    // Clean up
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error downloading PDF:', error);
+    alert('Failed to generate PDF. Please try again.');
+  } finally {
+    this.isDownloading = false;
+  }
+},
     saveNotes() {
       // Save notes to localStorage
       localStorage.setItem(`lecture_notes_${this.videoId}`, this.userNotes);
