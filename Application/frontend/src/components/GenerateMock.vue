@@ -154,7 +154,7 @@
                 <button
                   v-if="showScore"
                   @click="downloadPDF"
-                  class="btn btn-primary mt-3"
+                  class="btn btn-primary"
                   :disabled="downloadingReport">
                   <span v-if="downloadingReport">
                     <i class="bi bi-hourglass-split me-1"></i> Generating...

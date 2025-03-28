@@ -19,6 +19,10 @@ migrate.init_app(app, db)
 # Register blueprints
 app.register_blueprint(user_routes)   # User routes
 
+# Vercel serverless function handler
+def handler(event, context):
+    return app(event, context)
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

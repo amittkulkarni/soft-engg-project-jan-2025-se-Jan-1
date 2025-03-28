@@ -1694,7 +1694,7 @@ def download_report():
     # user = User.query.get(user_id)
 
     # username = user.username
-    username = "Saima Zainab Shroff"
+    username = "Jyotiraditya Saha"
     score = data.get("score")        # Get the score from the request
     total = data.get("total")        # Get the total score from the request
     # Extract suggestions from potentially different formats
@@ -1781,85 +1781,162 @@ def download_markdown_pdf():
         }), 400
 
     try:
-        # Step 1: Convert markdown to HTML
         import markdown
         from markdown.extensions.codehilite import CodeHiliteExtension
         from markdown.extensions.tables import TableExtension
+        from markdown.extensions import Extension
+        from markdown.inlinepatterns import InlineProcessor
 
-        # Include extensions for code highlighting and tables
+        class MathJaxExtension(Extension):
+            def extendMarkdown(self, md):
+                md.inlinePatterns.register(
+                    MathJaxInlineProcessor(r'(\$\$?)(.*?)\1', md),
+                    'mathjax',
+                    190
+                )
+
+        class MathJaxInlineProcessor(InlineProcessor):
+            def handleMatch(self, m, data):
+                content = m.group(3)
+                el = markdown.util.etree.Element('span')
+                el.text = markdown.util.AtomicString(content)
+                return el, m.start(0), m.end(0)
+
         html_content = markdown.markdown(
             markdown_content,
             extensions=[
+                MathJaxExtension(),
                 'fenced_code',
+                'tables',
                 CodeHiliteExtension(linenums=False, css_class='highlight'),
                 TableExtension(),
-                'nl2br'  # Convert newlines to <br>
+                'nl2br'
             ]
         )
 
-        html_template = f"""
-<!DOCTYPE html>
+        html_template = f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-            <title>{title}</title>
-<script type="text/x-mathjax-config">
-MathJax.Hub.Config({{
-tex2jax: {{
-inlineMath: [['\\\\(','\\\\)']],
-displayMath: [['\\\\[','\\\\]']]
+<title>{title}</title>
+<script>
+MathJax = {{
+tex: {{
+inlineMath: [['\\(', '\\)']],
+displayMath: [['\\[', '\\]']]
 }},
-"HTML-CSS": {{
-scale: 100,
-availableFonts: ["TeX"],
-preferredFont: "TeX",
-webFont: "TeX",
-imageFont: null
+startup: {{
+typeset: false,
+ready: () => {{
+MathJax.startup.defaultReady();
+MathJax.startup.promise.then(() => {{
+document.dispatchEvent(new Event('mathjaxLoaded'));
+}});
 }}
-}});
-window.MathJax.Hub.Queue(function() {{
-window.status = "mathjax_loaded";
-}});
+}}
+}};
 </script>
-<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS_HTML"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <style>
-body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }}
-code {{ background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }}
-pre {{ background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }}
-table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
-th, td {{ border: 1px solid #ddd; padding: 8px; }}
-th {{ background-color: #f2f2f2; }}
-h1, h2, h3 {{ color: #333; }}
-.math {{ font-size: 110%; }}
+:root {{
+--primary: #2c3e50;
+--secondary: #3498db;
+--accent: #e74c3c;
+}}
+
+body {{
+font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+line-height: 1.6;
+margin: 0;
+padding: 20px;
+background: #f8f9fa;
+}}
+
+.container {{
+max-width: 900px;
+margin: 0 auto;
+background: white;
+border-radius: 12px;
+box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+overflow: hidden;
+}}
+
+.highlight {{
+margin: 1em 0;
+border-radius: 8px;
+overflow: hidden;
+}}
+
+.highlight pre {{
+margin: 0;
+padding: 1em;
+font-family: 'Fira Code', Monaco, Consolas, 'Courier New', monospace;
+font-size: 0.9em;
+line-height: 1.5;
+background: #282c34 !important;
+color: #abb2bf !important;
+}}
+
+code:not([class]) {{
+background-color: #f3f4f6;
+color: #e83e8c;
+padding: 0.2em 0.4em;
+border-radius: 3px;
+font-family: 'Fira Code', Monaco, Consolas, 'Courier New', monospace;
+font-size: 0.9em;
+}}
+
+/* Math content styling */
+.math-content {{
+font-size: 1.1em;
+margin: 1em 0;
+padding: 10px;
+}}
+
+.MJX-TEX {{
+color: var(--primary);
+padding: 5px 0;
+}}
 </style>
 </head>
 <body>
+<div class="container">
+<div class="header">
             <h1>{title}</h1>
-<div id="content">
+</div>
+<div class="content">
+<div class="math-content">
             {html_content}
 </div>
+</div>
+</div>
+<script>
+// Start typesetting when MathJax is ready
+document.addEventListener('mathjaxLoaded', () => {{
+window.status = 'mathjax_ready';
+}});
+MathJax.startup.document.state(0);
+</script>
 </body>
-</html>
-            """
+            </html>"""
 
-        # Step 3: Generate PDF with pdfkit (using your existing config)
         pdf_file = os.path.join(REPORTS_DIR, filename)
 
-        # Fixed options dictionary - this was likely causing the 'unhashable type: dict' error
         options = {
             'enable-javascript': True,
-            'javascript-delay': 25000,  # 25 seconds delay
+            'javascript-delay': 20000,  # Increased delay for complex math
             'no-stop-slow-scripts': True,
-            'disable-smart-shrinking': True,
-            'enable-local-file-access': True,  # Required for wkhtmltopdf 0.12.6+
-            'quiet': '',
+            'window-status': 'mathjax_ready',
             'load-error-handling': 'ignore',
-            'window-status': 'mathjax_loaded'  # Wait for MathJax to signal completion
+            'quiet': '',
+            'custom-header': [('User-Agent', 'Mozilla/5.0')],
+            'dpi': 300,
+            'image-quality': 100,
+            'viewport-size': '1600x1200'
         }
 
-        pdfkit.from_string(html_template, pdf_file, options=options, configuration=config)
+        pdfkit.from_string(html_template, pdf_file, options=options)
 
-        # Step 4: Return the generated PDF for download
         response = send_file(
             pdf_file,
             as_attachment=True,
@@ -1878,4 +1955,3 @@ h1, h2, h3 {{ color: #333; }}
             "success": False,
             "error": str(e)
         }), 500
-
