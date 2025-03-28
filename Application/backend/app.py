@@ -10,6 +10,7 @@ app = Flask(__name__)
 app.config.from_object(Config)
 CORS(app,origins='http://localhost:8080',supports_credentials=True)
 CORS(app,origins='http://localhost:8081',supports_credentials=True)
+CORS(app,origins='https://seek-sage.vercel.app/',supports_credentials=True)
 
 # Initialize extensions
 db.init_app(app)
