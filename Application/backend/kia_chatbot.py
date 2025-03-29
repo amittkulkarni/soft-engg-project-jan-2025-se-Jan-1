@@ -13,8 +13,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains import create_retrieval_chain, create_history_aware_retriever
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_chroma import Chroma
+from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
 # Global singletons
@@ -96,20 +96,47 @@ def save_chat_turn_to_db(user_id: int, query: str, response: str):
     conn.commit()
     conn.close()
 
-def load_chat_history_from_db(user_id: int) -> InMemoryChatMessageHistory:
-    """Load chat history from the database"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT query, response FROM chat_history WHERE user_id = ? ORDER BY id", (user_id,))
-    rows = cursor.fetchall()
-    conn.close()
 
-    history = InMemoryChatMessageHistory()
-    for (query, response) in rows:
-        history.add_user_message(query)
-        history.add_ai_message(response)
+def load_chat_history_from_db(user_id: int):
+    """
+Retrieves chat history for a given user_id and returns it as a ChatMessageHistory object.
+    """
+    try:
+        # Ensure user_id is an integer
+        user_id = int(user_id)
 
-    return history
+        # Connect to database with error handling
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        # Execute query with explicit column selection and ORDER BY
+        cursor.execute("""
+SELECT query, response
+FROM chat_history
+WHERE user_id = ?
+ORDER BY id ASC
+            """, (user_id,))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        # Create a ChatMessageHistory object instead of a list
+        chat_history = ChatMessageHistory()
+
+        # Add messages to the ChatMessageHistory object
+        for query, response in rows:
+            chat_history.add_user_message(query)
+            chat_history.add_ai_message(response)
+
+        print(f"Returning ChatMessageHistory with {len(chat_history.messages)} messages")
+        return chat_history
+
+    except Exception as e:
+        print(f"Error loading chat history: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Return empty ChatMessageHistory in case of error
+        return ChatMessageHistory()
 
 def delete_user_history(user_id: int):
     """Delete a user's chat history"""
@@ -216,7 +243,7 @@ Dictionary with response data
 
         # Get the response
         response_data = conversation_chain.invoke(
-            {"input": user_query, "chat_history": load_chat_history_from_db(user_id).messages},
+            {"input": user_query, "chat_history": load_chat_history_from_db(user_id)},
             config={"configurable": {"session_id": str(user_id)}}
         )
 

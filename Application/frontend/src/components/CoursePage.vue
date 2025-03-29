@@ -29,7 +29,7 @@
           <p>
             Faculty:
             <br/>
-            Prof. Amit Kulkarni, Director, IIT Madras
+             Amit Kulkarni, IIT Madras
           </p>
           <br/>
           <p>

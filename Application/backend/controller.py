@@ -1495,12 +1495,11 @@ def save_chat_history():
 @user_routes.route('/chat_history/<int:user_id>', methods=['GET'])
 def get_chat_history(user_id):
     """API to retrieve chat history for a given user"""
-
     try:
-        # Load chat history using the provided function
+        # Use the load_chat_history_from_db function to get the ChatMessageHistory object
         chat_history = load_chat_history_from_db(user_id)
 
-        # Check if chat history exists
+        # If no messages found in the ChatMessageHistory
         if not chat_history.messages:
             return jsonify({
                 'success': False,
@@ -1508,17 +1507,27 @@ def get_chat_history(user_id):
                 'user_id': user_id
             }), 404
 
-        # Format chat history
+        # Convert ChatMessageHistory to the format expected by the frontend
         formatted_history = []
-        for i in range(0, len(chat_history.messages), 2):
-            query = chat_history.messages[i].content
-            response = chat_history.messages[i + 1].content if i + 1 < len(
-                chat_history.messages) else "No response recorded"
+        messages = chat_history.messages
 
-            formatted_history.append({
-                "query": query,
-                "response": response
-            })
+        # Format messages for frontend consumption
+        for i in range(0, len(messages), 2):
+            if i < len(messages):
+                # Add user message
+                formatted_history.append({
+                    "sender": "user",
+                    "text": messages[i].content,
+                    "timestamp": None
+                })
+
+                # Add KIA response (if exists)
+                if i+1 < len(messages):
+                    formatted_history.append({
+                        "sender": "kia",
+                        "text": messages[i+1].content,
+                        "timestamp": None
+                    })
 
         return jsonify({
             'success': True,

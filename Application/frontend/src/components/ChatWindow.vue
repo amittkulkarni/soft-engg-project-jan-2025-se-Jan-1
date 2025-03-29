@@ -254,11 +254,7 @@ export default {
 
           if (response.data.success) {
             // Reset local messages with confirmation
-            this.messages = [{
-              sender: "kia",
-              text: "Chat history has been cleared. How can I help you?",
-              timestamp: new Date()
-            }];
+            this.messages = [];
           } else {
             // Handle API error
             console.error('Failed to clear chat history:', response.data.message);
@@ -316,9 +312,6 @@ export default {
           };
           this.messages.push(kiaMessage);
 
-          // Save interaction to history
-          this.saveChatInteraction(userQuestion, response.data.response);
-
           if (!this.showChat) {
             this.hasNewMessages = true;
           }
@@ -336,47 +329,18 @@ export default {
       api.get(`/chat_history/${this.userId}`)
         .then(response => {
           if (response.data.success) {
-            // Transform API response format to component format
-            this.messages = [];
-
-            response.data.chat_history.forEach(item => {
-              // Add user message
-              this.messages.push({
-                sender: "user",
-                text: item.query,
-                timestamp: new Date() // Timestamp not provided by API
-              });
-
-              // Add KIA response
-              this.messages.push({
-                sender: "kia",
-                text: item.response,
-                timestamp: new Date()
-              });
-            });
+            // Directly use the preformatted messages from the backend
+            this.messages = response.data.chat_history;
           } else {
-            // Add welcome message if no history
-            this.messages = [{
-              sender: "kia",
-              text: "Welcome! How can I help you today?",
-              timestamp: new Date()
-            }];
+            // Add welcome message if no history is found
+            this.messages = [];
           }
         })
         .catch(error => {
           console.error('Failed to load chat history:', error);
+          // Add fallback welcome message in case of error
+          this.messages = [];
         });
-    },
-    // Save chat interaction after receiving response
-    saveChatInteraction(query, response) {
-      api.post('/chat_history', {
-        user_id: this.userId,
-        query: query,
-        response: response
-      })
-      .catch(error => {
-        console.error('Failed to save chat history:', error);
-      });
     },
     scrollToBottom() {
       const chatBody = this.$refs.chatBody;
