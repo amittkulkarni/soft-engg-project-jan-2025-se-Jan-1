@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>$Principal Component Analysis</title>
+<style>
+/* Variables for consistent theming */
+            :root {
+            --primary-color: #3498db;
+--primary-dark: #2980b9;
+--secondary-color: #2c3e50;
+--accent-color: #1E847F;
+--text-color: #333333;
+--light-gray: #f5f7fa;
+--medium-gray: #ecf0f1;
+--border-color: #dfe6e9;
+--shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+
+/* General document styling */
+            body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+line-height: 1.6;
+color: var(--text-color);
+max-width: 900px;
+margin: 0 auto;
+padding: 25px;
+background-color: #ffffff;
+box-shadow: var(--shadow);
+border-radius: 8px;
+            }
+
+/* Header styling with gradient underline */
+            h1 {
+            font-size: 28pt;
+color: var(--secondary-color);
+margin-top: 0.5em;
+margin-bottom: 0.5em;
+padding-bottom: 15px;
+position: relative;
+            }
+
+            h1::after {
+            content: "";
+position: absolute;
+bottom: 0;
+left: 0;
+height: 3px;
+width: 100%;
+background: linear-gradient(to right, var(--primary-color), var(--primary-dark));
+border-radius: 3px;
+            }
+
+            h2 {
+            font-size: 22pt;
+color: var(--secondary-color);
+margin-top: 1.5em;
+margin-bottom: 0.7em;
+border-bottom: 1px solid var(--border-color);
+padding-bottom: 7px;
+            }
+
+            h3 {
+            font-size: 18pt;
+color: var(--secondary-color);
+margin-top: 1.2em;
+margin-bottom: 0.6em;
+            }
+
+            p {
+            margin-bottom: 1.2em;
+text-align: justify;
+            }
+
+/* Code styling with enhanced visuals */
+            pre {
+            background-color: var(--light-gray);
+border: 1px solid var(--border-color);
+border-radius: 6px;
+padding: 16px;
+margin: 20px 0;
+overflow-x: auto;
+box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+            }
+            code {
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+font-size: 0.9em;
+color: var(--accent-color);
+            }
+
+            p code {
+            background-color: var(--light-gray);
+padding: 0.2em 0.4em;
+border-radius: 4px;
+border: 1px solid var(--border-color);
+            }
+
+/* LaTeX Math Styling with improved visuals */
+            .math-display {
+            display: block;
+padding: 16px;
+margin: 24px 0;
+text-align: center;
+font-family: 'Times New Roman', serif;
+font-size: 1.1em;
+background-color: var(--light-gray);
+border-left: 4px solid var(--primary-color);
+border-radius: 0 6px 6px 0;
+box-shadow: var(--shadow);
+            }
+
+            .math-inline {
+            font-family: 'Times New Roman', serif;
+padding: 0 4px;
+background-color: var(--light-gray);
+border-radius: 3px;
+            }
+
+/* Table styling with alternating rows */
+            table {
+            border-collapse: collapse;
+width: 100%;
+margin: 20px 0;
+border-radius: 6px;
+overflow: hidden;
+box-shadow: var(--shadow);
+            }
+
+            th {
+            background-color: var(--primary-color);
+color: #ffffff;
+font-weight: 600;
+text-align: left;
+padding: 12px;
+            }
+
+            td {
+            padding: 10px 12px;
+border: 1px solid var(--border-color);
+            }
+
+            tr:nth-child(even) {
+            background-color: var(--light-gray);
+            }
+
+            tr:hover {
+            background-color: var(--medium-gray);
+            }
+
+/* List styling */
+            ul, ol {
+            padding-left: 25px;
+margin: 16px 0;
+            }
+
+            li {
+            margin-bottom: 8px;
+position: relative;
+            }
+
+            ul li::marker {
+            color: var(--primary-color);
+            }
+
+/* Blockquote styling */
+            blockquote {
+            border-left: 4px solid var(--primary-color);
+background-color: var(--light-gray);
+margin: 20px 0;
+padding: 16px 20px;
+border-radius: 0 6px 6px 0;
+font-style: italic;
+color: #555;
+box-shadow: var(--shadow);
+            }
+/* Link styling */
+            a {
+            color: var(--primary-color);
+text-decoration: none;
+border-bottom: 1px solid transparent;
+transition: border-color 0.2s;
+            }
+
+            a:hover {
+            border-bottom-color: var(--primary-color);
+            }
+/* Print-specific styles for PDF output */
+            @media print {
+            body {
+                box-shadow: none;
+                padding: 0;
+                max-width: none;
+            }
+
+            pre, code, blockquote, table {
+                page-break-inside: avoid;
+        }
+
+        h1, h2, h3 {
+            page-break-after: avoid;
+        }
+
+        img {
+            max-width: 100% !important;
+        }
+
+        @page {
+            margin: 2cm;
+        }
+        }
+        </style>
+            </head>
+            <body>
+            <div class="content">
+    <h1>Principal Component Analysis (PCA)</h1>
+<p>PCA is a linear dimensionality reduction technique that uses Singular Value Decomposition (SVD) to project high-dimensional data onto a lower-dimensional space while preserving as much variance as possible.</p>
+<h2>Key Concepts</h2>
+<ul>
+<li><strong>Dimensionality Reduction:</strong>  Reduces the number of features in a dataset, simplifying analysis and improving model performance.</li>
+<li><strong>Variance Maximization:</strong> The first principal component (PC) captures the direction of maximum variance in the data. Subsequent PCs are orthogonal to the preceding ones and capture progressively less variance.</li>
+<li><strong>Singular Value Decomposition (SVD):</strong>  A matrix factorization technique used by PCA to find the principal components.</li>
+<li><strong>Explained Variance Ratio:</strong> The proportion of total variance captured by each principal component.  This helps determine the number of PCs to retain.</li>
+<li><strong>Orthogonality:</strong> Principal components are mutually orthogonal (uncorrelated), ensuring independence of the new features.</li>
+</ul>
+<h2>PCA Algorithm</h2>
+<p>PCA involves these steps:</p>
+<ol>
+<li>
+<p><strong>Center the data:</strong> Subtract the mean of each feature from the corresponding feature values.</p>
+</li>
+<li>
+<p><strong>Compute the covariance matrix:</strong> This matrix describes the relationships between the features.</p>
+</li>
+<li>
+<p><strong>Perform SVD on the covariance matrix:</strong> This decomposes the matrix into three matrices: (U), (S), and (V^T). The columns of (V^T) represent the principal components.</p>
+</li>
+<li>
+<p><strong>Select the top k principal components:</strong> Choose the number of PCs based on the desired variance explained or a predetermined number.</p>
+</li>
+<li>
+<p><strong>Project the data:</strong> Transform the original data onto the selected principal components to obtain the reduced-dimensional representation.</p>
+</li>
+</ol>
+<h2>Mathematical Formulation</h2>
+<p>The projection of the data matrix (X) onto the first (k) principal components ((W)) is given by:</p>
+<p>[ X_{proj} = XW ]</p>
+<p>where (W) is a matrix whose columns are the top (k) eigenvectors of the covariance matrix.</p>
+<h2>Implementation with Scikit-Learn</h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.decomposition</span><span class="w"> </span><span class="kn">import</span> <span class="n">PCA</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="c1"># Sample data (replace with your data)</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>  
+
+<span class="c1"># Apply PCA to reduce to 2 dimensions</span>
+<span class="n">pca</span> <span class="o">=</span> <span class="n">PCA</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">X_reduced</span> <span class="o">=</span> <span class="n">pca</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="c1"># Access principal components</span>
+<span class="n">principal_components</span> <span class="o">=</span> <span class="n">pca</span><span class="o">.</span><span class="n">components_</span>
+
+<span class="c1"># Explained variance ratio</span>
+<span class="n">explained_variance_ratio</span> <span class="o">=</span> <span class="n">pca</span><span class="o">.</span><span class="n">explained_variance_ratio_</span>
+</code></pre></div>
+
+<p>The <code>explained_variance_ratio_</code> attribute shows the proportion of variance explained by each PC.  Cumulative sum can be used to determine the number of PCs needed to reach a certain variance threshold (e.g., 95%).</p>
+<h2>Choosing the Number of Dimensions</h2>
+<p>The number of principal components to retain can be determined in several ways:</p>
+<ul>
+<li><strong>Variance Explained:</strong> Select the number of PCs that capture a sufficient percentage (e.g., 95%) of the total variance.</li>
+<li><strong>Scree Plot:</strong> A plot of explained variance vs. number of PCs; the "elbow" point often indicates a suitable number of PCs.</li>
+<li><strong>Predetermined Number:</strong> Choose a fixed number of PCs based on computational constraints or desired level of dimensionality reduction.</li>
+</ul>
+<h2>Advanced Techniques</h2>
+<ul>
+<li><strong>Incremental PCA:</strong>  Handles large datasets that don't fit in memory by processing them in batches.</li>
+<li><strong>Randomized PCA:</strong>  A faster approximation of PCA, especially useful for high-dimensional data.</li>
+<li><strong>Kernel PCA:</strong>  Extends PCA to non-linear relationships using kernel methods.</li>
+</ul>
+<h2>Conclusion</h2>
+<p>Principal Component Analysis is a powerful dimensionality reduction technique widely used in machine learning for feature extraction, noise reduction, data visualization, and improving the efficiency of various machine learning algorithms. Its ability to preserve variance while reducing dimensionality makes it invaluable for handling high-dimensional datasets.</p>
+    </div>
+    </body>
+    </html>
+    

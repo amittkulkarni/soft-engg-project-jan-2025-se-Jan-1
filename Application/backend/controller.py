@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify, render_template, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption,ProgrammingAssignment,ChatHistory
-from extension import db 
+from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption, ProgrammingAssignment, \
+    ChatHistory
+from extension import db
 import os
 from token_validation import generate_token
 from datetime import datetime
@@ -12,12 +13,18 @@ import tempfile
 import requests
 import logging
 
+import markdown
+from markdown.extensions.codehilite import CodeHiliteExtension
+from markdown.extensions.tables import TableExtension
+import re
+
 from quiz_mock import generate_mcqs
 from week_summarizer import summarize_week_slides
 from topic_specfic_mock import generate_topic_mcqs
 from error_explainer import explain_error
 from lecture_summarizer import summarize_lecture
-from kia_chatbot import initialize_database, save_chat_turn_to_db, load_chat_history_from_db, get_answer, clear_user_history
+from kia_chatbot import initialize_database, save_chat_turn_to_db, load_chat_history_from_db, get_answer, \
+    clear_user_history
 from notes_generator import generate_topic_notes
 from topic_suggestions import generate_topic_suggestions
 
@@ -30,11 +37,11 @@ user_routes = Blueprint('user_routes', __name__)
 GOOGLE_CLIENT_ID = "859846322076-3u1k9ter70q7b5jqaum8i7e5jc506mnh.apps.googleusercontent.com"  # Set your Google Client ID
 GOOGLE_CLIENT_SECRET = "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"
 
-
 # Configure logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
 
 @user_routes.route('/google_signup', methods=['POST'])
 def google_signup():
@@ -135,6 +142,7 @@ def google_login():
     except Exception as e:
         return jsonify({"Success": False, "message": f"An error occurred: {str(e)}"}), 500
 
+
 # Signup Route - Registers a new user
 
 @user_routes.route('/signup', methods=['POST'])
@@ -176,6 +184,7 @@ def signup():
 
     return jsonify({"message": "User registered successfully"}), 201
 
+
 # Login Route - Authenticates a user and returns an access token
 @user_routes.route('/login', methods=['POST'])
 def login():
@@ -196,7 +205,8 @@ def login():
     token = generate_token(user.id)
     return jsonify({"access_token": token, "message": "Login successful"}), 200
 
-#-----------------------------------------CRUD Operations for Weeks--------------------------------------------------------------
+
+# -----------------------------------------CRUD Operations for Weeks--------------------------------------------------------------
 
 # Create Week - Adds a new week to the database
 @user_routes.route('/weeks', methods=['POST'])
@@ -204,11 +214,11 @@ def create_week():
     data = request.get_json()
     week_number = data.get('week_number')
     title = data.get('title')
-    
+
     # Validate required fields with proper type checking
     if not isinstance(week_number, int) or week_number <= 0:
         return jsonify({"success": False, "message": "Invalid week number. It must be a positive integer"}), 400
-    
+
     if not title or not isinstance(title, str):
         return jsonify({"success": False, "message": "Title is required and must be a string"}), 400
 
@@ -216,7 +226,7 @@ def create_week():
     existing_week = Week.query.filter_by(week_number=week_number).first()
     if existing_week:
         return jsonify({"success": False, "message": "Week already exists"}), 409
-    
+
     try:
         # Create and save a new week
         new_week = Week(week_number=week_number, title=title)
@@ -227,8 +237,8 @@ def create_week():
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
-    
-    
+
+
 # Get All Weeks - Retrieves a list of all weeks
 @user_routes.route('/weeks', methods=['GET'])
 def get_weeks():
@@ -276,7 +286,8 @@ def get_week_details(week_id):
                 "week_number": week.week_number,
                 "title": week.title,
                 "lectures": [{"id": lec.id, "title": lec.title, "video_id": lec.video_id} for lec in week.lectures],
-                "assignments": [{"id": assgn.id, "title": assgn.title, "assignment_type": assgn.assignment_type} for assgn in week.assignments]
+                "assignments": [{"id": assgn.id, "title": assgn.title, "assignment_type": assgn.assignment_type} for
+                                assgn in week.assignments]
             }
         }), 200
 
@@ -290,11 +301,11 @@ def get_week_details(week_id):
 def update_week(week_id):
     # Fetch the week from the database
     week = Week.query.get(week_id)
-    
-    #If the specified week does not exist, return a 404 error
+
+    # If the specified week does not exist, return a 404 error
     if not week:
         return jsonify({"success": False, "message": "Week not found"}), 404
-    
+
     # Get request data
     data = request.get_json()
 
@@ -302,13 +313,13 @@ def update_week(week_id):
     if "week_number" in data:
         if not isinstance(data["week_number"], int) or data["week_number"] <= 0:
             return jsonify({"success": False, "message": "Invalid week number. Must be a positive integer"}), 400
-        week.week_number = data["week_number"] # Assign the new value
+        week.week_number = data["week_number"]  # Assign the new value
 
     # Validate and update the title (if provided)
     if "title" in data:
         if not isinstance(data["title"], str) or not data["title"].strip():
             return jsonify({"success": False, "message": "Title must be a non-empty string"}), 400
-        week.title = data["title"] 
+        week.title = data["title"]
 
     try:
         # Commit changes to the database
@@ -343,7 +354,7 @@ def delete_week(week_id):
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
 
 
-#-----------------------------------------------------CRUD Operations for Lectures -----------------------------------------------------
+# -----------------------------------------------------CRUD Operations for Lectures -----------------------------------------------------
 
 # Create Lecture - Adds a new lecture to a specific week
 @user_routes.route('/lectures', methods=['POST'])
@@ -357,10 +368,10 @@ def create_lecture():
         # Validate required fields with proper type checking
         if not isinstance(week_id, int) or week_id <= 0:
             return jsonify({"success": False, "message": "Invalid week ID. It must be a positive integer"}), 400
-        
+
         if not title or not isinstance(title, str):
             return jsonify({"success": False, "message": "Title is required and must be a string"}), 400
-        
+
         if not video_id or not isinstance(video_id, str):
             return jsonify({"success": False, "message": "Video ID is required and must be a string"}), 400
 
@@ -379,7 +390,8 @@ def create_lecture():
         db.session.add(new_lecture)
         db.session.commit()
 
-        return jsonify({"success": True, "message": "New lecture added successfully", "lecture_id": new_lecture.id}), 201
+        return jsonify(
+            {"success": True, "message": "New lecture added successfully", "lecture_id": new_lecture.id}), 201
 
     except Exception as e:
         # Rollback in case of an error
@@ -508,14 +520,15 @@ def delete_lecture(lecture_id):
         db.session.rollback()
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
 
-#-----------------------------------------------------CRUD - ASSIGNMENT-----------------------------------------------------
+
+# -----------------------------------------------------CRUD - ASSIGNMENT-----------------------------------------------------
 
 # Create a new assignment
 @user_routes.route('/assignments', methods=['POST'])
 def create_assignment():
     try:
         data = request.get_json()
-        
+
         # Extract fields from the request body
         week_id = data.get('week_id')
         title = data.get('title')
@@ -525,13 +538,13 @@ def create_assignment():
         # Validate required fields
         if not all([week_id, title, assignment_type, due_date]):
             return jsonify({'success': False, 'message': 'All fields are required'}), 400
-        
+
         # Validate due_date format
         try:
             due_date = datetime.strptime(due_date, '%Y-%m-%d')
         except ValueError:
             return jsonify({'success': False, 'message': 'Invalid date format. Use YYYY-MM-DD'}), 400
-        
+
         # Check if the associated week exists
         week = Week.query.get(week_id)
         if not week:
@@ -552,7 +565,8 @@ def create_assignment():
         db.session.add(new_assignment)
         db.session.commit()
 
-        return jsonify({'success': True, 'message': 'New assignment added successfully', 'assignment_id': new_assignment.id}), 201
+        return jsonify(
+            {'success': True, 'message': 'New assignment added successfully', 'assignment_id': new_assignment.id}), 201
 
     except Exception as e:
         db.session.rollback()
@@ -639,7 +653,7 @@ def update_assignment(assignment_id):
             return jsonify({"success": False, "message": "Assignment not found"}), 404
 
         data = request.get_json()
-        
+
         # Update fields only if they are provided in the request
         if "title" in data:
             assignment.title = data["title"]
@@ -682,7 +696,8 @@ def delete_assignment(assignment_id):
         db.session.rollback()
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
 
-#-----------------------------------------------------CRUD - ASSIGNMENT QUESTION-----------------------------------------------------
+
+# -----------------------------------------------------CRUD - ASSIGNMENT QUESTION-----------------------------------------------------
 
 # Create Assignment Question - Adds a new question to a specific assignment
 @user_routes.route('/assignment_questions', methods=['POST'])
@@ -697,7 +712,7 @@ def create_assignment_question():
         # Validate required fields
         if not assignment_id or not question_text or not question_type or points is None:
             return jsonify({"success": False, "message": "All fields are required"}), 400
-    
+
         # Ensure points is a positive integer
         if not isinstance(points, int) or points < 0:
             return jsonify({"success": False, "message": "Points must be a non-negative integer"}), 400
@@ -722,7 +737,8 @@ def create_assignment_question():
 
         db.session.commit()
 
-        return jsonify({"success": True, "message": "New assignment question added successfully", "question_id": new_question.id}), 201
+        return jsonify({"success": True, "message": "New assignment question added successfully",
+                        "question_id": new_question.id}), 201
 
     except Exception as e:
         db.session.rollback()
@@ -754,6 +770,7 @@ def get_assignment_questions():
     except Exception as e:
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
 
+
 # Retrieve a specific assignment question by ID
 @user_routes.route('/assignment_questions/<int:question_id>', methods=['GET'])
 def get_assignment_question(question_id):
@@ -777,6 +794,7 @@ def get_assignment_question(question_id):
 
     except Exception as e:
         return jsonify({'success': False, 'message': 'An error occurred', 'error': str(e)}), 500
+
 
 # Update an existing assignment question
 @user_routes.route('/assignment_questions/<int:question_id>', methods=['PUT'])
@@ -807,9 +825,9 @@ def update_assignment_question(question_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': 'An error occurred', 'error': str(e)}), 500
-    
-    
- # Delete an assignment question
+
+
+# Delete an assignment question
 @user_routes.route('/assignment_questions/<int:question_id>', methods=['DELETE'])
 def delete_assignment_question(question_id):
     try:
@@ -818,7 +836,7 @@ def delete_assignment_question(question_id):
             return jsonify({'success': False, 'message': 'Assignment question not found'}), 404
 
         assignment = question.assignment
-        
+
         # Adjust total points for the assignment
         assignment.total_points = (assignment.total_points or 0) - question.points
 
@@ -830,9 +848,9 @@ def delete_assignment_question(question_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': 'An error occurred', 'error': str(e)}), 500
-    
-    
-#-----------------------------------------------------CRUD - ASSIGNMENT QUESTION OPTION-----------------------------------------------------
+
+
+# -----------------------------------------------------CRUD - ASSIGNMENT QUESTION OPTION-----------------------------------------------------
 
 # API to create a new option for an assignment question
 @user_routes.route('/options', methods=['POST'])
@@ -873,15 +891,15 @@ def create_option():
         # Rollback in case of an error
         db.session.rollback()
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
-    
-    
+
+
 # Retrieve all options for assignment questions
 @user_routes.route('/options', methods=['GET'])
 def get_options():
     try:
         # Fetch all options from the database
         options = QuestionOption.query.all()
-        
+
         return jsonify({"success": True, "options": [{
             "id": option.id,
             "question_id": option.question_id,
@@ -891,8 +909,8 @@ def get_options():
 
     except Exception as e:
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
-    
-    
+
+
 # Retrieve a specific option by its ID
 @user_routes.route('/options/<int:option_id>', methods=['GET'])
 def get_option(option_id):
@@ -912,8 +930,8 @@ def get_option(option_id):
 
     except Exception as e:
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
-    
-    
+
+
 # Update an existing option by its ID
 @user_routes.route('/options/<int:option_id>', methods=['PUT'])
 def update_option(option_id):
@@ -941,6 +959,7 @@ def update_option(option_id):
         db.session.rollback()
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
 
+
 # Delete an option by its ID
 @user_routes.route('/options/<int:option_id>', methods=['DELETE'])
 def delete_option(option_id):
@@ -959,8 +978,8 @@ def delete_option(option_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
-    
-    
+
+
 # ---------------------------------------CRUD - ProgrammingAssignment-----------------------------------------------
 
 # Add a New Programming Assignment
@@ -1001,23 +1020,23 @@ def add_ProgrammingAssignment():
         new_programming_assignment.set_test_cases(test_cases)
         db.session.add(new_programming_assignment)
         db.session.commit()
-        
+
         return jsonify({"success": True, "message": "Programming assignment added successfully"}), 201
 
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
-    
-    
+
+
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['GET'])
 def get_ProgrammingAssignment(assignment_id):
     try:
         # Explicitly set starting table to resolve join ambiguity
         assignment = db.session.query(
-                ProgrammingAssignment, Week
-            ).select_from(ProgrammingAssignment)  \
-            .join(Assignment, ProgrammingAssignment.assignment_id == Assignment.id)  \
-            .join(Week, Assignment.week_id == Week.id)  \
+            ProgrammingAssignment, Week
+        ).select_from(ProgrammingAssignment) \
+            .join(Assignment, ProgrammingAssignment.assignment_id == Assignment.id) \
+            .join(Week, Assignment.week_id == Week.id) \
             .filter(ProgrammingAssignment.assignment_id == assignment_id).first()  # <-- Changed here
 
         if not assignment:
@@ -1045,7 +1064,7 @@ def get_ProgrammingAssignment(assignment_id):
     except Exception as e:
         return jsonify({"success": False, "message": "Error retrieving assignment", "error": str(e)}), 500
 
-    
+
 # Update an existing programming assignment
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['PUT'])
 def update_ProgrammingAssignment(assignment_id):
@@ -1053,7 +1072,7 @@ def update_ProgrammingAssignment(assignment_id):
         assignment = ProgrammingAssignment.query.get(assignment_id)
         if not assignment:
             return jsonify({"success": False, "message": "Programming assignment not found"}), 404
-        
+
         # Parse JSON data and update relevant fields
         data = request.get_json()
         if "problem_statement" in data:
@@ -1070,14 +1089,14 @@ def update_ProgrammingAssignment(assignment_id):
             assignment.sample_output = data["sample_output"]
         if "test_cases" in data:
             assignment.set_test_cases(data["test_cases"])
-        
+
         db.session.commit()
         return jsonify({"success": True, "message": "Programming assignment updated successfully"}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
-    
-    
+
+
 # Delete a specific programming assignment
 @user_routes.route('/programming_assignments/<int:assignment_id>', methods=['DELETE'])
 def delete_ProgrammingAssignment(assignment_id):
@@ -1085,7 +1104,7 @@ def delete_ProgrammingAssignment(assignment_id):
         assignment = ProgrammingAssignment.query.get(assignment_id)
         if not assignment:
             return jsonify({"success": False, "message": "Programming assignment not found"}), 404
-        
+
         db.session.delete(assignment)
         db.session.commit()
         return jsonify({"success": True, "message": "Programming assignment deleted successfully"}), 200
@@ -1093,6 +1112,7 @@ def delete_ProgrammingAssignment(assignment_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": "Database error", "error": str(e)}), 500
+
 
 @user_routes.route('/programming_assignments/<int:assignment_id>/execute', methods=['POST'])
 def execute_solution(assignment_id):
@@ -1125,7 +1145,7 @@ def execute_solution(assignment_id):
                 if "output" in test_case:
                     expected_output = test_case["output"]
                 else:
-                    raise KeyError(f"Test case {i+1} is missing output field")
+                    raise KeyError(f"Test case {i + 1} is missing output field")
 
                 # Execute the code with this input
                 actual_output = execute_python_code(code, input_data)
@@ -1173,6 +1193,7 @@ def execute_solution(assignment_id):
         traceback.print_exc()  # Print stacktrace for debugging
         return jsonify({"success": False, "message": f"Error executing code: {str(e)}", "error": str(e)}), 500
 
+
 # Helper function to execute Python code
 def execute_python_code(code, input_data):
     """
@@ -1208,6 +1229,7 @@ Execute python code with provided input and return the output
         # Clean up temporary files
         os.unlink(code_file)
 
+
 # Function to compare Machine Learning outputs with tolerance
 # def compare_ml_outputs(actual_output, expected_output):
 #     """
@@ -1234,8 +1256,8 @@ Execute python code with provided input and return the output
 #         # If parsing fails, fall back to exact string comparison
 #         return actual_output.strip() == expected_output.strip()
 
-    
-#-----------------------------------------Score Checking ----------------------------------------------------------------
+
+# -----------------------------------------Score Checking ----------------------------------------------------------------
 # Calculate score based on selected option IDs
 @user_routes.route('/assignments/check_score', methods=['POST'])
 def check_score():
@@ -1264,7 +1286,7 @@ def check_score():
     return jsonify({"success": True, "message": "Score calculated successfully", "total_score": total_score}), 200
 
 
-#--------------------------------------------- AI APIs -----------------------------------------------------------------
+# --------------------------------------------- AI APIs -----------------------------------------------------------------
 
 # Generate Topic-Specific Questions
 @user_routes.route('/generate_topic_specific_questions', methods=['POST'])
@@ -1391,6 +1413,7 @@ def video_summarizer():
 # Ensure chat_logs directory exists
 os.makedirs("chat_logs", exist_ok=True)
 
+
 @user_routes.route('/kia_chat', methods=['POST'])
 def chat_with_kia():
     """API to process user query and get response from Kia"""
@@ -1468,7 +1491,6 @@ def save_chat_history():
         }), 500
 
 
-
 # ---------------------------- Get Chat History ----------------------------
 @user_routes.route('/chat_history/<int:user_id>', methods=['GET'])
 def get_chat_history(user_id):
@@ -1490,7 +1512,8 @@ def get_chat_history(user_id):
         formatted_history = []
         for i in range(0, len(chat_history.messages), 2):
             query = chat_history.messages[i].content
-            response = chat_history.messages[i + 1].content if i + 1 < len(chat_history.messages) else "No response recorded"
+            response = chat_history.messages[i + 1].content if i + 1 < len(
+                chat_history.messages) else "No response recorded"
 
             formatted_history.append({
                 "query": query,
@@ -1511,7 +1534,7 @@ def get_chat_history(user_id):
             'user_id': user_id
         }), 500
 
-    
+
 # Explain Error API
 @user_routes.route('/explain_error', methods=['POST'])
 def explain_error_route():
@@ -1560,6 +1583,7 @@ def generate_week_summary():
 
     # Return result
     return jsonify(result), 200 if result['success'] else 404
+
 
 # ---------------------------- Generate Mock Test ----------------------------
 @user_routes.route('/generate_mock', methods=['POST'])
@@ -1660,8 +1684,9 @@ def topic_recommendation():
                 'general_tips': ["Review the course materials for the topics you missed."]
             }
         }), 200
-    
-#---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
+
+
+# ---------------------------------- PDF Generation (wkhtmltopdf Setup) ----------------------------------
 
 # Automatically detect OS and set the wkhtmltopdf path
 if platform.system() == "Windows":
@@ -1679,7 +1704,7 @@ if not os.path.exists(WKHTMLTOPDF_PATH):
 config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
 
 # Ensure reports directory exists
-BASE_DIR = os.path.abspath(os.path.dirname(__file__)) # Get current directory
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))  # Get current directory
 REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
@@ -1695,8 +1720,8 @@ def download_report():
 
     # username = user.username
     username = "Jyotiraditya Saha"
-    score = data.get("score")        # Get the score from the request
-    total = data.get("total")        # Get the total score from the request
+    score = data.get("score")  # Get the score from the request
+    total = data.get("total")  # Get the total score from the request
     # Extract suggestions from potentially different formats
     suggestions = data.get("suggestions", [])
     if isinstance(suggestions, dict):
@@ -1781,31 +1806,29 @@ def download_markdown_pdf():
         }), 400
 
     try:
-        import markdown
-        from markdown.extensions.codehilite import CodeHiliteExtension
-        from markdown.extensions.tables import TableExtension
-        from markdown.extensions import Extension
-        from markdown.inlinepatterns import InlineProcessor
+        # Directory for saving files
+        temp_dir = tempfile.mkdtemp() if 'REPORTS_DIR' not in globals() else REPORTS_DIR
 
-        class MathJaxExtension(Extension):
-            def extendMarkdown(self, md):
-                md.inlinePatterns.register(
-                    MathJaxInlineProcessor(r'(\$\$?)(.*?)\1', md),
-                    'mathjax',
-                    190
-                )
+        # Pre-process markdown to handle LaTeX expressions
+        # Replace $$ ... $$ with HTML for display math
+        markdown_content = re.sub(
+            r'\$\$(.*?)\$\$',
+            r'<div class="math-display">\1</div>',
+            markdown_content,
+            flags=re.DOTALL
+        )
 
-        class MathJaxInlineProcessor(InlineProcessor):
-            def handleMatch(self, m, data):
-                content = m.group(3)
-                el = markdown.util.etree.Element('span')
-                el.text = markdown.util.AtomicString(content)
-                return el, m.start(0), m.end(0)
+        # Replace $ ... $ with HTML for inline math
+        markdown_content = re.sub(
+            r'(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)',
+            r'<span class="math-inline">\1</span>',
+            markdown_content
+        )
 
+        # Convert markdown to HTML
         html_content = markdown.markdown(
             markdown_content,
             extensions=[
-                MathJaxExtension(),
                 'fenced_code',
                 'tables',
                 CodeHiliteExtension(linenums=False, css_class='highlight'),
@@ -1814,134 +1837,262 @@ def download_markdown_pdf():
             ]
         )
 
+        # Create HTML template with CSS for math rendering
         html_template = f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>{title}</title>
-<script>
-MathJax = {{
-tex: {{
-inlineMath: [['\\(', '\\)']],
-displayMath: [['\\[', '\\]']]
-}},
-startup: {{
-typeset: false,
-ready: () => {{
-MathJax.startup.defaultReady();
-MathJax.startup.promise.then(() => {{
-document.dispatchEvent(new Event('mathjaxLoaded'));
-}});
-}}
-}}
-}};
-</script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>${title}</title>
 <style>
-:root {{
---primary: #2c3e50;
---secondary: #3498db;
---accent: #e74c3c;
-}}
+/* Variables for consistent theming */
+            :root {{
+            --primary-color: #3498db;
+--primary-dark: #2980b9;
+--secondary-color: #2c3e50;
+--accent-color: #1E847F;
+--text-color: #333333;
+--light-gray: #f5f7fa;
+--medium-gray: #ecf0f1;
+--border-color: #dfe6e9;
+--shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }}
 
-body {{
-font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+/* General document styling */
+            body {{
+            font-family: 'Segoe UI', Arial, sans-serif;
 line-height: 1.6;
-margin: 0;
-padding: 20px;
-background: #f8f9fa;
-}}
-
-.container {{
+color: var(--text-color);
 max-width: 900px;
 margin: 0 auto;
-background: white;
-border-radius: 12px;
-box-shadow: 0 2px 15px rgba(0,0,0,0.1);
-overflow: hidden;
-}}
-
-.highlight {{
-margin: 1em 0;
+padding: 25px;
+background-color: #ffffff;
+box-shadow: var(--shadow);
 border-radius: 8px;
-overflow: hidden;
-}}
+            }}
 
-.highlight pre {{
-margin: 0;
-padding: 1em;
-font-family: 'Fira Code', Monaco, Consolas, 'Courier New', monospace;
-font-size: 0.9em;
-line-height: 1.5;
-background: #282c34 !important;
-color: #abb2bf !important;
-}}
+/* Header styling with gradient underline */
+            h1 {{
+            font-size: 28pt;
+color: var(--secondary-color);
+margin-top: 0.5em;
+margin-bottom: 0.5em;
+padding-bottom: 15px;
+position: relative;
+            }}
 
-code:not([class]) {{
-background-color: #f3f4f6;
-color: #e83e8c;
-padding: 0.2em 0.4em;
+            h1::after {{
+            content: "";
+position: absolute;
+bottom: 0;
+left: 0;
+height: 3px;
+width: 100%;
+background: linear-gradient(to right, var(--primary-color), var(--primary-dark));
 border-radius: 3px;
-font-family: 'Fira Code', Monaco, Consolas, 'Courier New', monospace;
+            }}
+
+            h2 {{
+            font-size: 22pt;
+color: var(--secondary-color);
+margin-top: 1.5em;
+margin-bottom: 0.7em;
+border-bottom: 1px solid var(--border-color);
+padding-bottom: 7px;
+            }}
+
+            h3 {{
+            font-size: 18pt;
+color: var(--secondary-color);
+margin-top: 1.2em;
+margin-bottom: 0.6em;
+            }}
+
+            p {{
+            margin-bottom: 1.2em;
+text-align: justify;
+            }}
+
+/* Code styling with enhanced visuals */
+            pre {{
+            background-color: var(--light-gray);
+border: 1px solid var(--border-color);
+border-radius: 6px;
+padding: 16px;
+margin: 20px 0;
+overflow-x: auto;
+box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+            }}
+            code {{
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
 font-size: 0.9em;
-}}
+color: var(--accent-color);
+            }}
 
-/* Math content styling */
-.math-content {{
+            p code {{
+            background-color: var(--light-gray);
+padding: 0.2em 0.4em;
+border-radius: 4px;
+border: 1px solid var(--border-color);
+            }}
+
+/* LaTeX Math Styling with improved visuals */
+            .math-display {{
+            display: block;
+padding: 16px;
+margin: 24px 0;
+text-align: center;
+font-family: 'Times New Roman', serif;
 font-size: 1.1em;
-margin: 1em 0;
-padding: 10px;
-}}
+background-color: var(--light-gray);
+border-left: 4px solid var(--primary-color);
+border-radius: 0 6px 6px 0;
+box-shadow: var(--shadow);
+            }}
 
-.MJX-TEX {{
-color: var(--primary);
-padding: 5px 0;
-}}
-</style>
-</head>
-<body>
-<div class="container">
-<div class="header">
-            <h1>{title}</h1>
-</div>
-<div class="content">
-<div class="math-content">
-            {html_content}
-</div>
-</div>
-</div>
-<script>
-// Start typesetting when MathJax is ready
-document.addEventListener('mathjaxLoaded', () => {{
-window.status = 'mathjax_ready';
-}});
-MathJax.startup.document.state(0);
-</script>
-</body>
-            </html>"""
+            .math-inline {{
+            font-family: 'Times New Roman', serif;
+padding: 0 4px;
+background-color: var(--light-gray);
+border-radius: 3px;
+            }}
 
-        pdf_file = os.path.join(REPORTS_DIR, filename)
+/* Table styling with alternating rows */
+            table {{
+            border-collapse: collapse;
+width: 100%;
+margin: 20px 0;
+border-radius: 6px;
+overflow: hidden;
+box-shadow: var(--shadow);
+            }}
 
+            th {{
+            background-color: var(--primary-color);
+color: #ffffff;
+font-weight: 600;
+text-align: left;
+padding: 12px;
+            }}
+
+            td {{
+            padding: 10px 12px;
+border: 1px solid var(--border-color);
+            }}
+
+            tr:nth-child(even) {{
+            background-color: var(--light-gray);
+            }}
+
+            tr:hover {{
+            background-color: var(--medium-gray);
+            }}
+
+/* List styling */
+            ul, ol {{
+            padding-left: 25px;
+margin: 16px 0;
+            }}
+
+            li {{
+            margin-bottom: 8px;
+position: relative;
+            }}
+
+            ul li::marker {{
+            color: var(--primary-color);
+            }}
+
+/* Blockquote styling */
+            blockquote {{
+            border-left: 4px solid var(--primary-color);
+background-color: var(--light-gray);
+margin: 20px 0;
+padding: 16px 20px;
+border-radius: 0 6px 6px 0;
+font-style: italic;
+color: #555;
+box-shadow: var(--shadow);
+            }}
+/* Link styling */
+            a {{
+            color: var(--primary-color);
+text-decoration: none;
+border-bottom: 1px solid transparent;
+transition: border-color 0.2s;
+            }}
+
+            a:hover {{
+            border-bottom-color: var(--primary-color);
+            }}
+/* Print-specific styles for PDF output */
+            @media print {{
+            body {{
+                box-shadow: none;
+                padding: 0;
+                max-width: none;
+            }}
+
+            pre, code, blockquote, table {{
+                page-break-inside: avoid;
+        }}
+
+        h1, h2, h3 {{
+            page-break-after: avoid;
+        }}
+
+        img {{
+            max-width: 100% !important;
+        }}
+
+        @page {{
+            margin: 2cm;
+        }}
+        }}
+        </style>
+            </head>
+            <body>
+            <div class="content">
+    {html_content}
+    </div>
+    </body>
+    </html>
+    """
+
+        # Write HTML to a file
+        html_file = os.path.join(temp_dir, "temp.html")
+        with open(html_file, 'w', encoding='utf-8') as f:
+            f.write(html_template)
+
+        # Prepare PDF file path
+        pdf_file = os.path.join(temp_dir, filename)
+
+        # Configure pdfkit options for best results
         options = {
-            'enable-javascript': True,
-            'javascript-delay': 20000,  # Increased delay for complex math
-            'no-stop-slow-scripts': True,
-            'window-status': 'mathjax_ready',
-            'load-error-handling': 'ignore',
+            'enable-local-file-access': '',
             'quiet': '',
-            'custom-header': [('User-Agent', 'Mozilla/5.0')],
+            'encoding': 'UTF-8',
+            'print-media-type': '',
+            'margin-top': '15mm',
+            'margin-right': '15mm',
+            'margin-bottom': '15mm',
+            'margin-left': '15mm',
+            'page-size': 'A4',
             'dpi': 300,
-            'image-quality': 100,
-            'viewport-size': '1600x1200'
+            'no-outline': None
         }
 
-        pdfkit.from_string(html_template, pdf_file, options=options)
+        # Generate PDF directly without JavaScript
+        pdfkit.from_file(html_file, pdf_file, options=options)
 
+        # Return the file for download
         response = send_file(
             pdf_file,
             as_attachment=True,
             download_name=filename
         )
+
+        # Set appropriate headers
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
@@ -1949,9 +2100,13 @@ MathJax.startup.document.state(0);
         return response
 
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         print(f"PDF generation error: {str(e)}")
+        print(error_details)
         return jsonify({
             "message": "Failed to generate PDF",
             "success": False,
-            "error": str(e)
+            "error": str(e),
+            "details": error_details
         }), 500
