@@ -14,7 +14,7 @@ from langchain.chains import create_retrieval_chain, create_history_aware_retrie
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_chroma import Chroma
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
 # Global singletons
@@ -96,7 +96,7 @@ def save_chat_turn_to_db(user_id: int, query: str, response: str):
     conn.commit()
     conn.close()
 
-def load_chat_history_from_db(user_id: int) -> ChatMessageHistory:
+def load_chat_history_from_db(user_id: int) -> InMemoryChatMessageHistory:
     """Load chat history from the database"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -104,7 +104,7 @@ def load_chat_history_from_db(user_id: int) -> ChatMessageHistory:
     rows = cursor.fetchall()
     conn.close()
 
-    history = ChatMessageHistory()
+    history = InMemoryChatMessageHistory()
     for (query, response) in rows:
         history.add_user_message(query)
         history.add_ai_message(response)
