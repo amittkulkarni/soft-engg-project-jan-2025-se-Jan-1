@@ -26,7 +26,7 @@
                     v-model="searchQuery"
                     @input="fetchSuggestions"
                     type="text"
-                    placeholder="Search topics (e.g., Regression, Python Pandas)..."
+                    placeholder="Search topics (e.g., Regression, Principal Component Analysis)..."
                     class="form-control search-input"
                   />
                   <button

@@ -56,7 +56,7 @@
                   type="text"
                   v-model="searchQuery"
                   @input="fetchSuggestions"
-                  placeholder="Search topics (e.g., Regression, Machine Learning)"
+                  placeholder="Search topics (e.g., Regression, Neural Networks)"
                   class="form-control"
                 />
                 <button class="btn btn-dark" @click="generateNotes" :disabled="!selectedTopic">

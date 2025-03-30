@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify, render_template, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption, ProgrammingAssignment, \
-    ChatHistory
+from models import User, Week, Lecture, Assignment, AssignmentQuestion, QuestionOption, ProgrammingAssignment
 from extension import db
 import os
 from token_validation import generate_token
@@ -34,7 +33,7 @@ user_routes = Blueprint('user_routes', __name__)
 
 # Signup Route - Registers a new user
 # Environment variables
-GOOGLE_CLIENT_ID = "859846322076-3u1k9ter70q7b5jqaum8i7e5jc506mnh.apps.googleusercontent.com"  # Set your Google Client ID
+GOOGLE_CLIENT_ID = "859846322076-3u1k9ter70q7b5jqaum8i7e5jc506mnh.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET = "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"
 
 # Configure logging
