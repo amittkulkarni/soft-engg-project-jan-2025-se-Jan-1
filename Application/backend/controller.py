@@ -1699,7 +1699,7 @@ def topic_recommendation():
 
 # Automatically detect OS and set the wkhtmltopdf path
 if platform.system() == "Windows":
-    WKHTMLTOPDF_PATH = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+    WKHTMLTOPDF_PATH = os.path.join("C:", os.sep, "Program Files", "wkhtmltopdf", "bin", "wkhtmltopdf.exe")
 elif platform.system() == "Darwin":  # macOS
     WKHTMLTOPDF_PATH = "/usr/local/bin/wkhtmltopdf"
 else:  # Linux
