@@ -4,9 +4,9 @@
     <button
       class="ai-button ask-me-btn"
       @click="toggleChat"
-      :class="{ 'wiggle-animation': hasNewMessages }"
+      :class=" { 'wiggle-animation': hasNewMessages }"
     >
-      <img :src="StudentIcon" class="me-1" alt="AI Assistant" />
+      <img :src="StudentIcon" class="me-1" alt="AI Assistant"/>
       <span>Ask Kia</span>
       <span v-if="hasNewMessages" class="notification-badge">1</span>
     </button>
@@ -20,7 +20,7 @@
         <!-- Chat Header -->
         <div class="chat-header">
           <div class="d-flex align-items-center">
-            <img :src="StudentIcon" alt="Kia Profile" class="profile-icon me-2" />
+            <img :src="StudentIcon" alt="Kia Profile" class="profile-icon me-2"/>
             <div>
               <h6 class="mb-0 text-white">KIA - Your Virtual Assistant</h6>
               <small class="text-white-50" v-if="isTyping">typing...</small>
@@ -87,47 +87,47 @@
             :class="[msg.sender === 'user' ? 'message-user' : 'message-kia']"
           >
             <!-- Kia's Messages with Icon-->
-           <template v-if="msg.sender === 'kia'">
-             <div class="message-container">
-               <img
-                 :src="StudentIcon"
-                 alt="Kia Profile"
-                 class="message-avatar"
-               />
-               <div class="message-content">
-                 <div class="message-bubble kia-bubble">
-                   <vue-markdown
-                     :source="msg.text"
-                     :options="markdownOptions"
-                     class="markdown-content"
-                   />
-                 </div>
-                 <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
-               </div>
-               <div class="message-actions">
-                 <button class="action-btn" @click="copyMessage(msg.text)" title="Copy">
-                   <i class="bi bi-clipboard"></i>
-                 </button>
-               </div>
-             </div>
-           </template>
+            <template v-if="msg.sender === 'kia'">
+              <div class="message-container">
+                <img
+                  :src="StudentIcon"
+                  alt="Kia Profile"
+                  class="message-avatar"
+                />
+                <div class="message-content">
+                  <div class="message-bubble kia-bubble">
+                    <vue-markdown
+                      :source="msg.text"
+                      :options="markdownOptions"
+                      class="markdown-content"
+                    />
+                  </div>
+                  <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
+                </div>
+                <div class="message-actions">
+                  <button class="action-btn" @click="copyMessage(msg.text)" title="Copy">
+                    <i class="bi bi-clipboard"></i>
+                  </button>
+                </div>
+              </div>
+            </template>
 
-           <!-- User's Messages -->
-           <template v-else>
-             <div class="message-container user-container">
-               <div class="message-actions">
-                 <button class="action-btn" @click="copyMessage(msg.text)" title="Copy">
-                   <i class="bi bi-clipboard"></i>
-                 </button>
-               </div>
-               <div class="message-content">
-                 <div class="message-bubble user-bubble">
-                   {{ msg.text }}
-                 </div>
-                 <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
-               </div>
-             </div>
-           </template>
+            <!-- User's Messages -->
+            <template v-else>
+              <div class="message-container user-container">
+                <div class="message-actions">
+                  <button class="action-btn" @click="copyMessage(msg.text)" title="Copy">
+                    <i class="bi bi-clipboard"></i>
+                  </button>
+                </div>
+                <div class="message-content">
+                  <div class="message-bubble user-bubble">
+                    {{ msg.text }}
+                  </div>
+                  <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
+                </div>
+              </div>
+            </template>
           </div>
 
           <!-- Typing Indicator -->
@@ -198,16 +198,16 @@ export default {
         "How to handle missing data?",
         "Difference between classification and regression"
       ],
-        markdownOptions: {
-          breaks: true,
-          html: true,
-          highlight: function(code, lang) {
-            if (lang && hljs.getLanguage(lang)) {
-              return hljs.highlight(code, { language: lang }).value;
-            }
-            return hljs.highlightAuto(code).value;
+      markdownOptions: {
+        breaks: true,
+        html: true,
+        highlight: function (code, lang) {
+          if (lang && hljs.getLanguage(lang)) {
+            return hljs.highlight(code, { language: lang }).value;
           }
+          return hljs.highlightAuto(code).value;
         }
+      }
     };
   },
   created() {
@@ -247,39 +247,39 @@ export default {
 
         // Call the reset chat history API
         api.post('/reset_chat_history', {
-          user_id: this.userId
-        })
-        .then(response => {
-          this.isTyping = false;
+            user_id: this.userId
+          })
+          .then(response => {
+            this.isTyping = false;
 
-          if (response.data.success) {
-            // Reset local messages with confirmation
-            this.messages = [];
-          } else {
-            // Handle API error
-            console.error('Failed to clear chat history:', response.data.message);
+            if (response.data.success) {
+              // Reset local messages with confirmation
+              this.messages = [];
+            } else {
+              // Handle API error
+              console.error('Failed to clear chat history:', response.data.message);
+              this.messages.push({
+                sender: "kia",
+                text: "I couldn't clear our chat history. Please try again later.",
+                timestamp: new Date()
+              });
+            }
+          })
+          .catch(error => {
+            this.isTyping = false;
+            console.error('API call failed:', error);
+
+            // Add error message
             this.messages.push({
               sender: "kia",
-              text: "I couldn't clear our chat history. Please try again later.",
+              text: "I encountered an error while trying to clear our chat history. Please try again.",
               timestamp: new Date()
             });
-          }
-        })
-        .catch(error => {
-          this.isTyping = false;
-          console.error('API call failed:', error);
-
-          // Add error message
-          this.messages.push({
-            sender: "kia",
-            text: "I encountered an error while trying to clear our chat history. Please try again.",
-            timestamp: new Date()
           });
-        });
       }
     },
     sendMessage() {
-      if (this.newMessage.trim() === "") return;
+      if (this.newMessage.trim() === "") return ;
 
       // Add user message to UI
       const userMessage = {
@@ -297,48 +297,45 @@ export default {
 
       // Send message to backend
       api.post('/kia_chat', {
-        user_id: this.userId,
-        query: userQuestion
-      })
-      .then(response => {
-        this.isTyping = false;
+          user_id: this.userId,
+          query: userQuestion
+        })
+        .then(response => {
+          this.isTyping = false;
 
-        if (response.data.success) {
-          // Add AI response to UI
-          const kiaMessage = {
-            sender: "kia",
-            text: response.data.response,
-            timestamp: new Date()
-          };
-          this.messages.push(kiaMessage);
+          if (response.data.success) {
+            // Add AI response to UI
+            const kiaMessage = {
+              sender: "kia",
+              text: response.data.response,
+              timestamp: new Date()
+            };
+            this.messages.push(kiaMessage);
 
-          if (!this.showChat) {
-            this.hasNewMessages = true;
+            if (!this.showChat) {
+              this.hasNewMessages = true;
+            }
           }
-        }
-      })
-      .catch(error => {
-        this.isTyping = false;
-        console.error('API call failed:', error);
-      })
-      .finally(() => {
-        this.scrollToBottom();
-      });
+        })
+        .catch(error => {
+          this.isTyping = false;
+          console.error('API call failed:', error);
+        })
+        .finally(() => {
+          this.scrollToBottom();
+        });
     },
     loadChatHistory() {
       api.get(`/chat_history/${this.userId}`)
         .then(response => {
           if (response.data.success) {
-            // Directly use the preformatted messages from the backend
             this.messages = response.data.chat_history;
           } else {
-            // Add welcome message if no history is found
             this.messages = [];
           }
         })
         .catch(error => {
           console.error('Failed to load chat history:', error);
-          // Add fallback welcome message in case of error
           this.messages = [];
         });
     },
@@ -406,10 +403,10 @@ export default {
   bottom: 20px;
   right: 20px;
   width: calc(100% - 40px);
-  max-width: 600px; /* Increased from 380px */
+  max-width: 600px;
   height: calc(100vh - 100px);
-  max-height: 800px; /* Increased from 600px */
-  min-height: 450px; /* Increased from 400px */
+  max-height: 800px;
+  min-height: 450px;
   overflow: hidden;
   z-index: 1050;
   display: flex;
@@ -421,20 +418,41 @@ export default {
 }
 /* Code block styling */
 .hljs {
-  background-color: #282c34; /* Dark background */
-  color: #abb2bf; /* Light gray text */
+  background-color: #282c34;
+  color: #abb2bf;
 }
 
-.hljs-keyword { color: #c678dd; }
-.hljs-built_in { color: #e6c07b; }
-.hljs-string { color: #98c379; }
-.hljs-number { color: #d19a66; }
-.hljs-comment { color: #5c6370; font-style: italic; }
-.hljs-function { color: #61afef; }
-.hljs-variable { color: #e06c75; }
-.hljs-title { color: #61afef; }
-.hljs-params { color: #d19a66; }
-.hljs-operator { color: #56b6c2; }
+.hljs-keyword {
+  color: #c678dd;
+}
+.hljs-built_in {
+  color: #e6c07b;
+}
+.hljs-string {
+  color: #98c379;
+}
+.hljs-number {
+  color: #d19a66;
+}
+.hljs-comment {
+  color: #5c6370;
+  font-style: italic;
+}
+.hljs-function {
+  color: #61afef;
+}
+.hljs-variable {
+  color: #e06c75;
+}
+.hljs-title {
+  color: #61afef;
+}
+.hljs-params {
+  color: #d19a66;
+}
+.hljs-operator {
+  color: #56b6c2;
+}
 
 pre {
   background-color: #282c34;
@@ -454,7 +472,6 @@ pre {
   font-family: 'Consolas', 'Monaco', monospace !important;
 }
 
-/* Add these styles for Markdown headings */
 .markdown-content h1 {
   font-size: 1.8rem;
   margin-top: 1rem;
@@ -773,7 +790,7 @@ pre {
   margin-bottom: 20px;
   background-color: white;
   border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .welcome-message h5 {
@@ -801,15 +818,33 @@ pre {
 
 /* Wiggle animation for new messages */
 @keyframes wiggle {
-  0% { transform: rotate(0deg); }
-  15% { transform: rotate(-5deg); }
-  30% { transform: rotate(5deg); }
-  45% { transform: rotate(-4deg); }
-  60% { transform: rotate(4deg); }
-  75% { transform: rotate(-2deg); }
-  85% { transform: rotate(2deg); }
-  92% { transform: rotate(-1deg); }
-  100% { transform: rotate(0deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(-5deg);
+  }
+  30% {
+    transform: rotate(5deg);
+  }
+  45% {
+    transform: rotate(-4deg);
+  }
+  60% {
+    transform: rotate(4deg);
+  }
+  75% {
+    transform: rotate(-2deg);
+  }
+  85% {
+    transform: rotate(2deg);
+  }
+  92% {
+    transform: rotate(-1deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
 }
 
 .wiggle-animation {

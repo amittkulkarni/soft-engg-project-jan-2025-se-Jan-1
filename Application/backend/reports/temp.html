@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>$3.1 Data Preprocessing</title>
+<style>
+/* Variables for consistent theming */
+            :root {
+            --primary-color: #3498db;
+--primary-dark: #2980b9;
+--secondary-color: #2c3e50;
+--accent-color: #1E847F;
+--text-color: #333333;
+--light-gray: #f5f7fa;
+--medium-gray: #ecf0f1;
+--border-color: #dfe6e9;
+--shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+
+/* General document styling */
+            body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+line-height: 1.6;
+color: var(--text-color);
+max-width: 900px;
+margin: 0 auto;
+padding: 25px;
+background-color: #ffffff;
+box-shadow: var(--shadow);
+border-radius: 8px;
+            }
+
+/* Header styling with gradient underline */
+            h1 {
+            font-size: 28pt;
+color: var(--secondary-color);
+margin-top: 0.5em;
+margin-bottom: 0.5em;
+padding-bottom: 15px;
+position: relative;
+            }
+
+            h1::after {
+            content: "";
+position: absolute;
+bottom: 0;
+left: 0;
+height: 3px;
+width: 100%;
+background: linear-gradient(to right, var(--primary-color), var(--primary-dark));
+border-radius: 3px;
+            }
+
+            h2 {
+            font-size: 22pt;
+color: var(--secondary-color);
+margin-top: 1.5em;
+margin-bottom: 0.7em;
+border-bottom: 1px solid var(--border-color);
+padding-bottom: 7px;
+            }
+
+            h3 {
+            font-size: 18pt;
+color: var(--secondary-color);
+margin-top: 1.2em;
+margin-bottom: 0.6em;
+            }
+
+            p {
+            margin-bottom: 1.2em;
+text-align: justify;
+            }
+
+/* Code styling with enhanced visuals */
+            pre {
+            background-color: var(--light-gray);
+border: 1px solid var(--border-color);
+border-radius: 6px;
+padding: 16px;
+margin: 20px 0;
+overflow-x: auto;
+box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+            }
+            code {
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+font-size: 0.9em;
+color: var(--accent-color);
+            }
+
+            p code {
+            background-color: var(--light-gray);
+padding: 0.2em 0.4em;
+border-radius: 4px;
+border: 1px solid var(--border-color);
+            }
+
+/* LaTeX Math Styling with improved visuals */
+            .math-display {
+            display: block;
+padding: 16px;
+margin: 24px 0;
+text-align: center;
+font-family: 'Times New Roman', serif;
+font-size: 1.1em;
+background-color: var(--light-gray);
+border-left: 4px solid var(--primary-color);
+border-radius: 0 6px 6px 0;
+box-shadow: var(--shadow);
+            }
+
+            .math-inline {
+            font-family: 'Times New Roman', serif;
+padding: 0 4px;
+background-color: var(--light-gray);
+border-radius: 3px;
+            }
+
+/* Table styling with alternating rows */
+            table {
+            border-collapse: collapse;
+width: 100%;
+margin: 20px 0;
+border-radius: 6px;
+overflow: hidden;
+box-shadow: var(--shadow);
+            }
+
+            th {
+            background-color: var(--primary-color);
+color: #ffffff;
+font-weight: 600;
+text-align: left;
+padding: 12px;
+            }
+
+            td {
+            padding: 10px 12px;
+border: 1px solid var(--border-color);
+            }
+
+            tr:nth-child(even) {
+            background-color: var(--light-gray);
+            }
+
+            tr:hover {
+            background-color: var(--medium-gray);
+            }
+
+/* List styling */
+            ul, ol {
+            padding-left: 25px;
+margin: 16px 0;
+            }
+
+            li {
+            margin-bottom: 8px;
+position: relative;
+            }
+
+            ul li::marker {
+            color: var(--primary-color);
+            }
+
+/* Blockquote styling */
+            blockquote {
+            border-left: 4px solid var(--primary-color);
+background-color: var(--light-gray);
+margin: 20px 0;
+padding: 16px 20px;
+border-radius: 0 6px 6px 0;
+font-style: italic;
+color: #555;
+box-shadow: var(--shadow);
+            }
+/* Link styling */
+            a {
+            color: var(--primary-color);
+text-decoration: none;
+border-bottom: 1px solid transparent;
+transition: border-color 0.2s;
+            }
+
+            a:hover {
+            border-bottom-color: var(--primary-color);
+            }
+/* Print-specific styles for PDF output */
+            @media print {
+            body {
+                box-shadow: none;
+                padding: 0;
+                max-width: none;
+            }
+
+            pre, code, blockquote, table {
+                page-break-inside: avoid;
+        }
+
+        h1, h2, h3 {
+            page-break-after: avoid;
+        }
+
+        img {
+            max-width: 100% !important;
+        }
+
+        @page {
+            margin: 2cm;
+        }
+        }
+        </style>
+            </head>
+            <body>
+            <div class="content">
+    <h2>Data Preprocessing in Machine Learning using Scikit-learn</h2>
+<p>In this lecture, Professor Ashish discusses data preprocessing techniques in machine learning, focusing on Scikit-learn's capabilities.  Real-world datasets often contain imperfections requiring preprocessing before model training.</p>
+<h3>Common Data Issues and Preprocessing Steps</h3>
+<p>Typical problems include:</p>
+<ul>
+<li>Missing values in features.</li>
+<li>Features on different scales.</li>
+<li>Categorical attributes needing numerical representation.</li>
+<li>Irrelevant or excessive features.</li>
+<li>Non-numerical data (images, text) requiring feature extraction.</li>
+</ul>
+<p>Scikit-learn (<code>sklearn</code>) provides tools to address these issues.  The <code>sklearn.preprocessing</code> module handles standardization, missing value imputation, and feature scaling.  <code>sklearn.feature_extraction</code> offers feature extractors for various data types.  Dimensionality reduction techniques, such as Principal Component Analysis (PCA) in <code>sklearn.decomposition</code>, are used to handle high-dimensionality.  Feature expansion methods are also available (discussed later in the context of Support Vector Machines).</p>
+<h3>Handling Missing Values with Scikit-learn</h3>
+<p>Scikit-learn's <code>impute</code> module provides methods for handling missing values.  <code>SimpleImputer</code> can replace missing values using strategies like:</p>
+<ul>
+<li>Mean</li>
+<li>Median</li>
+<li>Most frequent value</li>
+<li>A constant value</li>
+</ul>
+<p><code>KNNImputer</code> uses k-Nearest Neighbors to impute missing values based on the values of its nearest neighbors.  For example,  to impute a missing value in a feature, it averages the values of that feature among its k-nearest neighbors.  The <code>MissingIndicator</code> class helps track the presence of missing values.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Example using SimpleImputer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.impute</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimpleImputer</span>
+<span class="n">imputer</span> <span class="o">=</span> <span class="n">SimpleImputer</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s1">&#39;mean&#39;</span><span class="p">)</span>
+<span class="n">transformed_data</span> <span class="o">=</span> <span class="n">imputer</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> The output of <code>MissingIndicator</code> is a SciPy sparse matrix.</p>
+</blockquote>
+<h3>Feature Transformation and Vectorization</h3>
+<p><code>DictVectorizer</code> transforms dictionaries into feature matrices.  <code>FeatureHasher</code> offers a high-speed, low-memory alternative using feature hashing, but sacrifices inspectability of the features.</p>
+<h3>Pipelines for Uniform Preprocessing</h3>
+<p>Scikit-learn's pipeline functionality allows chaining multiple transforms for uniform application across training, evaluation, and testing sets. This ensures consistency in preprocessing steps.</p>
+<p>Prof. Ashish concludes by emphasizing the importance of consistent preprocessing across different datasets (train, test, etc.) and the utility of Scikit-learn's tools in efficiently and effectively handling data preprocessing challenges.</p>
+    </div>
+    </body>
+    </html>
+    

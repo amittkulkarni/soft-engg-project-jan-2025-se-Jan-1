@@ -90,9 +90,9 @@
             </div>
 
             <!-- Progress Bar -->
-            <div class="progress mb-4" style="height: 10px;">
+            <div class="progress mb-4" style=" height: 10px;">
               <div class="progress-bar" role="progressbar"
-                   :style="{width: progressPercentage + '%'}"
+                   :style=" {width: progressPercentage + '%'}"
                    :aria-valuenow="answeredCount"
                    aria-valuemin="0"
                    :aria-valuemax="questions.length">
@@ -106,14 +106,14 @@
             <div v-for="(question, index) in questions" :key="question.id" class="question-container mb-4 p-4 rounded">
               <div class="d-flex justify-content-between">
                 <div>
-                <div class="question-number">
-                <strong>{{ index + 1 }}. </strong>
+                  <div class="question-number">
+                    <strong>{{ index + 1 }}.</strong>
+                  </div>
+                  <div class="question-text mb-3">
+                    <markdown-renderer :content="question.text"></markdown-renderer>
+                  </div>
                 </div>
-                <div class="question-text mb-3">
-                  <markdown-renderer :content="question.text"></markdown-renderer>
-                </div>
-                </div>
-                <span class="badge bg-secondary p-2" style="height: 25px">{{ question.points }} pts</span>
+                <span class="badge bg-secondary p-2" style=" height: 25px">{{ question.points }} pts</span>
               </div>
 
               <div class="options-container">
@@ -136,12 +136,12 @@
                     :class="[
                       'form-check-label',
                       showScore
-                        ? option.id === correctAnswers[index]
-                          ? 'text-success fw-bold'
-                          : userAnswers[index] === option.id
-                            ? 'text-danger'
-                            : ''
-                        : '',
+                      ? option.id === correctAnswers[index]
+                      ? 'text-success fw-bold'
+                      : userAnswers[index] === option.id
+                      ? 'text-danger'
+                      : ''
+                      : '',
                     ]"
                   >
                     {{ option.text }}
@@ -188,10 +188,12 @@
             <!-- Score and Suggestions Section -->
             <div v-if="showScore" class="score-modal mt-4 p-4 rounded shadow-sm">
               <h4 class="mb-3">Your Score: {{ score }}/{{ totalPossiblePoints }}</h4>
-              <div class="progress mb-3" style="height: 20px;">
+              <div class="progress mb-3" style=" height: 20px;">
                 <div class="progress-bar" role="progressbar"
-                     :style="{width: (score/totalPossiblePoints*100) + '%'}"
-                     :class="getScoreClass(score/totalPossiblePoints)">
+                     :style=" {
+                       width: (score / totalPossiblePoints * 100) + '%'
+                     }"
+                     :class="getScoreClass(score / totalPossiblePoints)">
                   {{ Math.round(score/totalPossiblePoints*100) }}%
                 </div>
               </div>
@@ -305,7 +307,6 @@ export default {
     }
   },
   created() {
-    // Nothing to load at initialization since we're using placeholders
     this.loading = false;
   },
   methods: {
@@ -318,16 +319,15 @@ export default {
         // Call the API endpoint
         const response = await api.post('http://127.0.0.1:5000/generate_mock', {
           quiz_type: quizType,
-          num_questions: 10 // Fixed number of questions
+          num_questions: 10
         });
 
         // Process the response
         if (response.data.success) {
-          // Set mock quiz data
           this.mockQuiz = {
             id: 'mock-' + Date.now(),
             title: this.formatMockType(quizType),
-            total_points: response.data.questions.length * 5, // 5 points per question
+            total_points: response.data.questions.length * 5,
           };
 
           // Transform questions data with A, B, C, D option format
@@ -422,12 +422,10 @@ export default {
         const wrongQuestions = this.questions
           .filter((q, index) => this.userAnswers[index] !== this.correctAnswers[index])
           .map(q => q.text);
-        console.log(wrongQuestions)
         // Call the topic recommendation API
         const response = await api.post('topic_recommendation', {
           wrong_questions: wrongQuestions
         });
-        console.log(response)
         if (response.data.success) {
           // Store the detailed suggestion data
           const suggestionData = response.data.suggestions;
@@ -459,60 +457,57 @@ export default {
             });
           }
         } else {
-          // Fallback to default suggestions if API fails
           this.generateDefaultSuggestions();
         }
       } catch (error) {
         console.error('Error fetching topic suggestions:', error);
-        // Fallback to default suggestions
         this.generateDefaultSuggestions();
       } finally {
         this.suggestionsLoading = false;
       }
     },
-  async downloadReport() {
-    this.downloadingReport = true;
-    try {
-      // Prepare data to send to the API
-      const reportData = {
-        username: 'Saima Zainab Shroff', // Placeholder username
-        score: this.score,
-        total: this.questions.length * 5,
-        suggestions: this.suggestions,
-        questions: this.questions.map((question, index) => ({
-          text: question.text,
-          user_answer: this.userAnswers[index] || 'Not answered',
-          correct_answer: question.options.find(opt => opt.isCorrect).text,
-          is_correct: this.userAnswers[index] === question.correct_answer
-        }))
-      };
+    async downloadReport() {
+      this.downloadingReport = true;
+      try {
+        // Prepare data to send to the API
+        const reportData = {
+          username: 'Amit Kulkarni',
+          score: this.score,
+          total: this.questions.length * 5,
+          suggestions: this.suggestions,
+          questions: this.questions.map((question, index) => ({
+            text: question.text,
+            user_answer: this.userAnswers[index] || 'Not answered',
+            correct_answer: question.options.find(opt => opt.isCorrect).text,
+            is_correct: this.userAnswers[index] === question.correct_answer
+          }))
+        };
 
-      // Make API call with responseType blob for file download
-      const response = await api.post('download_report', reportData, {
-        responseType: 'blob' // Important for file downloads
-      });
+        // Make API call with responseType blob for file download
+        const response = await api.post('download_report', reportData, {
+          responseType: 'blob' // Important for file downloads
+        });
 
-      // Create a download link and trigger it
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'Quiz_Report.pdf');
-      document.body.appendChild(link);
-      link.click();
+        // Create a download link and trigger it
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'Quiz_Report.pdf');
+        document.body.appendChild(link);
+        link.click();
 
-      // Clean up
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(link);
-      }, 100);
-
-    } catch (error) {
-      console.error('Error downloading report:', error);
-      alert('Failed to download report. Please try again.');
-    } finally {
-      this.downloadingReport = false;
-    }
-  },
+        // Clean up
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(link);
+        }, 100);
+      } catch (error) {
+        console.error('Error downloading report:', error);
+        alert('Failed to download report. Please try again.');
+      } finally {
+        this.downloadingReport = false;
+      }
+    },
 
     getCurrentDate() {
       const now = new Date();
@@ -524,7 +519,7 @@ export default {
     },
 
     formatMockType(type) {
-      switch(type) {
+      switch (type) {
         case 'quiz1': return 'Mock Quiz 1';
         case 'quiz2': return 'Mock Quiz 2';
         case 'endterm': return 'End Term Practice';
@@ -616,10 +611,9 @@ export default {
   transition: all 0.3s ease;
   text-align: left;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  min-width: 0; /* Prevents flex items from overflowing */
+  min-width: 0;
 }
 
-/* Only allow wrapping on truly small screens (mobile) */
 @media (max-width: 768px) {
   .quiz-buttons-container {
     flex-direction: column;

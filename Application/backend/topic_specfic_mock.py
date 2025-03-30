@@ -27,7 +27,7 @@ _embeddings = None
 
 def get_api_key() -> str:
     """Get API key from environment variable"""
-    api_key = "AIzaSyAmZBJC_WzWLlaUdfiM3GMu9UkCjAWOJ0o"
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable not set")
     return api_key

@@ -34,7 +34,7 @@
                 :to="getItemLink(item)"
                 class="no-link"
               >
-                <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style="width:16px;"/>
+                <img v-if="item.icon" :src="item.icon" alt="" class="me-2" style=" width:16px;"/>
                 <span>{{ item.text }}</span>
                 <!-- Show due date for assignments if available -->
                 <small v-if="item.itemType === 'assignment' && item.dueDate" class="ms-2 text-danger">
@@ -133,7 +133,7 @@ export default {
 
         if (!weeksResponse.data.success) {
           console.error('Failed to fetch weeks:', weeksResponse.data.message);
-          return;
+          return ;
         }
 
         // 2. Fetch details for each week in parallel
@@ -248,13 +248,13 @@ export default {
 
     getAssignmentIcon(assignmentType) {
       // Return different icons based on assignment type
-      switch(assignmentType) {
+      switch (assignmentType) {
         case 'graded':
           return require('@/assets/assignment-svgrepo-com.svg');
         case 'practice':
           return require('@/assets/discuss.svg');
         case 'programming':
-          return require('@/assets/programming-svgrepo-com.svg'); // Add a code icon for programming assignments
+          return require('@/assets/programming-svgrepo-com.svg'); 
         default:
           return require('@/assets/discuss.svg');
       }

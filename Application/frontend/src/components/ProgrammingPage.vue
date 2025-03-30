@@ -77,7 +77,7 @@
               </div>
             </div>
             <div class="editor-container border rounded shadow-sm">
-              <AceEditor v-model="code" />
+              <AceEditor v-model="code"/>
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-3">
@@ -115,53 +115,55 @@
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Test Results</h5>
                 <div class="d-flex align-items-center">
-                  <div class="progress" style="width: 150px; height: 10px;">
+                  <div class="progress" style=" width: 150px; height: 10px;">
                     <div class="progress-bar" role="progressbar"
-                        :style="{width: (passedCount/totalCases*100) + '%'}"
-                        :class="getScoreClass(passedCount/totalCases)">
+                         :style=" {
+                           width: (passedCount / totalCases * 100) + '%'
+                         }"
+                         :class="getScoreClass(passedCount / totalCases)">
                     </div>
                   </div>
                   <span class="ms-2">{{ passedCount }}/{{ totalCases }}</span>
                 </div>
               </div>
-            <div class="test-case-container">
-              <div
-                v-for="(result, index) in testCaseResults"
-                :key="index"
-                class="test-case-card"
-                :class="result.status"
-              >
-                <div class="card-icon">
-                  <transition name="scale">
-                    <!-- Wrap icons in a container div -->
-                    <div class="icon-container">
-                      <svg v-if="result.status === 'passed'" class="icon-check">
-                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                      </svg>
-                      <svg v-else-if="result.status === 'failed'" class="icon-cross">
-                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                      </svg>
-                      <svg v-else class="icon-pending">
-                        <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+              <div class="test-case-container">
+                <div
+                  v-for="(result, index) in testCaseResults"
+                  :key="index"
+                  class="test-case-card"
+                  :class="result.status"
+                >
+                  <div class="card-icon">
+                    <transition name="scale">
+                      <!-- Wrap icons in a container div -->
+                      <div class="icon-container">
+                        <svg v-if="result.status === 'passed'" class="icon-check">
+                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                        <svg v-else-if="result.status === 'failed'" class="icon-cross">
+                          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                        </svg>
+                        <svg v-else class="icon-pending">
+                          <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                        </svg>
+                      </div>
+                    </transition>
+                  </div>
+
+                  <div class="card-content">
+                    <div class="progress-ring">
+                      <svg :class="result.status">
+                        <circle cx="20" cy="20" r="18"/>
                       </svg>
                     </div>
-                  </transition>
-                </div>
-
-                <div class="card-content">
-                  <div class="progress-ring">
-                    <svg :class="result.status">
-                      <circle cx="20" cy="20" r="18"/>
-                    </svg>
-                  </div>
-                  <div class="case-info">
-                    <h6>{{ result.title }}</h6>
-                    <p class="description">{{ result.description }}</p>
+                    <div class="case-info">
+                      <h6>{{ result.title }}</h6>
+                      <p class="description">{{ result.description }}</p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
           </div>
 
           <!-- Console Output -->
@@ -197,7 +199,6 @@
 </template>
 
 <script>
-// Import assets and components
 import AceEditor from "@/components/AceEditor.vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
@@ -214,7 +215,7 @@ export default {
   },
   data() {
     return {
-      assignmentId: null, // Will be set from route or props
+      assignmentId: null,
       code: "# Write your Python code here...",
       consoleOutput: "",
       assignment: {
@@ -235,24 +236,19 @@ export default {
     };
   },
   created() {
-    // Get the assignment ID from the route params (this should be the Assignment table ID)
     this.assignmentId = this.$route.params.id || 1; // Default to 1 if not provided
 
     // Fetch the assignment data
     this.fetchAssignmentData();
   },
   watch: {
-    // Watch for changes in the route parameter
-    '$route.params.id': function(newId) {
-      // Update the assignment ID
+    '$route.params.id': function (newId) {
       this.assignmentId = newId || 1;
-      // Reset component state
       this.code = "# Write your Python code here...";
       this.consoleOutput = "";
       this.showResults = false;
       this.errorMessage = null;
       this.showSuccessMessage = false;
-      // Fetch the new assignment data
       this.fetchAssignmentData();
     }
   },
@@ -291,7 +287,6 @@ export default {
       }
     },
     codeChanged(newValue) {
-      console.log("Code updated in parent:", newValue.slice(0, 50) + "..."); // Debug log
       this.code = newValue;
     },
     /* Add this method to your component */
@@ -303,11 +298,11 @@ export default {
     },
     // When the user submits their code
     async submitCode() {
-       if (this.code.trim() === "# Write your Python code here..." || !this.code.trim()) {
-         this.consoleOutput = "Error: You haven't written any code yet. Please write a solution before submitting.";
-         this.errorMessage = "Please write your solution before submitting";
-         return;
-       }
+      if (this.code.trim() === "# Write your Python code here..." || !this.code.trim()) {
+        this.consoleOutput = "Error: You haven't written any code yet. Please write a solution before submitting.";
+        this.errorMessage = "Please write your solution before submitting";
+        return ;
+      }
 
       try {
         this.isLoading = true;
@@ -323,9 +318,7 @@ export default {
           { code: this.code }
         );
 
-        // Inside the submitCode method where you format the console output
         if (response.data.success) {
-          // Process results
           const results = response.data;
           let output = "";
 
@@ -337,7 +330,6 @@ export default {
           // Display unique errors at the top
           if (errors.length > 0) {
             output += `=== ERROR SUMMARY ===\n`;
-            // Use Set to remove duplicate error messages
             const uniqueErrors = [...new Set(errors)];
             uniqueErrors.forEach(error => {
               output += `Error: ${error}\n`;
@@ -362,7 +354,6 @@ export default {
               output += `Expected Output:\n${result.expected_output}\n\n`;
               output += `Your Output:\n${result.actual_output}\n\n`;
             } else {
-              // Just reference that there was an error
               output += `See error details at the top of the console output\n\n`;
             }
           });
@@ -377,8 +368,8 @@ export default {
             description: result.status === 'passed'
               ? 'Output matched expected result'
               : result.status === 'error'
-                ? `Error: ${result.error_message}`
-                : 'Output did not match expected result'
+              ? `Error: ${result.error_message}`
+              : 'Output did not match expected result'
           }));
 
           // Show both success message and results
@@ -407,17 +398,14 @@ export default {
     },
     async explainError() {
       try {
-        // Show loading state in console
         this.consoleOutput = "Analyzing your error...\n";
 
-        // Make API request using axios
         const response = await api.post('/explain_error', {
           code_snippet: this.code
         });
 
         // Check if request was successful
         if (response.data.success) {
-          // Format the explanation nicely
           this.consoleOutput = `=== AI ERROR ANALYSIS ===\n\n${response.data.explanation}`;
         } else {
           // Handle API success=false response
@@ -515,7 +503,7 @@ pre {
   padding: 16px;
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   overflow: hidden;
@@ -523,7 +511,7 @@ pre {
 
 .test-case-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .card-icon {
@@ -542,9 +530,15 @@ pre {
   fill: currentColor;
 }
 
-.icon-check { color: #38a169; }
-.icon-cross { color: #e53e3e; }
-.icon-pending { color: #718096; }
+.icon-check {
+  color: #38a169;
+}
+.icon-cross {
+  color: #e53e3e;
+}
+.icon-pending {
+  color: #718096;
+}
 
 .progress-ring {
   position: absolute;
@@ -597,9 +591,15 @@ pre {
 }
 
 @keyframes ring-spin {
-  0% { stroke-dashoffset: 113; }
-  50% { stroke-dashoffset: 0; }
-  100% { stroke-dashoffset: -113; }
+  0% {
+    stroke-dashoffset: 113;
+  }
+  50% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -113;
+  }
 }
 .assignment-header {
   border-bottom: 1px solid #eaeaea;
@@ -626,7 +626,7 @@ pre {
   padding: 16px;
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   margin-bottom: 10px;
   border-left: 4px solid #6c757d;
@@ -645,7 +645,7 @@ pre {
 }
 
 .test-case-card:hover {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .console-output {

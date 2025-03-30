@@ -1,14 +1,14 @@
 <template>
   <div>
-    <AppNavbar />
+    <AppNavbar/>
     <div class="dashboard-layout">
-      <AppSidebar />
+      <AppSidebar/>
 
       <div class="main-content">
         <div class="content-wrapper">
           <div class="welcome-section text-center mb-4">
             <div class="avatar-container mb-3">
-              <img :src="StudentIcon" class="avatar-img" alt="KIA Avatar" />
+              <img :src="StudentIcon" class="avatar-img" alt="KIA Avatar"/>
             </div>
             <h1 class="welcome-heading">Hello, User!</h1>
             <div class="subtitle-container">
@@ -18,7 +18,9 @@
           </div>
 
           <div class="cards-container">
-            <div class="feature-card" @click.stop="showContent('week-summary')" :class="{ active: activeContent === 'week-summary' }">
+            <div class="feature-card" @click.stop="showContent('week-summary')" :class=" {
+                   active: activeContent === 'week-summary'
+                 }">
               <div class="card-icon-wrapper">
                 <i class="bi bi-calendar-week"></i>
               </div>
@@ -28,7 +30,9 @@
               </div>
             </div>
 
-            <div class="feature-card" @click.stop="showContent('generate-notes')" :class="{ active: activeContent === 'generate-notes' }">
+            <div class="feature-card" @click.stop="showContent('generate-notes')" :class=" {
+                   active: activeContent === 'generate-notes'
+                 }">
               <div class="card-icon-wrapper">
                 <i class="bi bi-journal-text"></i>
               </div>
@@ -39,89 +43,89 @@
             </div>
           </div>
           <transition name="fade" mode="out-in">
-          <div v-if="activeContent" class="dynamic-content-wrapper">
-          <!-- Generate Notes Section -->
-          <div v-if="activeContent === 'generate-notes'" class="dynamic-content">
-            <div class="section-header mb-4">
-              <h2>Generate Topic-Specific Notes</h2>
-              <p class="text-muted">Search for any course topic to generate comprehensive notes</p>
-            </div>
+            <div v-if="activeContent" ref="dynamicContent" class="dynamic-content-wrapper">
+              <!-- Generate Notes Section -->
+              <div v-if="activeContent === 'generate-notes'" class="dynamic-content">
+                <div class="section-header mb-4">
+                  <h2>Generate Topic-Specific Notes</h2>
+                  <p class="text-muted">Search for any course topic to generate comprehensive notes</p>
+                </div>
 
-            <div class="search-container position-relative mb-4">
-              <div class="input-group">
-                <span class="input-group-text bg-white">
-                  <i class="bi bi-search"></i>
-                </span>
-                <input
-                  type="text"
-                  v-model="searchQuery"
-                  @input="fetchSuggestions"
-                  placeholder="Search topics (e.g., Regression, Neural Networks)"
-                  class="form-control"
-                />
-                <button class="btn btn-dark" @click="generateNotes" :disabled="!selectedTopic">
-                  <i class="bi bi-magic me-1"></i> Generate
-                </button>
-              </div>
+                <div class="search-container position-relative mb-4">
+                  <div class="input-group">
+                    <span class="input-group-text bg-white">
+                      <i class="bi bi-search"></i>
+                    </span>
+                    <input
+                      type="text"
+                      v-model="searchQuery"
+                      @input="fetchSuggestions"
+                      placeholder="Search topics (e.g., Regression, Neural Networks)"
+                      class="form-control"
+                    />
+                    <button class="btn btn-dark" @click="generateNotes" :disabled="!selectedTopic">
+                      <i class="bi bi-magic me-1"></i> Generate
+                    </button>
+                  </div>
 
-              <transition name="fade">
-                <ul v-if="suggestions.length > 0" class="suggestions-list shadow-sm">
-                  <li
-                    v-for="(suggestion, index) in suggestions"
-                    :key="index"
-                    @click="selectSuggestion(suggestion)"
-                    class="suggestion-item"
-                  >
-                    <i class="bi bi-tag-fill me-2 text-muted"></i>
-                    {{ suggestion }}
-                  </li>
-                </ul>
-              </transition>
-            </div>
+                  <transition name="fade">
+                    <ul v-if="suggestions.length > 0" class="suggestions-list shadow-sm">
+                      <li
+                        v-for="(suggestion, index) in suggestions"
+                        :key="index"
+                        @click="selectSuggestion(suggestion)"
+                        class="suggestion-item"
+                      >
+                        <i class="bi bi-tag-fill me-2 text-muted"></i>
+                        {{ suggestion }}
+                      </li>
+                    </ul>
+                  </transition>
+                </div>
 
-            <!-- Notes Generation Status -->
-            <div v-if="isGenerating" class="generation-status text-center p-4">
-              <div class="spinner-grow text-primary mb-3" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <p>Generating comprehensive notes for <strong>{{ selectedTopic }}</strong>...</p>
-            </div>
-          </div>
-
-          <!-- Week Summary Section with improved UI -->
-          <div v-if="activeContent === 'week-summary'" class="dynamic-content">
-            <div class="section-header mb-4">
-              <h2>Weekly Learning Summaries</h2>
-              <p class="text-muted">Generate comprehensive notes for any week of your course</p>
-            </div>
-
-            <div class="week-selector">
-              <div class="weeks-grid">
-                <div
-                  v-for="week in weeks"
-                  :key="'Week ' + week"
-                  @click="selectWeek('Week ' + week)"
-                  :class="['week-item', selectedWeek === 'Week ' + week ? 'active' : '']"
-                >
-                  {{ week }}
+                <!-- Notes Generation Status -->
+                <div v-if="isGenerating" class="generation-status text-center p-4">
+                  <div class="spinner-grow text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <p>Generating comprehensive notes for <strong>{{ selectedTopic }}</strong>...</p>
                 </div>
               </div>
 
-              <button @click="generateWeekSummary" class="btn btn-dark mt-3 w-100">
-                <i class="bi bi-file-earmark-text me-1"></i>
-                Generate {{ selectedWeek }} Summary
-              </button>
-            </div>
+              <!-- Week Summary Section with improved UI -->
+              <div v-if="activeContent === 'week-summary'" class="dynamic-content">
+                <div class="section-header mb-4">
+                  <h2>Weekly Learning Summaries</h2>
+                  <p class="text-muted">Generate comprehensive notes for any week of your course</p>
+                </div>
 
-            <!-- Week Summary Generation Status -->
-            <div v-if="isGenerating" class="generation-status text-center p-4 mt-4">
-              <div class="spinner-grow text-primary mb-3" role="status">
-                <span class="visually-hidden">Loading...</span>
+                <div class="week-selector">
+                  <div class="weeks-grid">
+                    <div
+                      v-for="week in weeks"
+                      :key="'Week ' + week"
+                      @click="selectWeek('Week ' + week)"
+                      :class="['week-item', selectedWeek === 'Week ' + week ? 'active' : '']"
+                    >
+                      {{ week }}
+                    </div>
+                  </div>
+
+                  <button @click="generateWeekSummary" class="btn btn-dark mt-3 w-100">
+                    <i class="bi bi-file-earmark-text me-1"></i>
+                    Generate {{ selectedWeek }} Summary
+                  </button>
+                </div>
+
+                <!-- Week Summary Generation Status -->
+                <div v-if="isGenerating" class="generation-status text-center p-4 mt-4">
+                  <div class="spinner-grow text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <p>Generating comprehensive summary for <strong>{{ selectedWeek }}</strong>...</p>
+                </div>
               </div>
-              <p>Generating comprehensive summary for <strong>{{ selectedWeek }}</strong>...</p>
             </div>
-          </div>          
-          </div>
           </transition>
           <!-- Error message (add this before the markdown-output-container) -->
           <div v-if="apiError" class="alert alert-danger mt-4">
@@ -129,7 +133,7 @@
             {{ apiErrorMessage }}
           </div>
           <!-- Enhanced Markdown Output -->
-          <div v-if="currentContent" class="markdown-output-container mt-4">
+          <div v-if="currentContent" ref="outputContainer" class="markdown-output-container mt-4">
             <div class="markdown-header d-flex justify-content-between align-items-center">
               <h4>{{ activeContent === 'generate-notes' ? selectedTopic : selectedWeek }} Notes</h4>
               <div class="actions">
@@ -142,11 +146,11 @@
               </div>
             </div>
             <div class="markdown-content">
-              <markdown-renderer :content="currentContent" />
+              <markdown-renderer :content="currentContent"/>
             </div>
           </div>
         </div>
-        <ChatWindow />
+        <ChatWindow/>
       </div>
     </div>
   </div>
@@ -199,16 +203,20 @@ export default {
       this.activeContent = content;
       this.generatedNotes = "";
       this.generatedSummary = "";
+
+      this.$nextTick(() => {
+        const dynamicContent = this.$refs.dynamicContent;
+        if (dynamicContent) {
+          dynamicContent.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
     },
     async fetchSuggestions() {
       // Clear suggestions if search query is empty
       if (!this.searchQuery || this.searchQuery.length < 2) {
         this.suggestions = [];
-        return;
+        return ;
       }
-
-      // You can replace this with a real API call to get topic suggestions
-      // For now, we'll use a more comprehensive list of ML topics
       const topics = [
         "Regression", "Linear Regression", "Logistic Regression",
         "Decision Trees", "Random Forests", "Support Vector Machines",
@@ -241,55 +249,55 @@ export default {
           console.error('Failed to copy content: ', err);
         });
     },
-async downloadPDF() {
-  try {
-    this.isGenerating = true; // Show loading indicator
+    async downloadPDF() {
+      try {
+        this.isGenerating = true; // Show loading indicator
 
-    // Prepare the request data
-    const requestData = {
-      content: this.currentContent, // Your markdown content
-      title: this.activeContent === "generate-notes"
-        ? this.selectedTopic
-        : this.selectedWeek,
-      filename: this.activeContent === "generate-notes"
-        ? `Notes_${this.searchQuery || "Topic"}.pdf`
-        : `Week_${this.selectedWeek.replace("Week ", "")}_Summary.pdf`
-    };
+        // Prepare the request data
+        const requestData = {
+          content: this.currentContent,
+          // Your markdown content
+          title: this.activeContent === "generate-notes"
+            ? this.selectedTopic
+            : this.selectedWeek,
+          filename: this.activeContent === "generate-notes"
+            ? `Notes_${this.searchQuery || "Topic"}.pdf`
+            : `Week_${this.selectedWeek.replace("Week ", "")}_Summary.pdf`
+        };
 
-    // Call the backend endpoint with responseType 'blob' to receive binary data
-    const response = await api.post(
-      '/download_markdown_pdf',
-      requestData,
-      { responseType: 'blob' }
-    );
+        // Call the backend endpoint with responseType 'blob' to receive binary data
+        const response = await api.post(
+          '/download_markdown_pdf',
+          requestData,
+          { responseType: 'blob' }
+        );
 
-    // Create a blob URL from the PDF data
-    const blob = new Blob([response.data], { type: 'application/pdf' });
-    const url = window.URL.createObjectURL(blob);
+        // Create a blob URL from the PDF data
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
 
-    // Create a temporary link and trigger the download
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', requestData.filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        // Create a temporary link and trigger the download
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', requestData.filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-    // Clean up the blob URL
-    window.URL.revokeObjectURL(url);
-
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    this.apiError = true;
-    this.apiErrorMessage = 'Failed to generate PDF. Please try again later.';
-  } finally {
-    this.isGenerating = false; // Hide loading indicator
-  }
-},
+        // Clean up the blob URL
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error generating PDF:', error);
+        this.apiError = true;
+        this.apiErrorMessage = 'Failed to generate PDF. Please try again later.';
+      } finally {
+        this.isGenerating = false; // Hide loading indicator
+      }
+    },
     async generateNotes() {
       // Only proceed if a topic is selected
       if (!this.selectedTopic) {
-        return;
+        return ;
       }
 
       // Reset previous content and show loading state
@@ -319,6 +327,12 @@ async downloadPDF() {
         // Hide loading indicator when done (success or failure)
         this.isGenerating = false;
       }
+      this.$nextTick(() => {
+        const outputContainer = this.$refs.outputContainer;
+        if (outputContainer) {
+          outputContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
     },
     async generateWeekSummary() {
       try {
@@ -354,6 +368,12 @@ async downloadPDF() {
         // Hide loading indicator when done (success or failure)
         this.isGenerating = false;
       }
+      this.$nextTick(() => {
+        const outputContainer = this.$refs.outputContainer;
+        if (outputContainer) {
+          outputContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
     }
   }
 };
@@ -386,8 +406,8 @@ async downloadPDF() {
 }
 
 .markdown-output-container {
-  width: 100%; /* Makes it full width of parent */
-  max-width: 1200px; /* Match this to your other divs' max-width */
+  width: 100%;
+  max-width: 1200px;
   margin: 2rem auto;
   border: 1px solid #e2e2e2;
   border-radius: 10px;
@@ -396,7 +416,6 @@ async downloadPDF() {
   overflow: hidden;
 }
 
-/* Enhance code block styling */
 .markdown-content pre {
   background-color: #f8f9fa;
   border: 1px solid #e9ecef;
@@ -404,7 +423,7 @@ async downloadPDF() {
   padding: 1rem;
   overflow-x: auto;
   margin: 1.2rem 0;
-  width: 100%; /* Ensure code blocks take full width */
+  width: 100%;
 }
 
 .markdown-header {
@@ -415,7 +434,7 @@ async downloadPDF() {
 }
 
 .markdown-content {
-  padding: 1.5rem;
+  padding: 0 1.5rem 0 1.5rem ;
   font-size: 1.05rem;
   line-height: 1.7;
   color: #343a40;
@@ -543,6 +562,17 @@ async downloadPDF() {
 .markdown-content tr:nth-child(even) {
   background-color: #f8f9fa;
 }
+
+/* Animations */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
@@ -554,7 +584,7 @@ async downloadPDF() {
   padding: 20px;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   margin-bottom: 30px;
 }
 
@@ -623,13 +653,13 @@ async downloadPDF() {
   cursor: pointer;
   display: flex;
   align-items: center;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
   border-left: 5px solid transparent;
 }
 
 .feature-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
 .feature-card.active {
@@ -667,14 +697,14 @@ async downloadPDF() {
 }
 
 /* Form Elements */
-.form-control, .form-select {
+.form-control {
   border-radius: 8px;
   padding: 0.6rem 1rem;
   border: 1px solid #dee2e6;
   transition: all 0.2s;
 }
 
-.form-control:focus, .form-select:focus {
+.form-control:focus {
   border-color: #6c1b1b;
   box-shadow: 0 0 0 0.25rem rgba(108, 27, 27, 0.25);
 }
@@ -704,17 +734,6 @@ async downloadPDF() {
   margin-bottom: 1rem;
 }
 
-/* Animations */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s, transform 0.3s;
-}
-
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-/* Add these missing styles for the week selector */
 .week-selector {
   width: 100%;
   max-width: 500px;
@@ -722,7 +741,7 @@ async downloadPDF() {
   padding: 20px;
   background-color: white;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .weeks-grid {
@@ -732,7 +751,6 @@ async downloadPDF() {
   margin-bottom: 15px;
 }
 
-/* Make week items more visible with these enhancements */
 .week-item {
   display: flex;
   align-items: center;
@@ -746,13 +764,11 @@ async downloadPDF() {
   font-weight: 500;
 }
 
-/* Add more spacing to headings */
 .markdown-content h1, .markdown-content h2, .markdown-content h3 {
   margin-top: 1.8rem;
   margin-bottom: 1.2rem;
 }
 
-/* Fix table spacing */
 .markdown-content table {
   margin: 1.5rem 0;
   border-collapse: separate;
@@ -764,12 +780,10 @@ async downloadPDF() {
   border: 1px solid #dee2e6;
 }
 
-/* Add space after lists */
 .markdown-content ul, .markdown-content ol {
   margin-bottom: 1.2rem;
 }
 
-/* Add space between list items */
 .markdown-content li {
   margin-bottom: 0.5rem;
 }
@@ -777,7 +791,7 @@ async downloadPDF() {
 .generation-status {
   background-color: white;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .week-item.active {
@@ -786,7 +800,6 @@ async downloadPDF() {
   border-color: #6c1b1b;
 }
 
-/* Responsive Adjustments */
 @media (max-width: 768px) {
   .content-wrapper {
     padding: 1.5rem;

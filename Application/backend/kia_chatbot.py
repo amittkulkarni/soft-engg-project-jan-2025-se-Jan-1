@@ -32,7 +32,7 @@ DB_PATH = os.path.join("instance", "app.db")
 
 def get_api_key() -> str:
     """Get API key for Google Generative AI"""
-    api_key = "AIzaSyAmZBJC_WzWLlaUdfiM3GMu9UkCjAWOJ0o"
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("Google API key is not set")
     return api_key
@@ -128,14 +128,9 @@ ORDER BY id ASC
             chat_history.add_user_message(query)
             chat_history.add_ai_message(response)
 
-        print(f"Returning ChatMessageHistory with {len(chat_history.messages)} messages")
         return chat_history
 
     except Exception as e:
-        print(f"Error loading chat history: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        # Return empty ChatMessageHistory in case of error
         return ChatMessageHistory()
 
 def delete_user_history(user_id: int):

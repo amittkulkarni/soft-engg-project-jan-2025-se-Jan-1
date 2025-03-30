@@ -55,19 +55,19 @@
             <ul class="nav nav-tabs" id="lectureTabs" role="tablist">
               <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary"
-                  type="button" role="tab" aria-controls="summary" aria-selected="true">
+                        type="button" role="tab" aria-controls="summary" aria-selected="true">
                   Summary
                 </button>
               </li>
               <li class="nav-item" role="presentation">
                 <button class="nav-link" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes"
-                  type="button" role="tab" aria-controls="notes" aria-selected="false">
+                        type="button" role="tab" aria-controls="notes" aria-selected="false">
                   Notes
                 </button>
               </li>
               <li class="nav-item" role="presentation">
                 <button class="nav-link" id="resources-tab" data-bs-toggle="tab" data-bs-target="#resources"
-                  type="button" role="tab" aria-controls="resources" aria-selected="false">
+                        type="button" role="tab" aria-controls="resources" aria-selected="false">
                   Resources
                 </button>
               </li>
@@ -235,7 +235,6 @@ export default {
       }
     },
     async summarizeLecture(weekId) {
-      // Set loading state
       this.summary = '';
       this.error = '';
 
@@ -250,11 +249,9 @@ export default {
           // Store the summary in component data
           this.summary = response.data.summary;
 
-          // Optional: Store metadata if needed
           this.currentWeek = response.data.week;
           this.currentLecture = response.data.lecture;
 
-          // Optional: Show success message
           this.statusMessage = 'Summary generated successfully!';
         } else {
           // Handle API success=false case
@@ -295,40 +292,39 @@ export default {
         console.error('Failed to copy text: ', err);
       }
     },
-async downloadSummary() {
-  try {
-    // Show loading state (optional)
-    this.isDownloading = true;
+    async downloadSummary() {
+      try {
+        // Show loading state (optional)
+        this.isDownloading = true;
 
-    // Call the backend endpoint
-    const response = await api.post('/download_markdown_pdf', {
-      content: this.summary,
-      title: this.lectureTitle,
-      filename: `${this.lectureTitle.replace(/\s+/g, '_')}_Summary.pdf`
-    }, {
-      responseType: 'blob' // Important for handling binary data
-    });
+        // Call the backend endpoint
+        const response = await api.post('/download_markdown_pdf', {
+            content: this.summary,
+            title: this.lectureTitle,
+            filename: `${this.lectureTitle.replace(/\s+/g, '_')}_Summary.pdf`
+          }, {
+            responseType: 'blob'
+          });
 
-    // Create a blob URL from the response
-    const url = window.URL.createObjectURL(new Blob([response.data]));
+        // Create a blob URL from the response
+        const url = window.URL.createObjectURL(new Blob([response.data]));
 
-    // Create a temporary link and trigger download
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${this.lectureTitle.replace(/\s+/g, '_')}_Summary.pdf`;
-    document.body.appendChild(a);
-    a.click();
+        // Create a temporary link and trigger download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${this.lectureTitle.replace(/\s+/g, '_')}_Summary.pdf`;
+        document.body.appendChild(a);
+        a.click();
 
-    // Clean up
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error('Error downloading PDF:', error);
-    alert('Failed to generate PDF. Please try again.');
-  } finally {
-    this.isDownloading = false;
-  }
-},
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error downloading PDF:', error);
+        alert('Failed to generate PDF. Please try again.');
+      } finally {
+        this.isDownloading = false;
+      }
+    },
     saveNotes() {
       // Save notes to localStorage
       localStorage.setItem(`lecture_notes_${this.videoId}`, this.userNotes);
@@ -340,19 +336,16 @@ async downloadSummary() {
       this.userNotes = savedNotes || '';
     },
     getWeekNumber() {
-      // Extract week number from lecture title if available
       const match = this.lectureTitle.match(/^(\d+)(?=\.)/);
       return match ? `Week ${match[1]}` : 'Current Week';
     },
     getWeekId() {
-      // Extract week number from lecture title if available
       const match = this.lectureTitle.match(/^(\d+)(?=\.)/);
       return match[1];
     },
     toggleFullScreen() {
       const iframe = document.querySelector('iframe');
       if (iframe) {
-        // This is a simplified approach - might not work in all browsers
         if (iframe.requestFullscreen) {
           iframe.requestFullscreen();
         } else if (iframe.webkitRequestFullscreen) {
@@ -397,7 +390,7 @@ async downloadSummary() {
   background-color: #000;
 }
 
-.video-container:hover{
+.video-container:hover {
   opacity: 1;
 }
 
@@ -482,13 +475,19 @@ async downloadSummary() {
 
 .resource-item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Responsive adjustments */
@@ -503,10 +502,6 @@ async downloadSummary() {
 }
 
 @media (max-width: 768px) {
-  .lecture-actions {
-    display: none;
-  }
-
   .video-container iframe {
     height: 300px;
   }

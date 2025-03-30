@@ -4,7 +4,7 @@
     lang="python"
     theme="monokai"
     placeholder="Write your Python code here..."
-    style="height: 570px; width: 100%;"
+    style=" height: 570px; width: 100%;"
     :options="editorOptions"
   />
 </template>

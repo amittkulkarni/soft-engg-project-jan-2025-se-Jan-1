@@ -10,7 +10,6 @@ import platform
 import subprocess
 import tempfile
 import requests
-import logging
 
 import markdown
 from markdown.extensions.codehilite import CodeHiliteExtension
@@ -30,17 +29,6 @@ from topic_suggestions import generate_topic_suggestions
 user_routes = Blueprint('user_routes', __name__)
 
 # ------------------------- User Authentication Routes -------------------------
-
-# Signup Route - Registers a new user
-# Environment variables
-GOOGLE_CLIENT_ID = "859846322076-3u1k9ter70q7b5jqaum8i7e5jc506mnh.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET = "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"
-
-# Configure logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
 
 @user_routes.route('/google_signup', methods=['POST'])
 def google_signup():
@@ -1188,8 +1176,6 @@ def execute_solution(assignment_id):
         }), 200
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()  # Print stacktrace for debugging
         return jsonify({"success": False, "message": f"Error executing code: {str(e)}", "error": str(e)}), 500
 
 
@@ -1316,9 +1302,6 @@ def generate_topic_specific_questions():
         try:
             mcq_set = generate_topic_mcqs(topic, num_questions)
 
-            # Debug the returned data structure type
-            print(f"MCQ Set type: {type(mcq_set)}")
-
             # Handle dictionary return case
             if isinstance(mcq_set, dict):
                 if "questions" in mcq_set:
@@ -1374,8 +1357,6 @@ def generate_topic_specific_questions():
             return jsonify(response_data), 200
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()  # Print full stack trace for debugging
             return jsonify({
                 'success': False,
                 'message': 'Failed to generate dynamic questions',
@@ -1521,10 +1502,10 @@ def get_chat_history(user_id):
                 })
 
                 # Add KIA response (if exists)
-                if i+1 < len(messages):
+                if i + 1 < len(messages):
                     formatted_history.append({
                         "sender": "kia",
-                        "text": messages[i+1].content,
+                        "text": messages[i + 1].content,
                         "timestamp": None
                     })
 
@@ -1660,10 +1641,8 @@ def generate_notes():
 def topic_recommendation():
     """API endpoint to recommend study topics based on incorrect answers"""
     data = request.get_json()
-    logger.info(f"Received topic recommendation request: {data.keys()}")
 
     wrong_questions = data.get('wrong_questions', [])
-    logger.info(f"Extracted {len(wrong_questions)} wrong questions")
 
     # Validate if wrong_questions list is provided
     if not wrong_questions:
@@ -1682,7 +1661,6 @@ def topic_recommendation():
         suggestions = generate_topic_suggestions(wrong_questions)
         return jsonify(suggestions), 200
     except Exception as e:
-        logger.error(f"Error in topic_recommendation endpoint: {str(e)}", exc_info=True)
         return jsonify({
             'message': f'Error generating suggestions: {str(e)}',
             'success': False,
@@ -1727,7 +1705,7 @@ def download_report():
     # user = User.query.get(user_id)
 
     # username = user.username
-    username = "Jyotiraditya Saha"
+    username = "Amit Kulkarni"
     score = data.get("score")  # Get the score from the request
     total = data.get("total")  # Get the total score from the request
     # Extract suggestions from potentially different formats
@@ -2110,8 +2088,6 @@ transition: border-color 0.2s;
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        print(f"PDF generation error: {str(e)}")
-        print(error_details)
         return jsonify({
             "message": "Failed to generate PDF",
             "success": False,

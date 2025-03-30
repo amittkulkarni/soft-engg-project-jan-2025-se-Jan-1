@@ -1,5 +1,4 @@
 import os
-import logging
 from typing import Dict, List, Any
 # Import LangChain components
 from langchain_core.prompts import PromptTemplate
@@ -9,10 +8,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 
-# Configure logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 # Model definitions
 class TopicSuggestion(BaseModel):
@@ -31,7 +26,7 @@ _llm = None
 
 def get_api_key() -> str:
     """Get API key for Google Generative AI"""
-    api_key = os.environ.get("GOOGLE_API_KEY", "AIzaSyCV5i-u0oROux-Wt0TMqiRivVD6H0rGbjc")
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("Google API key is not set")
     return api_key
@@ -100,7 +95,6 @@ IMPORTANT: Focus ONLY on the concepts in these specific questions. Do not make g
 
 def generate_topic_suggestions(wrong_questions: List[str]) -> Dict[str, Any]:
     """Generate personalized topic suggestions based on incorrect answers"""
-    logger.info(f"Generating suggestions for {len(wrong_questions)} questions")
 
     try:
         # Handle empty input
@@ -120,7 +114,6 @@ def generate_topic_suggestions(wrong_questions: List[str]) -> Dict[str, Any]:
         for i, question in enumerate(wrong_questions):
             formatted_questions += f"QUESTION {i+1}:\n{question}\n\n"
 
-        logger.info(f"Formatted {len(wrong_questions)} questions")
 
         # Get relevant context from vector store
         vector_store = get_vector_store()
@@ -132,7 +125,6 @@ def generate_topic_suggestions(wrong_questions: List[str]) -> Dict[str, Any]:
             all_contexts.append(context)
 
         combined_context = "\n\n---\n\n".join(all_contexts)
-        logger.info(f"Retrieved context ({len(combined_context)} chars)")
 
         # Create prompt and parser
         prompt_template, output_parser = create_prompt()
@@ -146,18 +138,13 @@ def generate_topic_suggestions(wrong_questions: List[str]) -> Dict[str, Any]:
             context=combined_context[:5000]  # Limit context size
         )
 
-        logger.info("Sending request to LLM")
         response = llm.invoke(formatted_prompt)
-        logger.info(f"Received response from LLM: {response.content[:100]}...")
 
         # Parse response
         try:
             parsed_response = output_parser.parse(response.content)
             suggestions = parsed_response.dict()
-            logger.info("Successfully parsed LLM response")
         except Exception as e:
-            logger.error(f"Failed to parse LLM response: {e}")
-            # Fallback to a simple structure
             suggestions = {
                 "overall_assessment": "Analysis generated but couldn't be properly formatted.",
                 "topic_suggestions": [],
@@ -175,7 +162,6 @@ def generate_topic_suggestions(wrong_questions: List[str]) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Error generating suggestions: {str(e)}", exc_info=True)
         return {
             "success": False,
             "message": f"Failed to generate suggestions: {str(e)}",

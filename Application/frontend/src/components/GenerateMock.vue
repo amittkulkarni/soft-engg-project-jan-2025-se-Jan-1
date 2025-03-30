@@ -67,20 +67,20 @@
             <div v-if="questions.length && !loading" class="questions-section">
               <div class="section-header d-flex justify-content-between align-items-center mb-3">
                 <div>
-                <h4>Practice Questions: {{ selectedTopic }}</h4>
-                <span class="badge bg-success">
-                  Practice Quiz
+                  <h4>Practice Questions: {{ selectedTopic }}</h4>
+                  <span class="badge bg-success">
+                    Practice Quiz
                   </span>
                 </div>
                 <span class="badge bg-primary">{{ questions.length }} Questions</span>
               </div>
 
               <!-- Progress Bar -->
-              <div class="progress mb-3" style="height: 10px;">
+              <div class="progress mb-3" style=" height: 10px;">
                 <div
                   class="progress-bar"
                   role="progressbar"
-                  :style="{width: progressPercentage + '%'}"
+                  :style=" {width: progressPercentage + '%'}"
                   :aria-valuenow="answeredCount"
                   aria-valuemin="0"
                   :aria-valuemax="questions.length">
@@ -94,7 +94,7 @@
               <div v-for="(question, index) in questions" :key="index" class="question-container mb-4 p-4 rounded">
                 <div class="d-flex justify-content-start">
                   <div class="question-number">
-                  <strong>{{ index + 1 }}. </strong>
+                    <strong>{{ index + 1 }}.</strong>
                   </div>
                   <div class="question-text mb-3">
                     <markdown-renderer :content="question.text"></markdown-renderer>
@@ -122,12 +122,12 @@
                       :class="[
                         'form-check-label',
                         showScore
-                          ? option === question.correct_answer
-                            ? 'text-success fw-bold'
-                            : userAnswers[index] === option
-                              ? 'text-danger'
-                              : ''
-                          : '',
+                        ? option === question.correct_answer
+                        ? 'text-success fw-bold'
+                        : userAnswers[index] === option
+                        ? 'text-danger'
+                        : ''
+                        : '',
                       ]"
                     >
                       {{ option }}
@@ -168,10 +168,12 @@
               <!-- Score Modal -->
               <div v-if="showScore" class="score-modal mt-4 p-4 rounded shadow-sm">
                 <h4 class="mb-3">Your Score: {{ score }}/{{ questions.length }}</h4>
-                <div class="progress mb-3" style="height: 20px;">
+                <div class="progress mb-3" style=" height: 20px;">
                   <div class="progress-bar" role="progressbar"
-                       :style="{width: (score/questions.length*100) + '%'}"
-                       :class="getScoreClass(score/questions.length)">
+                       :style=" {
+                         width: (score / questions.length * 100) + '%'
+                       }"
+                       :class="getScoreClass(score / questions.length)">
                     {{ Math.round(score/questions.length*100) }}%
                   </div>
                 </div>
@@ -406,7 +408,7 @@ export default {
         // Prepare data for API call
         const reportData = {
           score: this.score,
-          total: this.questions.length, // Use a valid total value
+          total: this.questions.length,
           suggestions: [
             this.overallAssessment,
             ...this.topicSuggestions.flatMap(topic =>
@@ -473,7 +475,7 @@ export default {
 }
 /* Centered header styling */
 .page-header {
-  max-width: 500px; /* Match this to your search container width */
+  max-width: 500px;
   margin: 0 auto 2rem auto;
 }
 
@@ -497,7 +499,7 @@ export default {
 .search-input {
   border-radius: 8px;
   padding: 0.8rem 1rem;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .suggestions-list {
@@ -511,7 +513,7 @@ export default {
   z-index: 1000;
   max-height: 250px;
   overflow-y: auto;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .suggestion-item {
@@ -535,12 +537,12 @@ export default {
 .question-container {
   background-color: white;
   border-left: 4px solid #6c1b1b;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
 }
 
 .question-container:hover {
-  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 }
 
 .question-number {
@@ -567,6 +569,18 @@ export default {
   border-color: #6c1b1b;
 }
 
+
+/* Animation */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+
 .text-success {
   color: #28a745 !important;
 }
@@ -579,7 +593,7 @@ export default {
 .score-modal {
   background-color: white;
   border-left: 4px solid #28a745;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .score-modal h4 {
@@ -617,26 +631,6 @@ export default {
 .btn-primary:hover, .btn-primary:focus {
   background-color: #5a1616;
   border-color: #5a1616;
-}
-
-.btn-outline-secondary {
-  color: #6c1b1b;
-  border-color: #6c1b1b;
-}
-
-.btn-outline-secondary:hover {
-  background-color: #6c1b1b;
-  color: white;
-}
-
-/* Animation */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s, transform 0.3s;
-}
-
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
 }
 
 /* Badge styles */

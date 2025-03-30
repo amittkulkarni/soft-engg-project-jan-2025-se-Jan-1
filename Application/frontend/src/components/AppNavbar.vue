@@ -37,12 +37,11 @@ export default {
   data() {
     return {
       logoPath,
-      isAuthenticated: true // Update this based on your auth state
+      isAuthenticated: true
     };
   },
   methods: {
     handleLogout() {
-      // Add your logout logic here
       this.isAuthenticated = false;
       this.$router.push('/login');
     }

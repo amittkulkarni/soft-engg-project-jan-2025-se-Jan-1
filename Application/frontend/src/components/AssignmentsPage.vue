@@ -40,9 +40,9 @@
             </div>
 
             <!-- Progress Bar -->
-            <div class="progress mb-4" style="height: 10px;">
+            <div class="progress mb-4" style=" height: 10px;">
               <div class="progress-bar" role="progressbar"
-                   :style="{width: progressPercentage + '%'}"
+                   :style=" {width: progressPercentage + '%'}"
                    :aria-valuenow="answeredCount"
                    aria-valuemin="0"
                    :aria-valuemax="questions.length">
@@ -56,7 +56,7 @@
             <div v-for="(question, index) in questions" :key="question.id" class="question-container mb-4 p-4 rounded">
               <div class="d-flex justify-content-between">
                 <p class="question-text mb-3"><strong>{{ index + 1 }}. {{ question.text }}</strong></p>
-                <span class="badge bg-secondary" style="height: 25px">{{ question.points }} pts</span>
+                <span class="badge bg-secondary" style=" height: 25px">{{ question.points }} pts</span>
               </div>
 
               <div class="options-container">
@@ -79,12 +79,12 @@
                     :class="[
                       'form-check-label',
                       showScore
-                        ? option.id === correctAnswers[index]
-                          ? 'text-success fw-bold'
-                          : userAnswers[index] === option.id
-                            ? 'text-danger'
-                            : ''
-                        : '',
+                      ? option.id === correctAnswers[index]
+                      ? 'text-success fw-bold'
+                      : userAnswers[index] === option.id
+                      ? 'text-danger'
+                      : ''
+                      : '',
                     ]"
                   >
                     {{ option.text }}
@@ -125,10 +125,12 @@
             <!-- Score and Suggestions Section -->
             <div v-if="showScore" class="score-modal mt-4 p-4 rounded shadow-sm">
               <h4 class="mb-3">Your Score: {{ score }}/{{ totalPossiblePoints }}</h4>
-              <div class="progress mb-3" style="height: 20px;">
+              <div class="progress mb-3" style=" height: 20px;">
                 <div class="progress-bar" role="progressbar"
-                     :style="{width: (score/totalPossiblePoints*100) + '%'}"
-                     :class="getScoreClass(score/totalPossiblePoints)">
+                     :style=" {
+                       width: (score / totalPossiblePoints * 100) + '%'
+                     }"
+                     :class="getScoreClass(score / totalPossiblePoints)">
                   {{ Math.round(score/totalPossiblePoints*100) }}%
                 </div>
               </div>
@@ -241,7 +243,7 @@ export default {
   },
   watch: {
     // Watch for changes in the route parameter
-    '$route.params.id': function() {
+    '$route.params.id': function () {
       // Reset component state
       this.loading = true;
       this.error = null;
@@ -271,7 +273,9 @@ export default {
         const assignmentId = this.$route.params.id;
 
         // Fetch assignment data from API
-        const response = await api.get(`http://127.0.0.1:5000/assignments/${assignmentId}`);
+        const response = await api.get(`http://127.0.0.1:5000/assignments/${
+assignmentId
+}`);
 
         if (response.data.success) {
           const assignmentData = response.data.assignment;
@@ -363,7 +367,7 @@ export default {
         this.suggestionsLoading = true;
 
         // Call the topic recommendation API with the wrong_questions array
-        const response = await api.post('http://127.0.0.1:5000/topic_recommendation', {
+        const response = await api.post('/topic_recommendation', {
           wrong_questions: wrongQuestions
         });
 
@@ -386,7 +390,11 @@ export default {
           if (this.topicSuggestions && this.topicSuggestions.length > 0) {
             this.topicSuggestions.forEach(topic => {
               if (topic.suggestions && topic.suggestions.length > 0) {
-                this.suggestions.push(`Topic: ${topic.topic} - ${topic.suggestions[0]}`);
+                this.suggestions.push(`Topic: ${
+topic.topic
+} - ${
+topic.suggestions[0]
+}`);
               }
             });
           }
@@ -409,62 +417,61 @@ export default {
         this.suggestionsLoading = false;
       }
     },
-async downloadPDF() {
-  this.downloadingReport = true;
-  try {
-    // Prepare data for API call
-    const reportData = {
-      score: this.score,
-      total: this.totalPossiblePoints,
-      suggestions: [
-        // Format all suggestion types into a single array
-        this.overallAssessment,
-        ...this.topicSuggestions.flatMap(topic =>
-          topic.suggestions.map(suggestion => `${topic.topic}: ${suggestion}`)
-        ),
-        ...this.generalTips
-      ],
-      questions: this.questions.map((question, index) => {
-        const userAnswer = this.userAnswers[index];
-        const correctAnswerId = this.correctAnswers[index];
+    async downloadPDF() {
+      this.downloadingReport = true;
+      try {
+        // Prepare data for API call
+        const reportData = {
+          score: this.score,
+          total: this.totalPossiblePoints,
+          suggestions: [
+            // Format all suggestion types into a single array
+            this.overallAssessment,
+            ...this.topicSuggestions.flatMap(topic =>
+              topic.suggestions.map(suggestion => `${topic.topic}: ${suggestion}`)
+            ),
+            ...this.generalTips
+          ],
+          questions: this.questions.map((question, index) => {
+            const userAnswer = this.userAnswers[index];
+            const correctAnswerId = this.correctAnswers[index];
 
-        return {
-          id: question.id,
-          text: question.text,
-          user_answer: question.options.find(opt => opt.id === userAnswer)?.text || 'Not answered',
-          correct_answer: question.options.find(opt => opt.id === correctAnswerId)?.text || 'N/A',
-          is_correct: userAnswer === correctAnswerId
+            return {
+              id: question.id,
+              text: question.text,
+              user_answer: question.options.find(opt => opt.id === userAnswer)?.text || 'Not answered',
+              correct_answer: question.options.find(opt => opt.id === correctAnswerId)?.text || 'N/A',
+              is_correct: userAnswer === correctAnswerId
+            };
+          })
         };
-      })
-    };
 
-    // Call the API endpoint with proper response type for file download
-    const response = await api.post('http://127.0.0.1:5000/download_report', reportData, {
-      responseType: 'blob' // Important: tells axios to treat the response as binary data
-    });
+        // Call the API endpoint with proper response type for file download
+        const response = await api.post('/download_report', reportData, {
+          responseType: 'blob'
+        });
 
-    // Create a download link for the PDF
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${this.assignment.title}_Report.pdf`);
-    document.body.appendChild(link);
-    link.click();
+        // Create a download link for the PDF
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${this.assignment.title}_Report.pdf`);
+        document.body.appendChild(link);
+        link.click();
 
-    // Clean up
-    setTimeout(() => {
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(link);
-    }, 100);
-
-  } catch (error) {
-    console.error('Error downloading report:', error);
-    // Show error message to user
-    alert('Failed to download report. Please try again later.');
-  } finally {
-    this.downloadingReport = false;
-  }
-},
+        // Clean up
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(link);
+        }, 100);
+      } catch (error) {
+        console.error('Error downloading report:', error);
+        // Show error message to user
+        alert('Failed to download report. Please try again later.');
+      } finally {
+        this.downloadingReport = false;
+      }
+    },
     formatDate(dateString) {
       if (!dateString) return 'N/A';
       const date = new Date(dateString);

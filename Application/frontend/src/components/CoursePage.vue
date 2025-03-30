@@ -15,9 +15,9 @@
           <div class="d-flex align-items-center">
             <h4 class="mb-0 me-3">About the Course</h4>
             <div>
-              <span class="me-1" style=" color: #f0c929;">★</span>
-              <span class="me-1" style=" color: #f0c929;">★</span>
-              <span class="me-1" style=" color: #f0c929;">★</span>
+              <span class="me-1" style="  color: #f0c929;">★</span>
+              <span class="me-1" style="  color: #f0c929;">★</span>
+              <span class="me-1" style="  color: #f0c929;">★</span>
               <span class="me-1 text-muted">★</span>
               <span class="me-1 text-muted">★</span>
               <span>3.2/5 (4 reviews)</span>
@@ -29,7 +29,7 @@
           <p>
             Faculty:
             <br/>
-             Amit Kulkarni, IIT Madras
+            Amit Kulkarni, IIT Madras
           </p>
           <br/>
           <p>

@@ -10,7 +10,6 @@ import 'highlight.js/styles/github.css';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
-// Register Python language with highlight.js
 hljs.registerLanguage('python', python);
 
 export default {
@@ -69,7 +68,6 @@ export default {
           }
         });
 
-      // Process inline math
       // eslint-disable-next-line no-useless-escape
       processedContent = processedContent.replace(/\$([^\$]+)\$|\\\((.*?)\\\)/g,
         (match, formula1, formula2) => {
@@ -99,13 +97,6 @@ export default {
   margin-bottom: 1.2rem;
 }
 
-/* LaTeX display styling */
-.katex-display {
-  margin: 1.5rem 0 !important;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
 /* Add error styling */
 .latex-error {
   color: #cc0000;
@@ -125,7 +116,6 @@ export default {
   margin: 1.2rem 0;
 }
 
-/* Ensure code inside pre has appropriate coloring for light theme */
 .markdown-content pre code {
   color: #24292e; /* Dark text color for light background */
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
