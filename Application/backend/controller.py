@@ -1831,211 +1831,144 @@ def download_markdown_pdf():
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>${title}</title>
 <style>
-/* Variables for consistent theming */
-            :root {{
-            --primary-color: #3498db;
---primary-dark: #2980b9;
---secondary-color: #2c3e50;
---accent-color: #1E847F;
---text-color: #333333;
---light-gray: #f5f7fa;
---medium-gray: #ecf0f1;
---border-color: #dfe6e9;
---shadow: 0 2px 4px rgba(0,0,0,0.1);
+/* CSS Reset for cross-platform consistency */
+            * {{
+            margin: 0;
+padding: 0;
+box-sizing: border-box;
+-webkit-box-sizing: border-box;
             }}
-
-/* General document styling */
+/* Base styles with WebKit prefixes */
             body {{
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
 line-height: 1.6;
-color: var(--text-color);
-max-width: 900px;
-margin: 0 auto;
-padding: 25px;
+color: #333333;
+padding: 20px;
 background-color: #ffffff;
-box-shadow: var(--shadow);
-border-radius: 8px;
             }}
 
-/* Header styling with gradient underline */
+/* Header styles with gradient fallback */
             h1 {{
-            font-size: 28pt;
-color: var(--secondary-color);
+            font-size: 24pt;
+color: #2c3e50;
 margin-top: 0.5em;
 margin-bottom: 0.5em;
-padding-bottom: 15px;
-position: relative;
-            }}
-
-            h1::after {{
-            content: "";
-position: absolute;
-bottom: 0;
-left: 0;
-height: 3px;
-width: 100%;
-background: linear-gradient(to right, var(--primary-color), var(--primary-dark));
-border-radius: 3px;
+padding-bottom: 10px;
+border-bottom: 3px solid #3498db;
             }}
 
             h2 {{
-            font-size: 22pt;
-color: var(--secondary-color);
-margin-top: 1.5em;
-margin-bottom: 0.7em;
-border-bottom: 1px solid var(--border-color);
-padding-bottom: 7px;
+            font-size: 18pt;
+color: #2c3e50;
+margin-top: 1.2em;
+margin-bottom: 0.6em;
+border-bottom: 1px solid #dfe6e9;
+padding-bottom: 5px;
             }}
 
             h3 {{
-            font-size: 18pt;
-color: var(--secondary-color);
-margin-top: 1.2em;
-margin-bottom: 0.6em;
+            font-size: 14pt;
+color: #2c3e50;
+margin-top: 1em;
+margin-bottom: 0.5em;
             }}
 
             p {{
-            margin-bottom: 1.2em;
-text-align: justify;
+            margin-bottom: 1em;
             }}
 
-/* Code styling with enhanced visuals */
+/* Old-school layouts instead of flexbox */
+            .row {{
+            display: block;
+width: 100%;
+overflow: hidden; /* clearfix */
+            }}
+
+            .col {{
+            float: left;
+width: 33%; /* For 3 columns - adjust as needed */
+padding: 10px;
+            }}
+
+/* Code blocks with simpler styling */
             pre {{
-            background-color: var(--light-gray);
-border: 1px solid var(--border-color);
-border-radius: 6px;
-padding: 16px;
-margin: 20px 0;
-overflow-x: auto;
-box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
-            }}
-            code {{
-            font-family: Consolas, Monaco, 'Andale Mono', monospace;
-font-size: 0.9em;
-color: var(--accent-color);
-            }}
-
-            p code {{
-            background-color: var(--light-gray);
-padding: 0.2em 0.4em;
+            background-color: #f5f7fa;
+border: 1px solid #dfe6e9;
 border-radius: 4px;
-border: 1px solid var(--border-color);
+padding: 10px;
+margin: 15px 0;
+overflow-x: auto;
             }}
 
-/* LaTeX Math Styling with improved visuals */
+            code {{
+            font-family: Consolas, Monaco, monospace;
+font-size: 0.9em;
+color: #1E847F;
+            }}
+
+/* Tables with simple styling */
+            table {{
+            border-collapse: collapse;
+width: 100%;
+margin: 15px 0;
+            }}
+
+            th {{
+            background-color: #3498db;
+color: #ffffff;
+font-weight: bold;
+text-align: left;
+padding: 8px;
+border: 1px solid #dfe6e9;
+            }}
+
+            td {{
+            padding: 8px;
+border: 1px solid #dfe6e9;
+            }}
+
+            tr:nth-child(even) {{
+            background-color: #f5f7fa;
+            }}
+
+/* Lists with simple styling */
+            ul, ol {{
+            padding-left: 20px;
+margin: 10px 0;
+            }}
+
+            li {{
+            margin-bottom: 5px;
+            }}
+
+/* Math rendering with simpler styling */
             .math-display {{
             display: block;
-padding: 16px;
-margin: 24px 0;
+padding: 10px;
+margin: 15px 0;
 text-align: center;
 font-family: 'Times New Roman', serif;
-font-size: 1.1em;
-background-color: var(--light-gray);
-border-left: 4px solid var(--primary-color);
-border-radius: 0 6px 6px 0;
-box-shadow: var(--shadow);
+background-color: #f5f7fa;
+border-left: 3px solid #3498db;
             }}
 
             .math-inline {{
             font-family: 'Times New Roman', serif;
-padding: 0 4px;
-background-color: var(--light-gray);
-border-radius: 3px;
+padding: 0 3px;
+background-color: #f5f7fa;
             }}
 
-/* Table styling with alternating rows */
-            table {{
-            border-collapse: collapse;
-width: 100%;
-margin: 20px 0;
-border-radius: 6px;
-overflow: hidden;
-box-shadow: var(--shadow);
-            }}
-
-            th {{
-            background-color: var(--primary-color);
-color: #ffffff;
-font-weight: 600;
-text-align: left;
-padding: 12px;
-            }}
-
-            td {{
-            padding: 10px 12px;
-border: 1px solid var(--border-color);
-            }}
-
-            tr:nth-child(even) {{
-            background-color: var(--light-gray);
-            }}
-
-            tr:hover {{
-            background-color: var(--medium-gray);
-            }}
-
-/* List styling */
-            ul, ol {{
-            padding-left: 25px;
-margin: 16px 0;
-            }}
-
-            li {{
-            margin-bottom: 8px;
-position: relative;
-            }}
-
-            ul li::marker {{
-            color: var(--primary-color);
-            }}
-
-/* Blockquote styling */
-            blockquote {{
-            border-left: 4px solid var(--primary-color);
-background-color: var(--light-gray);
-margin: 20px 0;
-padding: 16px 20px;
-border-radius: 0 6px 6px 0;
-font-style: italic;
-color: #555;
-box-shadow: var(--shadow);
-            }}
-/* Link styling */
-            a {{
-            color: var(--primary-color);
-text-decoration: none;
-border-bottom: 1px solid transparent;
-transition: border-color 0.2s;
-            }}
-
-            a:hover {{
-            border-bottom-color: var(--primary-color);
-            }}
-/* Print-specific styles for PDF output */
-            @media print {{
+/* Print styles */
+            @media print{{
             body {{
-                box-shadow: none;
                 padding: 0;
-                max-width: none;
+                }}
+
+                @page {{
+                    margin: 2cm;
+                }}
             }}
-
-            pre, code, blockquote, table {{
-                page-break-inside: avoid;
-        }}
-
-        h1, h2, h3 {{
-            page-break-after: avoid;
-        }}
-
-        img {{
-            max-width: 100% !important;
-        }}
-
-        @page {{
-            margin: 2cm;
-        }}
-        }}
-        </style>
+            </style>
             </head>
             <body>
             <div class="content">
@@ -2059,17 +1992,18 @@ transition: border-color 0.2s;
             'quiet': '',
             'encoding': 'UTF-8',
             'print-media-type': '',
+            'no-outline': None,
+            'dpi': 300,
+            'page-size': 'A4',
             'margin-top': '15mm',
             'margin-right': '15mm',
             'margin-bottom': '15mm',
             'margin-left': '15mm',
-            'page-size': 'A4',
-            'dpi': 300,
-            'no-outline': None
+            'disable-smart-shrinking': ''  # Important for consistent sizing across platforms
         }
 
         # Generate PDF directly without JavaScript
-        pdfkit.from_file(html_file, pdf_file, options=options)
+        pdfkit.from_file(html_file, pdf_file, options=options, configuration=config)
 
         # Return the file for download
         response = send_file(

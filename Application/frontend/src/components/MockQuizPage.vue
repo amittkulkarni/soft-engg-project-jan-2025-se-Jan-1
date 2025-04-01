@@ -348,9 +348,10 @@ export default {
 
           // Initialize answers and extract correct answers
           this.userAnswers = Array(this.questions.length).fill(null);
-          this.correctAnswers = this.questions.map(q =>
-            q.options.find(opt => opt.isCorrect)?.id || null
-          );
+          this.correctAnswers = this.questions.map(q => {
+            const correctOption = q.options.find(opt => opt.isCorrect);
+            return correctOption ? correctOption.id : null;
+          });          
           this.pointsPerQuestion = this.questions.map(q => q.points);
 
           // Reset other state

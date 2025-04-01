@@ -53,14 +53,14 @@ export default {
       // First process LaTeX expressions
       let processedContent = contentStr;
 
-      // Process display math
-      processedContent = processedContent.replace(/\$\$(.*?)\$\$|\\\[(.*?)\\\]/gs,
-        (match, formula1, formula2) => {
+      // Process display math - fixed regex pattern
+      processedContent = processedContent.replace(/\$\$([\s\S]*?)\$\$/g,
+        (match, formula) => {
           try {
-            const formula = formula1 || formula2;
             return katex.renderToString(formula, {
               displayMode: true,
-              throwOnError: false
+              throwOnError: false,
+              output: 'html'
             });
           } catch (error) {
             console.error('LaTeX display math error:', error);
@@ -68,14 +68,44 @@ export default {
           }
         });
 
-      // eslint-disable-next-line no-useless-escape
-      processedContent = processedContent.replace(/\$([^\$]+)\$|\\\((.*?)\\\)/g,
-        (match, formula1, formula2) => {
+      // Also handle \[ \] syntax for display math
+      processedContent = processedContent.replace(/\\\[([\s\S]*?)\\\]/g,
+        (match, formula) => {
           try {
-            const formula = formula1 || formula2;
+            return katex.renderToString(formula, {
+              displayMode: true,
+              throwOnError: false,
+              output: 'html'
+            });
+          } catch (error) {
+            console.error('LaTeX display math error:', error);
+            return `<span class="latex-error">${match}</span>`;
+          }
+        });
+
+      // Handle inline math with proper regex - careful with $ delimiters
+      processedContent = processedContent.replace(/\$([^$\n]+?)\$/g,
+        (match, formula) => {
+          try {
             return katex.renderToString(formula, {
               displayMode: false,
-              throwOnError: false
+              throwOnError: false,
+              output: 'html'
+            });
+          } catch (error) {
+            console.error('LaTeX inline math error:', error);
+            return `<span class="latex-error">${match}</span>`;
+          }
+        });
+
+      // Handle \( \) syntax for inline math
+      processedContent = processedContent.replace(/\\\(([\s\S]*?)\\\)/g,
+        (match, formula) => {
+          try {
+            return katex.renderToString(formula, {
+              displayMode: false,
+              throwOnError: false,
+              output: 'html'
             });
           } catch (error) {
             console.error('LaTeX inline math error:', error);
@@ -104,6 +134,38 @@ export default {
   border: 1px solid #cc0000;
   padding: 2px 4px;
   border-radius: 3px;
+}
+
+/* Fix LaTeX display */
+.markdown-content {
+  overflow-x: visible;
+  width: 100%;
+}
+
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5em 0;
+  max-width: 100%;
+}
+
+.katex {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 0.2em;
+  vertical-align: middle;
+}
+
+/* For deeper nested elements that might still be misaligned */
+.katex .katex-mathml {
+  vertical-align: middle;
+}
+
+/* Adjust specific KaTeX inner elements if needed */
+.katex .mord {
+  vertical-align: baseline;
 }
 
 /* Code block formatting */
