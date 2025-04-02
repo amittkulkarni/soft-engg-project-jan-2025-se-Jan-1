@@ -14,7 +14,7 @@ CORS(app,origins='http://localhost:8081',supports_credentials=True)
 CORS(app,resources={
          r"/*": {
              "origins": [
-                 "https://seek-sage.vercel.app",
+                 "https://seek-kia.vercel.app",
                  "http://localhost:8080",
                  "http://localhost:5000"
              ]
