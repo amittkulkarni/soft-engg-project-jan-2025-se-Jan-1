@@ -273,7 +273,7 @@ export default {
         const assignmentId = this.$route.params.id;
 
         // Fetch assignment data from API
-        const response = await api.get(`http://127.0.0.1:5000/assignments/${
+        const response = await api.get(`/assignments/${
 assignmentId
 }`);
 
