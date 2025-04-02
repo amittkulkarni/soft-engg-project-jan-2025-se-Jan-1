@@ -284,8 +284,3 @@ Dummy Code:
     sum = 0 
     custom_arr
     ```
-
-    
-
-    
-
