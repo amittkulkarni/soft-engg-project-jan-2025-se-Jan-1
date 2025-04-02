@@ -1,8 +1,9 @@
-from flask import Flask, send_from_directory
+from flask import Flask
 from config import Config
 from extension import db, jwt, migrate
 from controller import user_routes
 from flask_cors import CORS
+import os
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -28,15 +29,6 @@ migrate.init_app(app, db)
 # Register blueprints
 app.register_blueprint(user_routes)   # User routes
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def catch_all(path):
-    return send_from_directory('frontend/dist', 'index.html')
 
-# Vercel serverless function handler
-def handler(event, context):
-    return app(event, context)
-
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
