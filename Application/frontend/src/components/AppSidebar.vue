@@ -78,7 +78,7 @@
 <script>
 import bookIcon from '@/assets/sidebar-modules-selected.svg';
 import bootstrap from 'bootstrap/dist/js/bootstrap.bundle'
-import axios from 'axios'
+import api from "@/services/api.js"
 export default {
   name: 'AppSidebar',
   data() {
@@ -129,7 +129,7 @@ export default {
     async fetchWeeks() {
       try {
         // 1. Get all weeks
-        const weeksResponse = await axios.get('http://127.0.0.1:5000/weeks');
+        const weeksResponse = await api.get('/weeks');
 
         if (!weeksResponse.data.success) {
           console.error('Failed to fetch weeks:', weeksResponse.data.message);
@@ -138,13 +138,13 @@ export default {
 
         // 2. Fetch details for each week in parallel
         const weekPromises = weeksResponse.data.weeks.map(week =>
-          axios.get(`http://127.0.0.1:5000/weeks/${week.id}`)
+          api.get(`/weeks/${week.id}`)
         );
 
         const weekDetails = await Promise.all(weekPromises);
 
         // 3. Fetch all assignments for additional details
-        const assignmentsResponse = await axios.get('http://127.0.0.1:5000/assignments');
+        const assignmentsResponse = await api.get('/assignments');
 
         // Create a lookup map for quick access to assignment details
         const assignmentDetailsMap = {};
