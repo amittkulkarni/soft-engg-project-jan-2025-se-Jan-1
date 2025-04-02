@@ -9,17 +9,15 @@ import os
 app = Flask(__name__)
 
 app.config.from_object(Config)
-CORS(app,origins='http://localhost:8080',supports_credentials=True)
-CORS(app,origins='http://localhost:8081',supports_credentials=True)
-CORS(app,resources={
-         r"/*": {
-             "origins": [
-                 "https://seek-kia.vercel.app",
-                 "http://localhost:8080",
-                 "http://localhost:5000"
-             ]
-         }
-},supports_credentials=True)
+
+app = Flask(__name__)
+CORS(app, resources={r"/*": {
+    "origins": ["https://seek-kia.vercel.app", "http://localhost:8080", "http://localhost:8081"],
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allow_headers": ["Content-Type", "Authorization", "Accept"],
+    "supports_credentials": True
+}})
+
 
 # Initialize extensions
 db.init_app(app)

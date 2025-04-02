@@ -28,6 +28,11 @@ from topic_suggestions import generate_topic_suggestions
 
 user_routes = Blueprint('user_routes', __name__)
 
+
+@user_routes.route('/')
+def index():
+    return {"message": "API is running"}, 200
+
 # ------------------------- User Authentication Routes -------------------------
 
 @user_routes.route('/google_signup', methods=['POST'])
