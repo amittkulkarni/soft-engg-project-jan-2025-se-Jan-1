@@ -1,4 +1,4 @@
-# README for AI Academic Guidance Portal
+# AI Academic Guidance Portal
 
 ## Project Overview
 A comprehensive AI agent-powered academic guidance system built with a Flask backend and Vue.js frontend. The system features lecture summarization, mock quiz generation, error explanation, topic-specific notes, and an AI chatbot assistant named Kia.
