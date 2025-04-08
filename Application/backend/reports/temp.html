@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>$Week 5</title>
+<style>
+/* CSS Reset for cross-platform consistency */
+            * {
+            margin: 0;
+padding: 0;
+box-sizing: border-box;
+-webkit-box-sizing: border-box;
+            }
+/* Base styles with WebKit prefixes */
+            body {
+            font-family: Arial, Helvetica, sans-serif;
+line-height: 1.6;
+color: #333333;
+padding: 20px;
+background-color: #ffffff;
+            }
+
+/* Header styles with gradient fallback */
+            h1 {
+            font-size: 24pt;
+color: #2c3e50;
+margin-top: 0.5em;
+margin-bottom: 0.5em;
+padding-bottom: 10px;
+border-bottom: 3px solid #3498db;
+            }
+
+            h2 {
+            font-size: 18pt;
+color: #2c3e50;
+margin-top: 1.2em;
+margin-bottom: 0.6em;
+border-bottom: 1px solid #dfe6e9;
+padding-bottom: 5px;
+            }
+
+            h3 {
+            font-size: 14pt;
+color: #2c3e50;
+margin-top: 1em;
+margin-bottom: 0.5em;
+            }
+
+            p {
+            margin-bottom: 1em;
+            }
+
+/* Old-school layouts instead of flexbox */
+            .row {
+            display: block;
+width: 100%;
+overflow: hidden; /* clearfix */
+            }
+
+            .col {
+            float: left;
+width: 33%; /* For 3 columns - adjust as needed */
+padding: 10px;
+            }
+
+/* Code blocks with simpler styling */
+            pre {
+            background-color: #f5f7fa;
+border: 1px solid #dfe6e9;
+border-radius: 4px;
+padding: 10px;
+margin: 15px 0;
+overflow-x: auto;
+            }
+
+            code {
+            font-family: Consolas, Monaco, monospace;
+font-size: 0.9em;
+color: #1E847F;
+            }
+
+/* Tables with simple styling */
+            table {
+            border-collapse: collapse;
+width: 100%;
+margin: 15px 0;
+            }
+
+            th {
+            background-color: #3498db;
+color: #ffffff;
+font-weight: bold;
+text-align: left;
+padding: 8px;
+border: 1px solid #dfe6e9;
+            }
+
+            td {
+            padding: 8px;
+border: 1px solid #dfe6e9;
+            }
+
+            tr:nth-child(even) {
+            background-color: #f5f7fa;
+            }
+
+/* Lists with simple styling */
+            ul, ol {
+            padding-left: 20px;
+margin: 10px 0;
+            }
+
+            li {
+            margin-bottom: 5px;
+            }
+
+/* Math rendering with simpler styling */
+            .math-display {
+            display: block;
+padding: 10px;
+margin: 15px 0;
+text-align: center;
+font-family: 'Times New Roman', serif;
+background-color: #f5f7fa;
+border-left: 3px solid #3498db;
+            }
+
+            .math-inline {
+            font-family: 'Times New Roman', serif;
+padding: 0 3px;
+background-color: #f5f7fa;
+            }
+
+/* Print styles */
+            @media print{
+            body {
+                padding: 0;
+                }
+
+                @page {
+                    margin: 2cm;
+                }
+            }
+            </style>
+            </head>
+            <body>
+            <div class="content">
+    <h1>Week 5: Linear Regression and Gradient Descent</h1>
+<p>In Week 5, we delve into the intricacies of linear regression, focusing on efficient methods for large-scale datasets and addressing challenges like overfitting.  We explore different optimization algorithms, regularization techniques, and implementation details using the scikit-learn library.</p>
+<h2>Linear Regression: Model and Loss Function</h2>
+<p>The linear regression model predicts a continuous target variable (y) based on a linear combination of input features (x_1, x_2, ..., x_m):</p>
+<p>[ \hat{y} = w_0 + w_1x_1 + w_2x_2 + ... + w_mx_m = w^T x ]</p>
+<p>where:</p>
+<ul>
+<li>( \hat{y} ) is the predicted value.</li>
+<li>(w_0) is the bias (intercept) term.</li>
+<li>(w_i) are the model parameters (weights) associated with each feature (x_i).</li>
+<li>(w) is the weight vector ([w_0, w_1, ..., w_m]^T).</li>
+<li>(x) is the feature vector ([1, x_1, x_2, ..., x_m]^T).</li>
+</ul>
+<p>The goal is to learn the optimal weight vector (w) that minimizes the difference between predicted and actual values. We use the mean squared error (MSE) as the loss function:</p>
+<p>[ J(w) = \frac{1}{2n} \sum_{i=1}^{n} (w^T x_i - y_i)^2 ]</p>
+<p>where (n) is the number of training examples.</p>
+<h2>Optimization Algorithms</h2>
+<p>We explore two main approaches for finding the optimal (w):</p>
+<h3>Normal Equation</h3>
+<p>The normal equation provides a closed-form solution for (w):</p>
+<p>[ w = (X^TX)^{-1}X^Ty ]</p>
+<p>where (X) is the design matrix and (y) is the target vector.  While simple, the normal equation's computational complexity is (O(m^3)), making it slow for high-dimensional datasets.  It is also computationally expensive for very large datasets that don't fit in memory.</p>
+<h3>Gradient Descent</h3>
+<p>Gradient descent is an iterative optimization algorithm that updates the weight vector in the direction of the negative gradient of the loss function:</p>
+<p>[ w := w - \alpha \nabla J(w) ]</p>
+<p>where (\alpha) is the learning rate.  We discuss three variants:</p>
+<ul>
+<li><strong>Batch Gradient Descent:</strong> Uses the entire training set to compute the gradient in each iteration.  Slow for large datasets.</li>
+<li><strong>Mini-batch Gradient Descent:</strong> Uses a small random subset of the training set to compute the gradient.  Balances speed and accuracy.</li>
+<li><strong>Stochastic Gradient Descent (SGD):</strong> Uses only one training example to compute the gradient in each iteration.  Fastest but can be noisy.</li>
+</ul>
+<h2>Regularization</h2>
+<p>To prevent overfitting, especially in polynomial regression where the number of features increases dramatically, we introduce regularization techniques:</p>
+<ul>
+<li><strong>L1 Regularization (Lasso):</strong> Adds the L1 norm of the weight vector to the loss function:  (J(w) + \lambda ||w||_1).  Encourages sparsity (some weights become zero).</li>
+<li><strong>L2 Regularization (Ridge):</strong> Adds the L2 norm of the weight vector to the loss function: (J(w) + \lambda ||w||_2^2).  Shrinks the weights towards zero.</li>
+<li><strong>Elastic Net:</strong> Combines L1 and L2 regularization.</li>
+</ul>
+<h2>Implementation with scikit-learn</h2>
+<p>Scikit-learn provides efficient implementations for linear regression and its variants:</p>
+<ul>
+<li><code>LinearRegression</code>: Implements the normal equation.</li>
+<li><code>SGDRegressor</code>: Implements stochastic gradient descent, supporting various loss functions and penalties (L1, L2, Elastic Net).  Well-suited for large datasets.</li>
+<li><code>Lasso</code>: Uses coordinate descent for L1 regularization.</li>
+<li><code>Ridge</code>: Implements L2 regularization.</li>
+<li><code>PolynomialFeatures</code>: Creates polynomial features from existing features.</li>
+</ul>
+<h3>Code Examples</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.linear_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearRegression</span><span class="p">,</span> <span class="n">SGDRegressor</span><span class="p">,</span> <span class="n">Lasso</span><span class="p">,</span> <span class="n">Ridge</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">PolynomialFeatures</span><span class="p">,</span> <span class="n">StandardScaler</span>
+
+<span class="c1"># Linear Regression using Normal Equation</span>
+<span class="n">model_normal</span> <span class="o">=</span> <span class="n">LinearRegression</span><span class="p">()</span>
+
+<span class="c1"># Linear Regression using SGD</span>
+<span class="n">model_sgd</span> <span class="o">=</span> <span class="n">SGDRegressor</span><span class="p">(</span><span class="n">penalty</span><span class="o">=</span><span class="s1">&#39;l2&#39;</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+
+<span class="c1"># Polynomial Regression with Lasso Regularization</span>
+<span class="n">poly_lasso</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">([</span>
+    <span class="p">(</span><span class="s1">&#39;poly&#39;</span><span class="p">,</span> <span class="n">PolynomialFeatures</span><span class="p">(</span><span class="n">degree</span><span class="o">=</span><span class="mi">2</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;scale&#39;</span><span class="p">,</span> <span class="n">StandardScaler</span><span class="p">()),</span>
+    <span class="p">(</span><span class="s1">&#39;lasso&#39;</span><span class="p">,</span> <span class="n">Lasso</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">))</span>
+<span class="p">])</span>
+
+<span class="c1"># Polynomial Regression with Ridge Regularization</span>
+<span class="n">poly_ridge</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">([</span>
+    <span class="p">(</span><span class="s1">&#39;poly&#39;</span><span class="p">,</span> <span class="n">PolynomialFeatures</span><span class="p">(</span><span class="n">degree</span><span class="o">=</span><span class="mi">2</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;scale&#39;</span><span class="p">,</span> <span class="n">StandardScaler</span><span class="p">()),</span>
+    <span class="p">(</span><span class="s1">&#39;ridge&#39;</span><span class="p">,</span> <span class="n">Ridge</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">))</span>
+<span class="p">])</span>
+</code></pre></div>
+
+<h2>Evaluation Metrics</h2>
+<p>We use the following metrics to evaluate the performance of linear regression models:</p>
+<ul>
+<li><strong>Mean Squared Error (MSE):</strong>  The average squared difference between predicted and actual values.</li>
+<li><strong>Root Mean Squared Error (RMSE):</strong> The square root of MSE.</li>
+<li><strong>R-squared (R²):</strong>  Represents the proportion of variance in the dependent variable that is predictable from the independent variables.</li>
+</ul>
+<h2>Conclusion</h2>
+<p>In conclusion, Week 5 provided a comprehensive overview of linear regression, encompassing various optimization techniques and regularization methods.  We explored the trade-offs between different algorithms, highlighting the efficiency of SGD for large-scale datasets and the importance of regularization to mitigate overfitting.  The practical implementation using scikit-learn was demonstrated through code examples, emphasizing the importance of feature scaling and pipeline construction for building robust and accurate models.  Prof. Ashish's lectures effectively covered these crucial aspects of linear regression.</p>
+    </div>
+    </body>
+    </html>
+    

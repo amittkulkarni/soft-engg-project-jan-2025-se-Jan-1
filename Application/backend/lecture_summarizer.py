@@ -101,7 +101,7 @@ def generate_lecture_summary(text: str) -> str:
         "Create a concise, well-structured summary (250-300 words) of the following lecture. "
 
         "## Formatting Guidelines:\n"
-        "- Use hierarchical headings starting with level 2 (##) for the lecture title and level 3 (###) for subsections\n"
+        "- Use hierarchical headings starting with level 3 (###) for the lecture title and level 4 (####) for subsections\n"
         "- Include appropriate whitespace between sections for readability but not too many\n"
         "- Add mathematical formulas using LaTeX notation (\\( \\) for inline, \\[ \\] for display)\n"
         "- Present code examples in language-specific code blocks using proper syntax:\n"

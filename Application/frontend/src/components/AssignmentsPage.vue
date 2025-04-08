@@ -390,11 +390,7 @@ assignmentId
           if (this.topicSuggestions && this.topicSuggestions.length > 0) {
             this.topicSuggestions.forEach(topic => {
               if (topic.suggestions && topic.suggestions.length > 0) {
-                this.suggestions.push(`Topic: ${
-topic.topic
-} - ${
-topic.suggestions[0]
-}`);
+                this.suggestions.push(`Topic: ${topic.topic} - ${topic.suggestions[0]}`);
               }
             });
           }

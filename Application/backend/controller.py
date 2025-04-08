@@ -2017,7 +2017,7 @@ background-color: #f5f7fa;
             download_name=filename
         )
 
-        # Set appropriate headers
+        # Set appropriate headers for browser compatibility
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
